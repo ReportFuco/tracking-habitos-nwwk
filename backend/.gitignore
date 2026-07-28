@@ -1,0 +1,6 @@
+env
+.env
+__pycache__
+.vscode
+testing\responses*
+env-wsl
