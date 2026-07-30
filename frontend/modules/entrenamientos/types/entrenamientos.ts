@@ -125,10 +125,15 @@ export interface SerieFuerzaResponse {
   es_calentamiento: boolean
   cantidad_peso: number
   repeticiones: number
+  id_ejercicio?: number | null
   nombre_ejercicio?: string | null
   tipo_ejercicio?: string | null
   subcategoria_ejercicio?: string | null
   url_video?: string | null
+  // Miniatura y animacion del ejercicio. Opcionales porque una sesion cacheada de antes de
+  // que el backend las expusiera se sigue leyendo, y ahi se cae al catalogo por nombre.
+  url_imagen?: string | null
+  url_animacion?: string | null
 }
 
 export interface EntrenoFuerzaSerieResponse {

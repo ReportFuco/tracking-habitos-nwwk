@@ -126,6 +126,8 @@ describe("cola offline del entreno activo", () => {
         subcategoria_codigo: null,
         subcategoria_nombre: null,
         tipo: null,
+        url_imagen: "/ejercicios/thumb/0025.webp",
+        url_animacion: "/ejercicios/anim/0025.webp",
       },
     ])
     await sembrarEntrenoActivo(queryClient)
@@ -134,7 +136,15 @@ describe("cola offline del entreno activo", () => {
     void encolarSerie(queryClient, serie(8))
     await settle()
 
-    expect(seriesDe(queryClient)[0]?.nombre_ejercicio).toBe("Press banca")
+    const encolada = seriesDe(queryClient)[0]
+
+    expect(encolada?.nombre_ejercicio).toBe("Press banca")
+    // El entreno activo agrupa por musculo y pinta la miniatura de cada ejercicio: sin
+    // estos campos la serie encolada aparece sin imagen hasta recuperar la conexion, que
+    // es justo el caso que la cola offline existe para cubrir.
+    expect(encolada?.id_ejercicio).toBe(1)
+    expect(encolada?.url_imagen).toBe("/ejercicios/thumb/0025.webp")
+    expect(encolada?.url_animacion).toBe("/ejercicios/anim/0025.webp")
   })
 
   it("sobrevive a recargar la app y reenvia en el orden original", async () => {

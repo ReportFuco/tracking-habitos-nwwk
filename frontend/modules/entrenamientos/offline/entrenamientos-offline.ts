@@ -71,10 +71,13 @@ const buildSerieOptimista = (
     es_calentamiento: variables.es_calentamiento,
     cantidad_peso: variables.cantidad_peso,
     repeticiones: variables.repeticiones,
+    id_ejercicio: variables.id_ejercicio,
     nombre_ejercicio: ejercicio?.nombre ?? null,
     tipo_ejercicio: ejercicio?.musculo_nombre ?? null,
     subcategoria_ejercicio: ejercicio?.subcategoria_nombre ?? null,
     url_video: ejercicio?.url_video ?? null,
+    url_imagen: ejercicio?.url_imagen ?? null,
+    url_animacion: ejercicio?.url_animacion ?? null,
   }
 }
 

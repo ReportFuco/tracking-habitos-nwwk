@@ -1,8 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import Image from "next/image"
-import { ExternalLink, Pause, Pencil, Play, Trash2 } from "lucide-react"
+import { ExternalLink, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -10,7 +9,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { EjercicioMedia } from "@/modules/entrenamientos/components/ejercicio-media"
+import { EjercicioAnimacion } from "@/modules/entrenamientos/components/ejercicio-media"
 import { describirGrupo } from "@/modules/entrenamientos/components/ejercicio-card"
 import type { EjercicioResponse } from "@/modules/entrenamientos/types/entrenamientos"
 
@@ -42,16 +41,7 @@ export function EjercicioDetalleDialog({
   onEliminar: (ejercicio: EjercicioResponse) => void
   eliminando: boolean
 }) {
-  // La animacion arranca sola aunque el sistema pida reducir movimiento: aca no es
-  // decorativa, es la demostracion de como se ejecuta el ejercicio, o sea el contenido.
-  // Lo que si exige la accesibilidad es poder detenerla, y de eso se encarga el boton de
-  // pausa: un WebP animado no se puede pausar por CSS, asi que pausar es volver a la
-  // miniatura fija.
-  const [animando, setAnimando] = useState(true)
   const [confirmandoBorrado, setConfirmandoBorrado] = useState(false)
-
-  const mostrandoAnimacion = animando && Boolean(ejercicio.url_animacion)
-  const fuente = mostrandoAnimacion ? ejercicio.url_animacion : ejercicio.url_imagen
 
   return (
     <Dialog open onOpenChange={(abierto) => (abierto ? null : onClose())}>
@@ -70,49 +60,13 @@ export function EjercicioDetalleDialog({
               material -- porque es lo que se viene a ver. En pantallas anchas se acomoda
               al lado del titulo, donde ya hay sitio para ambos. */}
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-            <div className="relative">
-              {fuente ? (
-                <div className="relative size-[11.25rem] shrink-0 overflow-hidden rounded-[1.25rem] bg-surface-low sm:size-28">
-                  <Image
-                    src={fuente}
-                    alt={ejercicio.nombre}
-                    width={180}
-                    height={180}
-                    unoptimized
-                    priority
-                    className="size-full object-cover"
-                  />
-                </div>
-              ) : (
-                <EjercicioMedia src={null} alt="" size={180} className="rounded-[1.25rem]" />
-              )}
-
-              {ejercicio.url_animacion ? (
-                <button
-                  type="button"
-                  onClick={() => setAnimando((previo) => !previo)}
-                  aria-label={
-                    mostrandoAnimacion
-                      ? "Pausar la animacion del ejercicio"
-                      : "Reproducir la animacion del ejercicio"
-                  }
-                  className={
-                    mostrandoAnimacion
-                      ? // Con la animacion corriendo el control se corre a una esquina para
-                        // no tapar la demostracion. Queda siempre visible: en el telefono
-                        // no hay hover que lo revele.
-                        "absolute right-1.5 bottom-1.5 flex size-9 items-center justify-center rounded-full bg-foreground/50 text-background transition hover:bg-foreground/70"
-                      : "absolute inset-0 flex items-center justify-center rounded-[1.25rem] bg-foreground/35 text-background transition hover:bg-foreground/45"
-                  }
-                >
-                  {mostrandoAnimacion ? (
-                    <Pause className="size-4" aria-hidden />
-                  ) : (
-                    <Play className="size-7" aria-hidden />
-                  )}
-                </button>
-              ) : null}
-            </div>
+            <EjercicioAnimacion
+              imagen={ejercicio.url_imagen}
+              animacion={ejercicio.url_animacion}
+              alt={ejercicio.nombre}
+              className="size-[11.25rem] sm:size-28"
+              priority
+            />
 
             <div className="min-w-0 w-full flex-1 space-y-2 text-center sm:pt-1 sm:text-left">
               <DialogTitle className="text-lg leading-tight font-semibold tracking-[-0.01em] text-foreground sm:text-xl">
