@@ -4,24 +4,29 @@ export type UbicacionUsuario = {
   precision: number
 }
 
-const getGeolocationErrorMessage = (error: unknown) => {
-  if (!(error instanceof GeolocationPositionError)) {
+export const getGeolocationErrorMessage = (error: unknown) => {
+  const geolocationError = error as { code?: number; message?: string }
+
+  if (typeof geolocationError?.code !== "number") {
+    if (error instanceof Error) {
+      return error.message
+    }
     return "Error desconocido al obtener geolocalizacion"
   }
 
-  if (error.code === error.PERMISSION_DENIED) {
+  if (geolocationError.code === 1) {
     return "Permiso de ubicacion denegado por el usuario"
   }
 
-  if (error.code === error.POSITION_UNAVAILABLE) {
+  if (geolocationError.code === 2) {
     return "La ubicacion no esta disponible"
   }
 
-  if (error.code === error.TIMEOUT) {
+  if (geolocationError.code === 3) {
     return "Tiempo de espera agotado al obtener ubicacion"
   }
 
-  return error.message || "Error al obtener ubicacion"
+  return geolocationError.message || "Error al obtener ubicacion"
 }
 
 export const obtenerUbicacion = (): Promise<UbicacionUsuario> => {

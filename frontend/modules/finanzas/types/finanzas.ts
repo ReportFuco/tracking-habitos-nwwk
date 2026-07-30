@@ -67,12 +67,17 @@ export interface CuentaResponse {
 }
 
 export interface MovimientoCreate {
+  client_request_id?: string
   id_categoria: number
   id_cuenta: number
   tipo_movimiento: TipoMovimiento
   tipo_gasto: TipoGasto
   monto: number
   descripcion?: string | null
+  en_lugar_compra?: boolean
+  latitud?: number | null
+  longitud?: number | null
+  precision_ubicacion?: number | null
   created_at?: string
 }
 
@@ -86,6 +91,7 @@ export interface MovimientoPatch {
 
 export interface MovimientoResponse {
   id_transaccion: number
+  client_request_id?: string | null
   tipo_movimiento: TipoMovimiento
   tipo_gasto: TipoGasto
   categoria?: string | null
@@ -94,8 +100,13 @@ export interface MovimientoResponse {
   total_compras_vinculadas?: number
   diferencia_total_compras?: number
   monto: number
-  descripcion: string
+  descripcion: string | null
+  en_lugar_compra: boolean
+  latitud?: number | null
+  longitud?: number | null
+  precision_ubicacion?: number | null
   created_at: string
+  pendiente_sincronizacion?: boolean
 }
 
 export interface MovimientosPageResponse {

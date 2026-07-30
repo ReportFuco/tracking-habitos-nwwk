@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, ArrowUpRight, Landmark, ReceiptText, Wallet } from "lucide-react"
+import { ArrowLeft, ArrowUpRight, Landmark, MapPin, ReceiptText, Wallet } from "lucide-react"
 import { FinanzasAPI } from "@/modules/finanzas/api/finanzas.api"
 import { MovimientoDetailSkeleton } from "@/modules/finanzas/components/skeletons/movimiento-detail-skeleton"
 import type { MovimientoResponse } from "@/modules/finanzas/types/finanzas"
@@ -102,7 +102,7 @@ export function MovimientoDetailView({ idMovimiento }: { idMovimiento: number })
         </article>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)]">
           <p className="font-label text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
             Categoria
@@ -134,6 +134,17 @@ export function MovimientoDetailView({ idMovimiento }: { idMovimiento: number })
           <p className="mt-3 flex items-center gap-2 text-sm text-foreground">
             <ReceiptText className="size-4 text-[color:var(--module-finanzas)]" />
             ID #{movimiento.id_transaccion}
+          </p>
+        </article>
+        <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)]">
+          <p className="font-label text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
+            Lugar de compra
+          </p>
+          <p className="mt-3 flex items-center gap-2 text-sm text-foreground">
+            <MapPin className="size-4 text-[color:var(--module-finanzas)]" />
+            {movimiento.en_lugar_compra
+              ? `Confirmado · ±${Math.round(movimiento.precision_ubicacion ?? 0)} m`
+              : "No asociado"}
           </p>
         </article>
       </section>

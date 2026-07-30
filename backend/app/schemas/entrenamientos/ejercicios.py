@@ -25,6 +25,16 @@ class EjercicioResponse(EjercicioBase):
     subcategoria_codigo: str | None = None
     subcategoria_nombre: str | None = None
 
+    # Material del catálogo importado; los ejercicios creados a mano lo traen en null.
+    codigo_externo: str | None = None
+    nombre_original: str | None = None
+    equipamiento: str | None = None
+    musculos_secundarios: list[str] | None = None
+    instrucciones: list[str] | None = None
+    url_imagen: str | None = None
+    url_animacion: str | None = None
+    atribucion: str | None = None
+
     model_config = ConfigDict(from_attributes=True)
 
     @model_validator(mode="before")

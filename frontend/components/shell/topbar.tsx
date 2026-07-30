@@ -9,7 +9,9 @@ import { toast } from "sonner"
 import { FullScreenLoader } from "@/components/feedback/loaders/full-screen-loader"
 import { Button } from "@/components/ui/button"
 import { clearStoredSession } from "@/lib/auth-session"
+import { clearPersistedQueryCache } from "@/lib/query-persistence"
 import { AuthAPI } from "@/modules/auth/api/auth.api"
+import { disableCurrentDeviceNotifications } from "@/modules/notifications/api/notifications.api"
 import type { UsuarioProfile } from "@/modules/auth/types/auth"
 
 interface TopbarProps {
@@ -32,12 +34,14 @@ export function Topbar({
   const handleLogout = async () => {
     setClosingSession(true)
     try {
+      await disableCurrentDeviceNotifications()
       await AuthAPI.logout()
     } catch {
       // sesion local se limpia igualmente
     }
     clearStoredSession()
     queryClient.clear()
+    await clearPersistedQueryCache()
     toast.success("Sesion cerrada")
     router.replace("/login")
   }

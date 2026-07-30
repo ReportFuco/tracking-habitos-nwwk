@@ -51,6 +51,16 @@ export interface EjercicioResponse {
   subcategoria_codigo: string | null
   subcategoria_nombre: string | null
   tipo?: string | null
+  // Material del catalogo importado. Los ejercicios creados a mano lo traen en null, asi
+  // que todo lo que lo consuma tiene que tolerar su ausencia.
+  codigo_externo: string | null
+  nombre_original: string | null
+  equipamiento: string | null
+  musculos_secundarios: string[] | null
+  instrucciones: string[] | null
+  url_imagen: string | null
+  url_animacion: string | null
+  atribucion: string | null
 }
 
 export interface SubcategoriaMusculo {
@@ -73,6 +83,7 @@ export interface EjerciciosParams {
   q?: string
   id_musculo?: number
   id_subcategoria_musculo?: number
+  equipamiento?: string
   tipo?: string
 }
 

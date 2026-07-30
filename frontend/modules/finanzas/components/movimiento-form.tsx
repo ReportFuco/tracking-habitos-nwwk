@@ -1,12 +1,29 @@
 "use client"
 
 import { FormEvent, useMemo, useState } from "react"
-import { ArrowDownLeft, ArrowUpRight, CalendarClock, Folder, ReceiptText, Repeat, Wallet, Zap } from "lucide-react"
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  CalendarClock,
+  Check,
+  Folder,
+  LoaderCircle,
+  MapPin,
+  ReceiptText,
+  Repeat,
+  Wallet,
+  Zap,
+} from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { FieldGroup, FormPanel, FormSubmitBar } from "@/components/forms/editorial-form"
 import { SearchableCombobox } from "@/components/forms/searchable-combobox"
 import { Input } from "@/components/ui/input"
+import {
+  getGeolocationErrorMessage,
+  obtenerUbicacion,
+  type UbicacionUsuario,
+} from "@/lib/geolocation"
 import { cn } from "@/lib/utils"
 import { useFinanzas } from "@/modules/finanzas/hooks/useFinanzas"
 import { movimientoCreateSchema } from "@/modules/finanzas/schemas/finanzas.schema"
@@ -20,6 +37,7 @@ const initialMovimientoForm = {
   monto: "",
   descripcion: "",
   created_at: "",
+  en_lugar_compra: false,
 }
 
 const tipoMovimientoOpts: {
@@ -47,6 +65,8 @@ export function MovimientoFormCard() {
   } = useFinanzas()
 
   const [form, setForm] = useState(initialMovimientoForm)
+  const [ubicacion, setUbicacion] = useState<UbicacionUsuario | null>(null)
+  const [capturandoUbicacion, setCapturandoUbicacion] = useState(false)
 
   const categoriaOptions = useMemo(
     () =>
@@ -71,6 +91,42 @@ export function MovimientoFormCard() {
 
   const esIngreso = form.tipo_movimiento === "ingreso"
 
+  const selectTipoMovimiento = (tipoMovimiento: TipoMovimiento) => {
+    setForm((prev) => ({
+      ...prev,
+      tipo_movimiento: tipoMovimiento,
+      en_lugar_compra:
+        tipoMovimiento === "ingreso" ? false : prev.en_lugar_compra,
+    }))
+
+    if (tipoMovimiento === "ingreso") {
+      setUbicacion(null)
+    }
+  }
+
+  const toggleLugarCompra = async () => {
+    if (form.en_lugar_compra) {
+      setForm((prev) => ({ ...prev, en_lugar_compra: false }))
+      setUbicacion(null)
+      return
+    }
+
+    setCapturandoUbicacion(true)
+    try {
+      const current = await obtenerUbicacion()
+      setUbicacion(current)
+      setForm((prev) => ({ ...prev, en_lugar_compra: true }))
+    } catch (error) {
+      setUbicacion(null)
+      setForm((prev) => ({ ...prev, en_lugar_compra: false }))
+      toast.error("No pudimos obtener tu ubicacion", {
+        description: getGeolocationErrorMessage(error),
+      })
+    } finally {
+      setCapturandoUbicacion(false)
+    }
+  }
+
   const handleCreateMovimiento = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
@@ -82,6 +138,10 @@ export function MovimientoFormCard() {
       monto: Number(form.monto),
       descripcion: form.descripcion,
       created_at: form.created_at,
+      en_lugar_compra: form.en_lugar_compra,
+      latitud: ubicacion?.latitud,
+      longitud: ubicacion?.longitud,
+      precision_ubicacion: ubicacion?.precision,
     })
 
     if (!parsed.success) {
@@ -93,6 +153,7 @@ export function MovimientoFormCard() {
 
     const payload = {
       ...parsed.data,
+      client_request_id: crypto.randomUUID(),
       descripcion: parsed.data.descripcion || null,
       created_at: parsed.data.created_at ? ensureSeconds(parsed.data.created_at) : undefined,
     }
@@ -101,8 +162,11 @@ export function MovimientoFormCard() {
 
     if (result.ok) {
       setForm(initialMovimientoForm)
-      toast.success("Movimiento creado", {
-        description: "El movimiento se registro correctamente.",
+      setUbicacion(null)
+      toast.success(result.queued ? "Movimiento guardado sin conexion" : "Movimiento creado", {
+        description: result.queued
+          ? "Quedo pendiente y se sincronizara automaticamente al recuperar internet."
+          : "El movimiento se registro correctamente.",
       })
       return
     }
@@ -160,9 +224,7 @@ export function MovimientoFormCard() {
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() =>
-                    setForm((prev) => ({ ...prev, tipo_movimiento: opt.value }))
-                  }
+                  onClick={() => selectTipoMovimiento(opt.value)}
                   className={cn(
                     "relative z-10 flex h-11 items-center justify-center gap-2 rounded-[0.75rem] text-sm font-medium transition-all duration-300 ease-out",
                     active ? activeTextClass : "text-foreground/70 hover:text-foreground"
@@ -226,38 +288,85 @@ export function MovimientoFormCard() {
         </div>
 
         {esIngreso ? null : (
-          <FieldGroup label="Tipo de gasto" hint="Para clasificar">
-            <div className="relative grid grid-cols-2 gap-2 rounded-[1rem] bg-[color:var(--surface-variant)] p-1">
-              <div
-                aria-hidden
-                className={cn(
-                  "pointer-events-none absolute inset-y-1 w-[calc(50%-0.25rem)] rounded-[0.75rem] bg-[color:var(--surface-lowest)] shadow-[var(--shadow-airy)] transition-all duration-300 ease-out",
-                  form.tipo_gasto === "fijo" ? "translate-x-[calc(100%+0.5rem)]" : "translate-x-0"
-                )}
-              />
-              {tipoGastoOpts.map((opt) => {
-                const Icon = opt.icon
-                const active = form.tipo_gasto === opt.value
+          <>
+            <FieldGroup label="Tipo de gasto" hint="Para clasificar">
+              <div className="relative grid grid-cols-2 gap-2 rounded-[1rem] bg-[color:var(--surface-variant)] p-1">
+                <div
+                  aria-hidden
+                  className={cn(
+                    "pointer-events-none absolute inset-y-1 w-[calc(50%-0.25rem)] rounded-[0.75rem] bg-[color:var(--surface-lowest)] shadow-[var(--shadow-airy)] transition-all duration-300 ease-out",
+                    form.tipo_gasto === "fijo" ? "translate-x-[calc(100%+0.5rem)]" : "translate-x-0"
+                  )}
+                />
+                {tipoGastoOpts.map((opt) => {
+                  const Icon = opt.icon
+                  const active = form.tipo_gasto === opt.value
 
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() =>
-                      setForm((prev) => ({ ...prev, tipo_gasto: opt.value }))
-                    }
-                    className={cn(
-                      "relative z-10 flex h-10 items-center justify-center gap-2 rounded-[0.75rem] text-sm font-medium transition-all duration-300 ease-out",
-                      active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Icon className={cn("size-3.5 transition-transform duration-300", active && "scale-105")} />
-                    {opt.label}
-                  </button>
-                )
-              })}
-            </div>
-          </FieldGroup>
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() =>
+                        setForm((prev) => ({ ...prev, tipo_gasto: opt.value }))
+                      }
+                      className={cn(
+                        "relative z-10 flex h-10 items-center justify-center gap-2 rounded-[0.75rem] text-sm font-medium transition-all duration-300 ease-out",
+                        active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Icon className={cn("size-3.5 transition-transform duration-300", active && "scale-105")} />
+                      {opt.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </FieldGroup>
+
+            <FieldGroup label="Ubicacion de la compra" hint="Opcional">
+              <button
+                type="button"
+                aria-pressed={form.en_lugar_compra}
+                onClick={() => void toggleLugarCompra()}
+                disabled={capturandoUbicacion}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-[1rem] px-4 py-3 text-left transition",
+                  form.en_lugar_compra
+                    ? "bg-primary/12 text-foreground"
+                    : "bg-[color:var(--surface-variant)] text-foreground/80",
+                  capturandoUbicacion && "cursor-wait opacity-70",
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex size-9 shrink-0 items-center justify-center rounded-full",
+                    form.en_lugar_compra
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-[color:var(--surface-lowest)] text-muted-foreground",
+                  )}
+                >
+                  {capturandoUbicacion ? (
+                    <LoaderCircle className="size-4 animate-spin" />
+                  ) : form.en_lugar_compra ? (
+                    <Check className="size-4" />
+                  ) : (
+                    <MapPin className="size-4" />
+                  )}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium">
+                    Estoy en el lugar de compra
+                  </span>
+                  <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
+                    {capturandoUbicacion
+                      ? "Obteniendo tu ubicacion..."
+                      : ubicacion
+                        ? `Ubicacion capturada · precision aproximada ${Math.round(ubicacion.precision)} m`
+                        : "Activalo solo para compras presenciales. Pagos automaticos y compras remotas quedan fuera."}
+                  </span>
+                </span>
+              </button>
+            </FieldGroup>
+          </>
         )}
 
         <FieldGroup label="Descripcion" hint="Opcional">
@@ -286,7 +395,7 @@ export function MovimientoFormCard() {
             type="submit"
             size="lg"
             className="h-13 w-full rounded-xl text-sm font-semibold lg:h-12 lg:w-auto lg:min-w-[13rem] lg:px-6"
-            disabled={submittingMovimiento || loadingCatalogos}
+            disabled={submittingMovimiento || loadingCatalogos || capturandoUbicacion}
           >
             {submittingMovimiento
               ? "Guardando..."

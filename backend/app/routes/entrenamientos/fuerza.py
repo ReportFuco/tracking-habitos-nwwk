@@ -4,7 +4,11 @@ from app.auth.fastapi_users import current_user_or_api_key
 from app.db.session import get_db
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from datetime import datetime
+from datetime import datetime, timezone
+from app.notifications.service import (
+    cancel_training_reminders,
+    schedule_training_reminders,
+)
 from app.schemas.entrenamientos import (
     EntrenoFuerzaResponse, 
     EntrenoFuerzaCreate, 
@@ -49,7 +53,7 @@ async def obtener_entrenamientos_usuario(
     user = Depends(current_user_or_api_key)
 ):
     usuario = await obtener_usuario_actual(user, db)
-    
+
     entreno_fuerza = (
         await db.execute(
                 select(EntrenamientoFuerza)
@@ -155,6 +159,14 @@ async def activar_entrenamiento(
     db: AsyncSession = Depends(get_db)
 ):
     usuario = await obtener_usuario_actual(user, db)
+
+    # Serializa los inicios del mismo usuario para que dos taps simultaneos no creen
+    # dos entrenamientos activos antes de que alguno sea visible para el otro.
+    await db.execute(
+        select(Usuario.id_usuario)
+        .where(Usuario.id_usuario == usuario.id_usuario)
+        .with_for_update()
+    )
     
     existe = (
         await db.execute(
@@ -195,10 +207,13 @@ async def activar_entrenamiento(
 
     entreno_fuerza = EntrenamientoFuerza(
         id_entrenamiento=entreno.id_entrenamiento,
-        id_gimnasio=data.id_gimnasio
+        id_gimnasio=data.id_gimnasio,
+        inicio_at=datetime.now(timezone.utc),
     )
 
     db.add(entreno_fuerza)
+    await db.flush()
+    schedule_training_reminders(db, entreno_fuerza)
     await db.flush()
 
     entreno_fuerza = (
@@ -247,7 +262,11 @@ async def finalizar_sesion_fuerza(
         )
 
     entreno_activo.estado = EstadoEntreno.CERRADO
-    entreno_activo.fin_at = datetime.now()
+    entreno_activo.fin_at = datetime.now(timezone.utc)
+    await cancel_training_reminders(
+        db,
+        entreno_activo.id_entrenamiento_fuerza,
+    )
 
     await db.flush()
     await db.refresh(entreno_activo)

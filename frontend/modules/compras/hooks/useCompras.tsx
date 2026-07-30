@@ -38,6 +38,7 @@ const useComprasState = () => {
     queryKey: queryKeys.compras.compras,
     queryFn: ComprasAPI.getCompras,
     staleTime: FIVE_MINUTES,
+    meta: persistMeta,
   })
 
   const invalidate = async (...keys: readonly (readonly unknown[])[]) => {

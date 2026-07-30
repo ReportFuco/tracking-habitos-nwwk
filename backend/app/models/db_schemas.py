@@ -7,6 +7,7 @@ ENTRENAMIENTOS_SCHEMA = "entrenamientos"
 COMPRAS_SCHEMA = "compras"
 NUTRICION_SCHEMA = "nutricion"
 CATALOGO_SCHEMA = "catalogo"
+NOTIFICACIONES_SCHEMA = "notificaciones"
 
 
 def table_ref(schema: str, table: str) -> str:

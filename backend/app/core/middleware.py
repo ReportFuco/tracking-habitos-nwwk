@@ -1,9 +1,32 @@
-from fastapi import Request
+from fastapi import Request, status
+from fastapi.responses import JSONResponse
 from loguru import logger
 import time
 
+from app.settings import CORS_ORIGINS, SESSION_COOKIE_NAME, URL_SITE
+
 _LAST_LOGGED_REQUESTS: dict[tuple[str, str, str, int], float] = {}
 _REPEATED_GET_LOG_WINDOW_SECONDS = 10.0
+_SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
+
+
+async def cookie_csrf_middleware(request: Request, call_next):
+    if (
+        request.method not in _SAFE_METHODS
+        and SESSION_COOKIE_NAME in request.cookies
+    ):
+        origin = request.headers.get("origin")
+        allowed_origins = {item.rstrip("/") for item in CORS_ORIGINS}
+        if URL_SITE:
+            allowed_origins.add(URL_SITE.rstrip("/"))
+
+        if origin and origin.rstrip("/") not in allowed_origins:
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"detail": "Origen no permitido para una sesión web."},
+            )
+
+    return await call_next(request)
 
 
 async def logging_middleware(request: Request, call_next):

@@ -6,6 +6,7 @@ from .finanzas import router as finanzas_router
 from .lecturas import router as lecturas_router
 from .nutricion import router as nutricion_router
 from .usuarios import router as usuario_router
+from .notifications import router as notifications_router
 
 
 router = APIRouter(prefix="/api")
@@ -17,6 +18,7 @@ router.include_router(finanzas_router)
 router.include_router(entrenamientos_router)
 router.include_router(lecturas_router)
 router.include_router(nutricion_router)
+router.include_router(notifications_router)
 
 
 __all__ = ["router"]

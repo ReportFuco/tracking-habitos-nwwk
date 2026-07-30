@@ -3,29 +3,34 @@ import {
   AuthLoginPayload,
   AuthRegisterPayload,
   AuthRegisterResponse,
-  AuthTokenResponse,
   UsuarioProfile,
 } from "@/modules/auth/types/auth"
 
 export const AuthAPI = {
-  login: async (payload: AuthLoginPayload): Promise<AuthTokenResponse> => {
+  login: async (payload: AuthLoginPayload): Promise<void> => {
     const body = new URLSearchParams()
     body.set("grant_type", "password")
     body.append("username", payload.username)
     body.append("password", payload.password)
     body.set("scope", "")
 
-    const { data } = await api.post<AuthTokenResponse>("/auth/jwt/login", body.toString(), {
+    await api.post("/auth/session/login", body.toString(), {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
     })
-
-    return data
   },
 
   logout: async (): Promise<void> => {
-    await api.post("/auth/jwt/logout")
+    await api.post("/auth/session/logout", undefined, {
+      skipAuthRedirect: true,
+    })
+  },
+
+  refreshSession: async (): Promise<void> => {
+    await api.post("/auth/session/refresh", undefined, {
+      skipAuthRedirect: true,
+    })
   },
 
   register: async (payload: AuthRegisterPayload): Promise<AuthRegisterResponse> => {

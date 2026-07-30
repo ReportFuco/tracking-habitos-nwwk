@@ -401,8 +401,19 @@ def _build_docs_menu_html(request: Request) -> str:
 
 
 def _swagger_with_nav(openapi_url: str, title: str):
-    return get_swagger_ui_html(openapi_url=openapi_url, title=title)
+    response = get_swagger_ui_html(openapi_url=openapi_url, title=title)
+    return HTMLResponse(_inject_docs_nav(response.body.decode("utf-8")))
 
 
 def _redoc_with_nav(openapi_url: str, title: str):
-    return get_redoc_html(openapi_url=openapi_url, title=title)
+    response = get_redoc_html(openapi_url=openapi_url, title=title)
+    return HTMLResponse(_inject_docs_nav(response.body.decode("utf-8")))
+
+
+def _inject_docs_nav(html: str) -> str:
+    nav = (
+        '<a href="/docs" style="position:fixed;right:18px;bottom:18px;z-index:9999;'
+        'padding:10px 14px;border-radius:999px;background:#1f2937;color:white;'
+        'font:600 13px system-ui;text-decoration:none">Volver al menu</a>'
+    )
+    return html.replace("</body>", f"{nav}</body>")

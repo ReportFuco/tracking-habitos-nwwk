@@ -33,16 +33,19 @@ const useNutricionState = () => {
     queryKey: queryKeys.nutricion.consumos,
     queryFn: NutricionAPI.getConsumos,
     staleTime: FIVE_MINUTES,
+    meta: persistMeta,
   })
   const metasQuery = useQuery({
     queryKey: queryKeys.nutricion.metas,
     queryFn: NutricionAPI.getMetas,
     staleTime: FIVE_MINUTES,
+    meta: persistMeta,
   })
   const pesosQuery = useQuery({
     queryKey: queryKeys.nutricion.pesos,
     queryFn: NutricionAPI.getPesos,
     staleTime: FIVE_MINUTES,
+    meta: persistMeta,
   })
   const tablasQuery = useQuery({
     queryKey: queryKeys.nutricion.tablas,

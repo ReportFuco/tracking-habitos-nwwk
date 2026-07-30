@@ -11,8 +11,9 @@ from sqlalchemy import (
     SmallInteger,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from app.db.base import Base
 from app.models.db_schemas import ENTRENAMIENTOS_SCHEMA, USUARIOS_SCHEMA, table_ref
 import enum
@@ -120,8 +121,12 @@ class EntrenamientoFuerza(Base):
         server_default="activo",
         default=EnumEstadoEntrenamiento.ACTIVO,
     )
-    inicio_at: Mapped[datetime] = mapped_column(DateTime, server_default=text("now()"), default=datetime.now)
-    fin_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True) 
+    inicio_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=text("now()"),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    fin_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     
     gimnasio = relationship("Gimnasio", back_populates="entrenamientos_fuerza")
     entrenamiento = relationship("Entrenamiento", back_populates="fuerza")
@@ -195,12 +200,23 @@ class Ejercicios(Base):
     __table_args__ = {"schema": ENTRENAMIENTOS_SCHEMA}
 
     id_ejercicio: Mapped[int] = mapped_column(Integer, primary_key=True)
-    nombre: Mapped[str] = mapped_column(String(100))
+    nombre: Mapped[str] = mapped_column(String(160))
     id_subcategoria_musculo: Mapped[int] = mapped_column(
         SmallInteger,
         ForeignKey(table_ref(ENTRENAMIENTOS_SCHEMA, "subcategoria_musculo.id_subcategoria_musculo")),
         nullable=False,
     )
     url_video:Mapped[str] = mapped_column(String, nullable=True)
+
+    # Material del catalogo publico importado. Todo nullable: los ejercicios que el
+    # usuario crea a mano solo tienen nombre y subcategoria.
+    codigo_externo: Mapped[str | None] = mapped_column(String(16), nullable=True, unique=True)
+    nombre_original: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    equipamiento: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    musculos_secundarios: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    instrucciones: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    url_imagen: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    url_animacion: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    atribucion: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     subcategoria_musculo = relationship("SubcategoriaMusculo", back_populates="ejercicios")

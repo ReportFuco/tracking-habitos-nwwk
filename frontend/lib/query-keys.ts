@@ -21,9 +21,11 @@ export const queryKeys = {
       q?: string
       id_musculo?: number
       id_subcategoria_musculo?: number
+      equipamiento?: string
       tipo?: string
     }) =>
       ["entrenamientos", "ejercicios", params ?? {}] as const,
+    equipamientos: ["entrenamientos", "equipamientos"] as const,
     musculos: ["entrenamientos", "musculos"] as const,
     gimnasiosRoot: ["entrenamientos", "gimnasios"] as const,
     gimnasios: (q?: string) => ["entrenamientos", "gimnasios", { q: q ?? "" }] as const,

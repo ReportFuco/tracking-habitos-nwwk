@@ -39,18 +39,19 @@ Importante: cualquier variable con prefijo `NEXT_PUBLIC_` se inyecta en el bundl
 Resumen rapido (ver `CLAUDE.md` para detalles):
 
 - Rutas publicas: `/login`, `/register`.
-- Rutas protegidas: `/app/<modulo>/**` (auth-guard valida token local + perfil remoto).
+- Rutas protegidas: `/app/<modulo>/**` (auth-guard valida la cookie de sesión mediante el perfil remoto).
 - Cada feature vive en `modules/<feature>/` con `api/`, `hooks/`, `types/`, `schemas/`, `components/`.
-- Cliente Axios centralizado en `lib/api.ts` (auto-inyecta `Authorization: Bearer <token>` y redirige a `/login` ante 401).
+- Cliente Axios centralizado en `lib/api.ts` (envía credenciales `HttpOnly`, conserva compatibilidad bearer y redirige a `/login` ante 401).
 - Query keys centralizadas en `lib/query-keys.ts`.
 
 ## Auth y sesion
 
-El JWT se guarda en `localStorage` (clave `auth_token`). Esto implica:
+El navegador usa una sesión opaca y revocable en cookie `HttpOnly`:
 
-- Riesgo de exposicion ante XSS.
-- En logout y en login se limpia el cache persistido de React Query (`queryClient.clear()`) para evitar fuga de datos entre usuarios en el mismo navegador.
-- Migracion futura a cookie `HttpOnly` esta en `docs/AUDITORIA_PROYECTO.md` Fase 3.
+- Login/logout web: `/auth/session/login` y `/auth/session/logout`.
+- La sesión se renueva al validar el perfil: 30 días de inactividad y 90 días como límite absoluto.
+- JWT bearer permanece disponible para compatibilidad con clientes de API.
+- En logout y login se limpia el cache persistido de React Query (`queryClient.clear()`) para evitar fuga de datos entre usuarios en el mismo navegador.
 
 ## Persistencia de cache
 

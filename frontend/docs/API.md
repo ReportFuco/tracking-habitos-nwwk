@@ -60,13 +60,14 @@ POST /auth/jwt/login
 
 ## Autenticación
 
-La API usa JWT con `fastapi-users`.
+La aplicación web usa una sesión revocable en cookie `HttpOnly`. El backend
+mantiene JWT bearer para clientes de API compatibles.
 
 ### Flujo base
 
-1. Registrar usuario con `POST /auth/register`
-2. Iniciar sesión con `POST /auth/jwt/login`
-3. Usar el token en el header `Authorization`
+1. Registrar usuario con `POST /auth/register`.
+2. En browser/PWA, iniciar sesión con `POST /auth/session/login`.
+3. Axios envía la cookie automáticamente y renueva la sesión al validar el perfil.
 
 Header esperado:
 
@@ -104,7 +105,15 @@ Campos esperados:
 
 #### `POST /auth/jwt/login`
 
-Inicia sesión y devuelve el token JWT.
+Inicia sesión y devuelve el token JWT para clientes de API.
+
+#### Sesión web/PWA
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `POST` | `/auth/session/login` | Crea una cookie de sesión `HttpOnly` revocable |
+| `POST` | `/auth/session/refresh` | Renueva la expiración inactiva |
+| `POST` | `/auth/session/logout` | Revoca la sesión y elimina la cookie |
 
 #### Endpoints adicionales de auth
 

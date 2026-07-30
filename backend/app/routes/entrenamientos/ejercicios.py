@@ -82,6 +82,10 @@ async def obtener_ejercicios(
         default=None,
         description="Filtra por la subcategoría muscular del ejercicio",
     ),
+    equipamiento: str | None = Query(
+        default=None,
+        description="Filtra por el equipamiento del ejercicio, por ejemplo Mancuernas o Polea",
+    ),
     tipo: str | None = Query(
         default=None,
         description="Filtro legacy por código de músculo, por ejemplo pecho o bicep",
@@ -105,6 +109,11 @@ async def obtener_ejercicios(
     if id_subcategoria_musculo is not None:
         stmt = stmt.where(Ejercicios.id_subcategoria_musculo == id_subcategoria_musculo)
 
+    if equipamiento is not None:
+        stmt = stmt.where(
+            normalize_sql_text(Ejercicios.equipamiento) == normalize_search_text(equipamiento)
+        )
+
     if tipo is not None:
         stmt = stmt.where(Musculo.codigo == normalize_search_text(tipo))
 
@@ -113,6 +122,10 @@ async def obtener_ejercicios(
         stmt = stmt.where(
             or_(
                 normalize_sql_text(Ejercicios.nombre).ilike(f"%{termino}%"),
+                # El catálogo importado guarda el nombre original en inglés: buscar
+                # "bench press" tiene que encontrar "Press de banca con barra".
+                normalize_sql_text(Ejercicios.nombre_original).ilike(f"%{termino}%"),
+                normalize_sql_text(Ejercicios.equipamiento).ilike(f"%{termino}%"),
                 normalize_sql_text(Musculo.nombre).ilike(f"%{termino}%"),
                 normalize_sql_text(Musculo.codigo).ilike(f"%{termino}%"),
                 normalize_sql_text(SubcategoriaMusculo.nombre).ilike(f"%{termino}%"),
@@ -139,6 +152,25 @@ async def obtener_musculos(
         .where(Musculo.activo.is_(True))
         .options(selectinload(Musculo.subcategorias))
         .order_by(Musculo.id_musculo.asc())
+    )
+    return result.scalars().all()
+
+
+@router.get(
+    "/equipamientos",
+    response_model=list[str],
+    status_code=status.HTTP_200_OK,
+)
+async def obtener_equipamientos(
+    db: AsyncSession = Depends(get_db),
+    user=Depends(current_user_or_api_key),
+):
+    """Equipamientos en uso, para armar los filtros del catálogo sin hardcodearlos."""
+    result = await db.execute(
+        select(Ejercicios.equipamiento)
+        .where(Ejercicios.equipamiento.is_not(None))
+        .distinct()
+        .order_by(Ejercicios.equipamiento.asc())
     )
     return result.scalars().all()
 

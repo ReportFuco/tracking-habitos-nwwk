@@ -180,6 +180,33 @@ async def crear_movimiento(
 ):
     usuario = await obtener_usuario_actual(user, db)
 
+    # La cola offline puede reenviar la misma solicitud si la respuesta se pierde. El
+    # identificador del cliente convierte ese reintento en una lectura del movimiento ya
+    # creado, evitando duplicar el gasto.
+    if data.client_request_id is not None:
+        movimiento_existente = await db.scalar(
+            select(Movimiento)
+            .where(Movimiento.client_request_id == data.client_request_id)
+            .options(
+                selectinload(Movimiento.categoria),
+                selectinload(Movimiento.cuenta),
+                selectinload(Movimiento.vinculos_compra)
+                .selectinload(MovimientoCompra.compra)
+                .selectinload(Compra.local)
+                .selectinload(Local.cadena),
+                selectinload(Movimiento.vinculos_compra)
+                .selectinload(MovimientoCompra.compra)
+                .selectinload(Compra.detalles),
+            )
+        )
+        if movimiento_existente is not None:
+            if movimiento_existente.cuenta.id_usuario != usuario.id_usuario:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="El identificador de la solicitud ya fue utilizado.",
+                )
+            return movimiento_existente
+
     categoria = (
         await db.scalar(
             select(CategoriaFinanza)

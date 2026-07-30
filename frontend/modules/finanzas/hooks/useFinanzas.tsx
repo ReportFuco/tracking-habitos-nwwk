@@ -1,11 +1,18 @@
 "use client"
 
 import { createContext, ReactNode, useContext, useMemo } from "react"
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  onlineManager,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import { toast } from "sonner"
 import { getFriendlyErrorMessage } from "@/lib/error-messages"
 import { queryKeys } from "@/lib/query-keys"
 import { FinanzasAPI } from "@/modules/finanzas/api/finanzas.api"
+import { finanzasMutationKeys } from "@/modules/finanzas/offline/movimientos-offline"
 import {
   BancoCreate,
   CategoriaCreate,
@@ -14,6 +21,7 @@ import {
   CuentaPatch,
   MovimientoCreate,
   MovimientoPatch,
+  MovimientoResponse,
   ProductoFinancieroResponse,
 } from "@/modules/finanzas/types/finanzas"
 
@@ -24,7 +32,9 @@ const ONE_DAY = ONE_MINUTE * 60 * 24
 const ONE_WEEK = ONE_DAY * 7
 
 type FinanzasContextValue = ReturnType<typeof useFinanzasState>
-type ActionResult = Promise<{ ok: true } | { ok: false; message: string }>
+type ActionResult = Promise<
+  { ok: true; queued?: boolean } | { ok: false; message: string }
+>
 
 const FinanzasContext = createContext<FinanzasContextValue | null>(null)
 const persistMeta = { persist: true }
@@ -52,11 +62,13 @@ const useFinanzasState = () => {
     queryFn: FinanzasAPI.getCategorias,
     staleTime: ONE_DAY,
     gcTime: ONE_WEEK,
+    meta: persistMeta,
   })
   const cuentasQuery = useQuery({
     queryKey: queryKeys.finanzas.cuentas,
     queryFn: FinanzasAPI.getCuentas,
     staleTime: FIVE_MINUTES,
+    meta: persistMeta,
   })
   const movimientosQuery = useInfiniteQuery({
     queryKey: queryKeys.finanzas.movimientos,
@@ -68,6 +80,9 @@ const useFinanzasState = () => {
         ? lastPage.offset + lastPage.items.length
         : undefined,
     staleTime: ONE_MINUTE,
+    // Se persisten todas las paginas ya cargadas, no solo la primera: al volver sin red
+    // el historico se ve igual que como quedo.
+    meta: persistMeta,
   })
 
   const bancos = bancosQuery.data ?? []
@@ -138,9 +153,14 @@ const useFinanzasState = () => {
     onSuccess: () => invalidateFinanzas(queryKeys.finanzas.cuentas),
   })
 
-  const movimientoCreateMutation = useMutation({
-    mutationFn: FinanzasAPI.createMovimiento,
-    onSuccess: () => invalidateFinanzas(queryKeys.finanzas.movimientos, queryKeys.finanzas.analitica),
+  // La funcion y los callbacks viven en los defaults globales para que TanStack pueda
+  // reconstruir esta mutacion despues de cerrar o recargar la PWA.
+  const movimientoCreateMutation = useMutation<
+    MovimientoResponse,
+    Error,
+    MovimientoCreate
+  >({
+    mutationKey: finanzasMutationKeys.movimientoCreate,
   })
   const movimientoUpdateMutation = useMutation({
     mutationFn: ({
@@ -212,7 +232,9 @@ const useFinanzasState = () => {
       cuentaCreateMutation.isPending ||
       cuentaUpdateMutation.isPending ||
       cuentaDeleteMutation.isPending,
-    submittingMovimiento: movimientoCreateMutation.isPending || movimientoUpdateMutation.isPending,
+    submittingMovimiento:
+      (movimientoCreateMutation.isPending && !movimientoCreateMutation.isPaused) ||
+      movimientoUpdateMutation.isPending,
     error: error ? getFriendlyErrorMessage(error) : null,
     fetchCatalogos,
     loadMoreMovimientos,
@@ -230,8 +252,14 @@ const useFinanzasState = () => {
     editarCuenta: (idCuenta: number, payload: CuentaPatch) =>
       runAction(() => cuentaUpdateMutation.mutateAsync({ idCuenta, payload })),
     eliminarCuenta: (idCuenta: number) => runAction(() => cuentaDeleteMutation.mutateAsync(idCuenta)),
-    crearMovimiento: (payload: MovimientoCreate) =>
-      runAction(() => movimientoCreateMutation.mutateAsync(payload)),
+    crearMovimiento: async (payload: MovimientoCreate): ActionResult => {
+      if (!onlineManager.isOnline()) {
+        movimientoCreateMutation.mutate(payload)
+        return { ok: true, queued: true }
+      }
+
+      return runAction(() => movimientoCreateMutation.mutateAsync(payload))
+    },
     editarMovimiento: (idMovimiento: number, payload: MovimientoPatch) =>
       runAction(() => movimientoUpdateMutation.mutateAsync({ idMovimiento, payload })),
     getProductosByBanco,

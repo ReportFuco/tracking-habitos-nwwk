@@ -1,9 +1,32 @@
+import base64
+import json
+
 from fastapi.testclient import TestClient
+from itsdangerous import TimestampSigner
 
 from app.main import app
+from app.settings import SECRET
 
 
 client = TestClient(app)
+
+
+def authenticate_docs_client() -> None:
+    # SessionMiddleware firma exactamente este payload. La prueba no salta la guarda:
+    # presenta una sesion valida de superusuario sin depender de datos de la DB local.
+    session = {
+        "docs_user": {
+            "user_id": 1,
+            "email": "docs-test@example.com",
+            "is_superuser": True,
+        }
+    }
+    encoded = base64.b64encode(json.dumps(session).encode("utf-8"))
+    cookie = TimestampSigner(str(SECRET)).sign(encoded).decode("utf-8")
+    client.cookies.set("session", cookie)
+
+
+authenticate_docs_client()
 
 
 def test_docs_menu_exposes_module_links():

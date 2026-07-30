@@ -34,6 +34,19 @@ const toArray = <T>(payload: unknown): T[] => {
   return []
 }
 
+const asTexto = (valor: unknown): string | null =>
+  typeof valor === "string" && valor.trim() ? valor : null
+
+const asListaDeTexto = (valor: unknown): string[] | null => {
+  if (!Array.isArray(valor)) {
+    return null
+  }
+
+  const items = valor.filter((item): item is string => typeof item === "string" && item.trim() !== "")
+
+  return items.length > 0 ? items : null
+}
+
 const normalizeEjercicio = (item: unknown): EjercicioResponse | null => {
   if (!item || typeof item !== "object") {
     return null
@@ -67,6 +80,14 @@ const normalizeEjercicio = (item: unknown): EjercicioResponse | null => {
     subcategoria_nombre:
       typeof record.subcategoria_nombre === "string" ? record.subcategoria_nombre : null,
     tipo: tipoLegacy || (typeof record.musculo_nombre === "string" ? record.musculo_nombre : null),
+    codigo_externo: asTexto(record.codigo_externo),
+    nombre_original: asTexto(record.nombre_original),
+    equipamiento: asTexto(record.equipamiento),
+    musculos_secundarios: asListaDeTexto(record.musculos_secundarios),
+    instrucciones: asListaDeTexto(record.instrucciones),
+    url_imagen: asTexto(record.url_imagen),
+    url_animacion: asTexto(record.url_animacion),
+    atribucion: asTexto(record.atribucion),
   }
 }
 
@@ -139,14 +160,23 @@ const toEjercicioPayload = (payload: EjercicioCreate | EjercicioEdit) => {
 
 export const EntrenamientosAPI = {
   getEjercicios: async (params?: EjerciciosParams): Promise<EjercicioResponse[]> => {
+    // Los filtros vacios se omiten para que la URL -- y con ella la clave de cache -- sea
+    // la misma con params undefined que con un objeto sin nada seleccionado.
+    const activos = Object.fromEntries(
+      Object.entries(params ?? {}).filter(([, valor]) => valor !== undefined && valor !== ""),
+    )
+
     const { data } = await api.get("/api/entrenamientos/ejercicios/", {
-      params:
-        params?.q || params?.tipo || params?.id_musculo || params?.id_subcategoria_musculo
-          ? params
-          : undefined,
+      params: Object.keys(activos).length > 0 ? activos : undefined,
     })
 
     return toArray<unknown>(data).map(normalizeEjercicio).filter((item): item is EjercicioResponse => item !== null)
+  },
+
+  getEquipamientos: async (): Promise<string[]> => {
+    const { data } = await api.get("/api/entrenamientos/ejercicios/equipamientos")
+
+    return toArray<unknown>(data).filter((item): item is string => typeof item === "string")
   },
 
   createEjercicio: async (payload: EjercicioCreate): Promise<EjercicioResponse> => {

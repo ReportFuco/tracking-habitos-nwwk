@@ -22,6 +22,13 @@ export function EntrenamientosHomeOverview() {
 
   const secondaryCards = [
     {
+      eyebrow: "Catalogo",
+      title: "Ejercicios",
+      description: "Busca por musculo o equipo y mira como se ejecuta cada movimiento.",
+      href: "/app/entrenamientos/ejercicios",
+      icon: Dumbbell,
+    },
+    {
       eyebrow: "Contexto",
       title: "Ver gimnasios",
       description: "Revisa el directorio y elige el lugar que mejor acompana tu rutina.",

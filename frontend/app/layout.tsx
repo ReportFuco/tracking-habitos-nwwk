@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope, Inter, Geist_Mono } from "next/font/google";
 import { Providers } from "@/app/providers";
+import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
 import { AppToaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -26,6 +27,23 @@ export const metadata: Metadata = {
   title: "The Curated Life",
   description:
     "Espacio personal para seguir tus finanzas, entrenamientos, compras y nutricion con calma y claridad.",
+  applicationName: "The Curated Life",
+  appleWebApp: {
+    capable: true,
+    title: "Curated Life",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#f9faf2",
+  colorScheme: "light dark",
 };
 
 export default function RootLayout({
@@ -40,6 +58,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <Providers>{children}</Providers>
+        <ServiceWorkerRegistration />
         <AppToaster />
       </body>
     </html>

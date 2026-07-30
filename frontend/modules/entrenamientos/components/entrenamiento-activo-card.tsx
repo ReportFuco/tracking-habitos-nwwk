@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   ChevronDown,
+  CloudOff,
   PencilLine,
   Plus,
   Trash2,
@@ -23,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useEntrenamientos } from "@/modules/entrenamientos/hooks/useEntrenamientos";
+import { isSeriePendiente } from "@/modules/entrenamientos/offline/entrenamientos-offline";
 import {
   serieFuerzaCreateSchema,
   serieFuerzaPatchSchema,
@@ -701,29 +703,42 @@ export function EntrenamientoActivoCard() {
                                       · {serie.repeticiones} reps
                                     </span>
                                   </div>
-                                  <div className="flex shrink-0 gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setEditingId(serie.id_fuerza_detalle);
-                                        setEditingForm(getEditableForm(serie, musculos));
-                                      }}
-                                      className="h-7 px-2 text-foreground hover:text-primary"
+                                  {isSeriePendiente(serie) ? (
+                                    // Serie encolada sin conexion: todavia no tiene id del
+                                    // backend, asi que editarla o borrarla apuntaria a un
+                                    // id inexistente. Se muestra el estado y nada mas.
+                                    <span
+                                      title="Se enviara al recuperar la conexion"
+                                      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-foreground/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
                                     >
-                                      <PencilLine className="size-3.5" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() =>
-                                        handleDelete(serie.id_fuerza_detalle)
-                                      }
-                                      className="h-7 px-2 text-foreground hover:text-destructive"
-                                    >
-                                      <Trash2 className="size-3.5" />
-                                    </Button>
-                                  </div>
+                                      <CloudOff className="size-3" aria-hidden />
+                                      Pendiente
+                                    </span>
+                                  ) : (
+                                    <div className="flex shrink-0 gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          setEditingId(serie.id_fuerza_detalle);
+                                          setEditingForm(getEditableForm(serie, musculos));
+                                        }}
+                                        className="h-7 px-2 text-foreground hover:text-primary"
+                                      >
+                                        <PencilLine className="size-3.5" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          handleDelete(serie.id_fuerza_detalle)
+                                        }
+                                        className="h-7 px-2 text-foreground hover:text-destructive"
+                                      >
+                                        <Trash2 className="size-3.5" />
+                                      </Button>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>

@@ -5,13 +5,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.usuario_auth import User
 from app.auth.api_key import get_user_by_api_key
 from app.auth.manager import get_user_manager
-from app.auth.backend import jwt_auth_backend
+from app.auth.backend import jwt_auth_backend, web_session_auth_backend
 from app.db import get_db
 
 
 fastapi_users = FastAPIUsers[User, int](
     get_user_manager,
-    [jwt_auth_backend],
+    [jwt_auth_backend, web_session_auth_backend],
 )
 
 current_user = fastapi_users.current_user(active=True)

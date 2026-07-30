@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { ArrowUpRight, ShoppingCart, Wallet } from "lucide-react"
+import { ArrowUpRight, CloudUpload, ShoppingCart, Wallet } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils"
 import { useFinanzas } from "@/modules/finanzas/hooks/useFinanzas"
 import { MovimientosSkeleton } from "@/modules/finanzas/components/skeletons/movimientos-skeleton"
 import { TipoMovimiento } from "@/modules/finanzas/types/finanzas"
+import { isMovimientoPendiente } from "@/modules/finanzas/offline/movimientos-offline"
 
 export function MovimientosManager() {
   const router = useRouter()
@@ -51,7 +52,11 @@ export function MovimientosManager() {
   const getCategoryTone = (tipo: TipoMovimiento) =>
     tipo === "ingreso" ? "bg-secondary" : "bg-module-finanzas"
 
-  const navigate = (id: number) => router.push(`/app/finanzas/movimientos/${id}`)
+  const navigate = (id: number) => {
+    if (id > 0) {
+      router.push(`/app/finanzas/movimientos/${id}`)
+    }
+  }
 
   if (loadingCatalogos && movimientos.length === 0) {
     return <MovimientosSkeleton />
@@ -147,10 +152,12 @@ export function MovimientosManager() {
                   {movimientos.map((movimiento, index) => (
                     <TableRow
                       key={movimiento.id_transaccion}
-                      role="link"
-                      tabIndex={0}
+                      role={isMovimientoPendiente(movimiento) ? undefined : "link"}
+                      tabIndex={isMovimientoPendiente(movimiento) ? -1 : 0}
                       className={cn(
-                        "cursor-pointer border-0 transition-colors hover:bg-primary/8 focus-visible:bg-primary/8",
+                        "border-0 transition-colors",
+                        !isMovimientoPendiente(movimiento) &&
+                          "cursor-pointer hover:bg-primary/8 focus-visible:bg-primary/8",
                         index % 2 === 0 ? "bg-surface-lowest" : "bg-surface-low"
                       )}
                       onClick={() => navigate(movimiento.id_transaccion)}
@@ -177,6 +184,12 @@ export function MovimientosManager() {
                             <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                               {movimiento.tipo_gasto}
                             </span>
+                            {isMovimientoPendiente(movimiento) ? (
+                              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <CloudUpload className="size-3" />
+                                Pendiente
+                              </span>
+                            ) : null}
                             {(movimiento.compras_vinculadas?.length ?? 0) > 0 ? (
                               <span className="flex items-center gap-1 text-xs text-muted-foreground" title="Tiene compras vinculadas">
                                 <ShoppingCart className="size-3" />
@@ -237,8 +250,8 @@ export function MovimientosManager() {
                 <article
                   key={movimiento.id_transaccion}
                   className="rounded-[1.5rem] bg-surface-lowest p-5 shadow-(--shadow-airy)"
-                  role="link"
-                  tabIndex={0}
+                  role={isMovimientoPendiente(movimiento) ? undefined : "link"}
+                  tabIndex={isMovimientoPendiente(movimiento) ? -1 : 0}
                   onClick={() => navigate(movimiento.id_transaccion)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -264,6 +277,12 @@ export function MovimientosManager() {
                           <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                             {movimiento.tipo_gasto}
                           </span>
+                          {isMovimientoPendiente(movimiento) ? (
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <CloudUpload className="size-3" />
+                              Pendiente de sincronizar
+                            </span>
+                          ) : null}
                           {(movimiento.compras_vinculadas?.length ?? 0) > 0 ? (
                             <span className="flex items-center gap-1 text-xs text-muted-foreground">
                               <ShoppingCart className="size-3" />

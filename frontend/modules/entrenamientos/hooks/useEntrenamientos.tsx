@@ -6,13 +6,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { getFriendlyErrorMessage } from "@/lib/error-messages"
 import { queryKeys } from "@/lib/query-keys"
 import { EntrenamientosAPI } from "@/modules/entrenamientos/api/entrenamientos.api"
+import { entrenamientosMutationKeys } from "@/modules/entrenamientos/offline/entrenamientos-offline"
 import {
   EntrenoFuerzaCreate,
+  EntrenoFuerzaResponse,
   EjerciciosParams,
   GimnasioCreate,
   GimnasioEdit,
   SerieFuerzaCreate,
   SerieFuerzaPatch,
+  SerieFuerzaResponse,
 } from "@/modules/entrenamientos/types/entrenamientos"
 
 const ONE_MINUTE = 1000 * 60
@@ -47,18 +50,23 @@ const useEntrenamientosState = () => {
     queryFn: () => EntrenamientosAPI.getGimnasios(gimnasiosSearch),
     staleTime: SIX_HOURS,
     gcTime: ONE_WEEK,
+    meta: persistMeta,
   })
   const entrenamientosQuery = useQuery({
     queryKey: queryKeys.entrenamientos.fuerzaLista,
     queryFn: EntrenamientosAPI.getEntrenosFuerza,
     staleTime: ONE_MINUTE,
     enabled: false,
+    meta: persistMeta,
   })
+  // El entreno activo es el caso critico offline: se registra en el gimnasio, que es
+  // justo donde suele no haber senal.
   const entrenamientoActivoQuery = useQuery({
     queryKey: queryKeys.entrenamientos.fuerzaActivo,
     queryFn: getEntrenoActivoOrNull,
     staleTime: THIRTY_SECONDS,
     refetchOnWindowFocus: false,
+    meta: persistMeta,
   })
   const ejerciciosQuery = useQuery({
     queryKey: queryKeys.entrenamientos.ejercicios(ejercicioParams),
@@ -109,14 +117,16 @@ const useEntrenamientosState = () => {
     onSuccess: () =>
       invalidate(queryKeys.entrenamientos.fuerzaLista, queryKeys.entrenamientos.fuerzaActivo),
   })
-  const entrenoCloseMutation = useMutation({
-    mutationFn: EntrenamientosAPI.closeEntrenoFuerzaActivo,
-    onSuccess: () =>
-      invalidate(queryKeys.entrenamientos.fuerzaLista, queryKeys.entrenamientos.fuerzaActivo),
+  // Estas dos van sin mutationFn a proposito: la toman de los defaults registrados en
+  // app/providers.tsx, que es lo que permite reconstruirlas al rehidratar la cola
+  // offline. Ahi tambien viven su update optimista y la invalidacion.
+  // Sin mutationFn inline TanStack no puede inferir el tipo de las variables, asi que se
+  // declara explicito para no perder chequeo en los llamadores.
+  const entrenoCloseMutation = useMutation<EntrenoFuerzaResponse, Error, void>({
+    mutationKey: entrenamientosMutationKeys.entrenoClose,
   })
-  const serieCreateMutation = useMutation({
-    mutationFn: EntrenamientosAPI.createSerieFuerza,
-    onSuccess: () => invalidate(queryKeys.entrenamientos.fuerzaActivo),
+  const serieCreateMutation = useMutation<SerieFuerzaResponse, Error, SerieFuerzaCreate>({
+    mutationKey: entrenamientosMutationKeys.serieCreate,
   })
   const serieUpdateMutation = useMutation({
     mutationFn: ({

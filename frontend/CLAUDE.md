@@ -5,13 +5,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev      # Development server
-npm run build    # Production build
-npm run lint     # ESLint
-npx tsc --noEmit # Type checking
+npm run dev        # Development server
+npm run build      # Production build
+npm run lint       # ESLint
+npx tsc --noEmit   # Type checking
+npm test           # Vitest (una pasada)
+npm run test:watch # Vitest en modo watch
 ```
 
-No test suite is configured.
+### Tests
+
+Vitest con entorno `jsdom`, en `tests/`. `tests/setup.ts` instala `fake-indexeddb`,
+porque jsdom no implementa IndexedDB y la persistencia del cache se apoya en ella.
+El alias `@/` está replicado en `vitest.config.ts` para que los tests importen los
+módulos reales en lugar de una copia.
+
+La cobertura es deliberadamente acotada al comportamiento offline, que es difícil de
+comprobar a mano y fácil de romper sin darse cuenta:
+
+- `tests/query-persistence.test.ts` — qué se persiste y qué no, que el logout no deje
+  datos del usuario anterior, y que el `buster` descarte cachés de versiones viejas.
+- `tests/entrenamientos-offline.test.ts` — la cola offline del entreno activo:
+  actualización optimista, supervivencia a una recarga y reenvío **en orden**.
 
 ## Architecture
 
@@ -43,7 +58,7 @@ Modules: `auth`, `finanzas`, `entrenamientos`, `compras`, `nutricion`, `usuario`
 
 ### Authentication
 
-JWT stored in `localStorage` (`auth_token` key). The Axios instance in `lib/api.ts` auto-injects `Authorization: Bearer <token>` on every request and redirects to `/login?next=<path>` on 401 responses. Route protection is done via `components/auth/auth-guard.tsx`, which validates the token locally then confirms with `GET /api/usuarios/perfil`.
+Browser/PWA auth uses a revocable opaque session in an `HttpOnly` cookie through `/auth/session/*`. Axios sends credentials, retains legacy bearer injection only for migration/API compatibility, and redirects to `/login?next=<path>` on authenticated 401 responses. Route protection is done via `components/auth/auth-guard.tsx`, which confirms the session with `GET /api/usuarios/perfil`; successful profile validation renews the idle session.
 
 ### Layout / Shell
 

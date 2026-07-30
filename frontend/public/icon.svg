@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="The Curated Life">
+  <rect width="512" height="512" fill="#42512f"/>
+  <circle cx="256" cy="256" r="156" fill="#f9faf2" opacity=".1"/>
+  <path d="M142 166h228v54h-84v154h-60V220h-84z" fill="#f9faf2"/>
+  <path d="M156 330c32 28 64 42 100 42 39 0 73-14 104-42" fill="none" stroke="#dce6cc" stroke-width="20" stroke-linecap="round"/>
+</svg>

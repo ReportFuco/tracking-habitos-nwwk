@@ -7,7 +7,7 @@ from app.auth.routes import router as auth_router
 from app.docs import OPENAPI_TAGS, install_docs, use_custom_openapi
 from app.routes import router
 from app.core.logging import setup_logging
-from app.core.middleware import logging_middleware
+from app.core.middleware import cookie_csrf_middleware, logging_middleware
 
 
 setup_logging()
@@ -43,6 +43,7 @@ app.add_middleware(
 # -------------------------
 
 app.middleware("http")(logging_middleware)
+app.middleware("http")(cookie_csrf_middleware)
 
 # -------------------------
 # Routers

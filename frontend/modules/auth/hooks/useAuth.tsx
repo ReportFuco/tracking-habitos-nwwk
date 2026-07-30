@@ -2,31 +2,36 @@
 
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { clearStoredSession, getValidStoredToken } from "@/lib/auth-session"
+import { clearStoredSession } from "@/lib/auth-session"
+import { clearPersistedQueryCache } from "@/lib/query-persistence"
 import { getFriendlyErrorMessage } from "@/lib/error-messages"
 import { queryKeys } from "@/lib/query-keys"
 import { AuthAPI } from "@/modules/auth/api/auth.api"
 import { useProfile } from "@/modules/auth/hooks/useProfile"
 import { AuthLoginPayload, AuthRegisterPayload } from "@/modules/auth/types/auth"
+import { disableCurrentDeviceNotifications } from "@/modules/notifications/api/notifications.api"
 
 export const useAuth = () => {
   const queryClient = useQueryClient()
-  const [token, setToken] = useState<string | null>(() => getValidStoredToken())
   const [error, setError] = useState<string | null>(null)
-  const profileQuery = useProfile({ enabled: Boolean(token) })
+  const profileQuery = useProfile()
 
   const loginMutation = useMutation({
     mutationFn: AuthAPI.login,
-    onMutate: () => {
+    onMutate: async () => {
       setError(null)
+      clearStoredSession()
+      await clearPersistedQueryCache()
+      queryClient.removeQueries()
     },
-    onSuccess: async (data) => {
-      queryClient.clear()
-      localStorage.setItem("auth_token", data.access_token)
-      setToken(data.access_token)
+    onSuccess: async () => {
       await queryClient.fetchQuery({
         queryKey: queryKeys.auth.profile,
-        queryFn: AuthAPI.getProfile,
+        queryFn: async () => {
+          const profile = await AuthAPI.getProfile()
+          await AuthAPI.refreshSession()
+          return profile
+        },
         staleTime: 1000 * 60 * 5,
       })
     },
@@ -46,11 +51,14 @@ export const useAuth = () => {
   })
 
   const logoutMutation = useMutation({
-    mutationFn: AuthAPI.logout,
-    onSettled: () => {
+    mutationFn: async () => {
+      await disableCurrentDeviceNotifications()
+      return AuthAPI.logout()
+    },
+    onSettled: async () => {
       clearStoredSession()
-      setToken(null)
       queryClient.clear()
+      await clearPersistedQueryCache()
     },
   })
 
@@ -85,18 +93,17 @@ export const useAuth = () => {
       await logoutMutation.mutateAsync()
     } catch {
       clearStoredSession()
-      setToken(null)
       queryClient.clear()
+      await clearPersistedQueryCache()
     }
   }
 
   return {
-    token,
     profile: profileQuery.data ?? null,
     loadingProfile: profileQuery.isLoading || profileQuery.isFetching,
     submitting: loginMutation.isPending || registerMutation.isPending || logoutMutation.isPending,
     error,
-    isAuthenticated: Boolean(token),
+    isAuthenticated: Boolean(profileQuery.data),
     fetchProfile: profileQuery.refetch,
     login,
     register,

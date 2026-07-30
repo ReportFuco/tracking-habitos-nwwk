@@ -1,0 +1,12 @@
+# Notas de trabajo del monorepo. Contienen credenciales de infraestructura en texto
+# plano, no deben salir del equipo. Los docs de cada subproyecto (backend/docs,
+# frontend/docs) si se versionan: por eso el patron va anclado a la raiz.
+/docs/
+
+# Red de seguridad: ningun .env real se versiona, solo los .example.
+.env
+.env.*
+!.env.example
+
+# Coordinacion local entre agentes; no se versiona.
+/logs/

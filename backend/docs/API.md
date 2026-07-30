@@ -60,13 +60,14 @@ POST /auth/jwt/login
 
 ## Autenticación
 
-La API usa JWT con `fastapi-users`.
+La API ofrece dos backends de `fastapi-users`: sesión web revocable en cookie
+`HttpOnly` para browser/PWA y JWT bearer para clientes de API.
 
 ### Flujo base
 
-1. Registrar usuario con `POST /auth/register`
-2. Iniciar sesión con `POST /auth/jwt/login`
-3. Usar el token en el header `Authorization`
+1. Registrar usuario con `POST /auth/register`.
+2. En browser/PWA, iniciar sesión con `POST /auth/session/login`; la cookie se envía automáticamente.
+3. En clientes API, usar `POST /auth/jwt/login` y enviar el token en `Authorization`.
 
 Header esperado:
 
@@ -103,6 +104,14 @@ Campos esperados:
 
 #### `POST /auth/jwt/login`
 Inicia sesión y devuelve el token JWT.
+
+#### Sesión web/PWA
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `POST` | `/auth/session/login` | Crea una cookie de sesión `HttpOnly` revocable |
+| `POST` | `/auth/session/refresh` | Renueva la expiración inactiva, con límite absoluto |
+| `POST` | `/auth/session/logout` | Revoca la sesión en base de datos y elimina la cookie |
 
 ### API keys para agentes
 
@@ -1475,3 +1484,32 @@ Sugerencias para agentes o automatizaciones:
 - `app/routes/**`
 - `app/schemas/**`
 - `docs/api.json`
+# Notificaciones de entrenamientos (Web Push)
+
+La PWA puede suscribir cada dispositivo con `POST /api/notifications/subscriptions`.
+Al iniciar un entrenamiento de fuerza se crean dos recordatorios durables, a los 60 y
+120 minutos. Al cerrarlo se cancelan dentro de la misma transaccion.
+
+El envio no ocurre dentro de la API: debe existir un proceso independiente:
+
+```bash
+python -m app.notifications.worker
+```
+
+Para generar las llaves una sola vez:
+
+```bash
+python scripts/generate_vapid.py
+```
+
+Copiar el resultado a `backend/.env` como `VAPID_PUBLIC_KEY`,
+`VAPID_PRIVATE_KEY` y `VAPID_SUBJECT`. `URL_SITE` debe apuntar al origen HTTPS
+publico del frontend, porque es el destino que abre la notificacion.
+
+Endpoints:
+
+- `GET /api/notifications/config`
+- `GET /api/notifications/status`
+- `POST /api/notifications/subscriptions`
+- `POST /api/notifications/subscriptions/unsubscribe`
+- `PATCH /api/notifications/preferences`

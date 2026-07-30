@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { FieldGroup, FormNote, FormPanel, FormSubmitBar } from "@/components/forms/editorial-form"
 import { entrenoFuerzaCreateSchema } from "@/modules/entrenamientos/schemas/entrenamientos.schema"
 import { useEntrenamientos } from "@/modules/entrenamientos/hooks/useEntrenamientos"
+import { TrainingNotificationSettings } from "@/components/pwa/training-notification-settings"
 
 const initialForm = {
   id_gimnasio: "",
@@ -183,6 +184,8 @@ export function EntrenoFuerzaFormCard() {
       </FormPanel>
 
       <section className="space-y-4">
+        <TrainingNotificationSettings />
+
         <article className="hidden rounded-[1.75rem] bg-[color:var(--surface-lowest)] p-6 shadow-[var(--shadow-airy)] xl:block">
           <p className="flex items-center gap-2 text-sm font-medium text-foreground">
             <Flame className="size-4 text-[color:var(--module-entrenamientos)]" />

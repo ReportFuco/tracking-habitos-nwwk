@@ -27,3 +27,4 @@ class User(SQLAlchemyBaseUserTable[int], Base):
 
     usuario: Mapped["Usuario"] = relationship(back_populates="user")
     api_keys: Mapped[list["ApiKey"]] = relationship(back_populates="user")
+    web_sessions: Mapped[list["WebSession"]] = relationship(back_populates="user")

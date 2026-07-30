@@ -30,9 +30,21 @@ from .nutricion import Consumo, ConsumoDetalle, TablaNutricional, MetaNutriciona
 
 from .usuario_auth import User
 from .api_key import ApiKey
+from .web_session import WebSession
+from .notification import (
+    NotificationPreference,
+    PushDelivery,
+    PushSubscription,
+    TrainingReminder,
+)
 
 __all__ = [
     "ApiKey",
+    "WebSession",
+    "NotificationPreference",
+    "PushDelivery",
+    "PushSubscription",
+    "TrainingReminder",
     "Marca",
     "CategoriaProducto",
     "SubcategoriaProducto",

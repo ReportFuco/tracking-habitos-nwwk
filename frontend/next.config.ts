@@ -58,6 +58,44 @@ const nextConfig: NextConfig = {
       destination: "/app/entrenamientos/historico",
       permanent: false,
     },
+    {
+      source: "/administrador/entrenamientos/ejercicios",
+      destination: "/app/entrenamientos/ejercicios",
+      permanent: false,
+    },
+  ],
+  rewrites: async () => {
+    const backendURL = process.env.BACKEND_INTERNAL_URL?.trim().replace(/\/$/, "");
+
+    if (!backendURL) {
+      return [];
+    }
+
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${backendURL}/api/:path*`,
+      },
+      {
+        source: "/auth/:path*",
+        destination: `${backendURL}/auth/:path*`,
+      },
+    ];
+  },
+  headers: async () => [
+    {
+      source: "/sw.js",
+      headers: [
+        {
+          key: "Cache-Control",
+          value: "public, max-age=0, must-revalidate",
+        },
+        {
+          key: "Service-Worker-Allowed",
+          value: "/",
+        },
+      ],
+    },
   ],
 };
 
