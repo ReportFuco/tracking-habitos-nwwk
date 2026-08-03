@@ -3,6 +3,12 @@ import { z } from "zod"
 export const TIPOS_MOVIMIENTO = ["gasto", "ingreso"] as const
 export const TIPOS_GASTO = ["variable", "fijo"] as const
 
+const tipoMovimientoSchema = z.enum(TIPOS_MOVIMIENTO)
+const tipoGastoSchema = z.enum(TIPOS_GASTO)
+
+export type TipoMovimiento = z.infer<typeof tipoMovimientoSchema>
+export type TipoGasto = z.infer<typeof tipoGastoSchema>
+
 export const cuentaCreateSchema = z.object({
   id_producto_financiero: z
     .number({ message: "Selecciona un producto financiero" })
@@ -15,8 +21,8 @@ export const movimientoCreateSchema = z
   .object({
     id_categoria: z.number().int().positive(),
     id_cuenta: z.number().int().positive(),
-    tipo_movimiento: z.enum(TIPOS_MOVIMIENTO),
-    tipo_gasto: z.enum(TIPOS_GASTO),
+    tipo_movimiento: tipoMovimientoSchema,
+    tipo_gasto: tipoGastoSchema,
     monto: z.number().int().positive("El monto debe ser mayor a 0"),
     descripcion: z.string().trim().max(250).optional().or(z.literal("")),
     en_lugar_compra: z.boolean().default(false),
@@ -63,3 +69,54 @@ export const movimientoCreateSchema = z
 
 export type CuentaCreateForm = z.infer<typeof cuentaCreateSchema>
 export type MovimientoCreateForm = z.infer<typeof movimientoCreateSchema>
+
+// Adapter validado (FE-ZOD-001/002, item 3: movimientos paginados y cuentas): estas dos
+// son las queries persistidas de finanzas, con la cola offline idempotente por
+// client_request_id (ver modules/finanzas/offline/movimientos-offline.ts).
+export const cuentaResponseSchema = z.object({
+  id_cuenta: z.number().int(),
+  nombre_cuenta: z.string(),
+  nombre_banco: z.string().nullish(),
+  nombre_producto: z.string(),
+  id_producto_financiero: z.number().int(),
+  created_at: z.string(),
+})
+
+export const cuentasListResponseSchema = z.array(cuentaResponseSchema)
+
+const compraVinculadaResumenSchema = z.object({
+  id_compra: z.number().int(),
+})
+
+export const movimientoResponseSchema = z.object({
+  id_transaccion: z.number().int(),
+  client_request_id: z.string().nullish(),
+  tipo_movimiento: tipoMovimientoSchema,
+  tipo_gasto: tipoGastoSchema,
+  categoria: z.string().nullish(),
+  nombre_cuenta: z.string().nullish(),
+  compras_vinculadas: z.array(compraVinculadaResumenSchema).optional(),
+  total_compras_vinculadas: z.number().nullish(),
+  diferencia_total_compras: z.number().nullish(),
+  monto: z.number(),
+  descripcion: z.string().nullable(),
+  en_lugar_compra: z.boolean(),
+  latitud: z.number().nullish(),
+  longitud: z.number().nullish(),
+  precision_ubicacion: z.number().nullish(),
+  created_at: z.string(),
+  // Campo solo-cliente: la cola offline lo agrega sobre el movimiento optimista
+  // (ver isMovimientoPendiente en movimientos-offline.ts). El backend nunca lo manda.
+  pendiente_sincronizacion: z.boolean().optional(),
+})
+
+export const movimientosPageResponseSchema = z.object({
+  items: z.array(movimientoResponseSchema),
+  offset: z.number().int(),
+  limit: z.number().int(),
+  total_gasto_mensual: z.number(),
+})
+
+export type CuentaResponse = z.infer<typeof cuentaResponseSchema>
+export type MovimientoResponse = z.infer<typeof movimientoResponseSchema>
+export type MovimientosPageResponse = z.infer<typeof movimientosPageResponseSchema>

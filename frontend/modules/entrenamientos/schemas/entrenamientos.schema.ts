@@ -70,3 +70,54 @@ export type EjercicioEditForm = z.infer<typeof ejercicioEditSchema>
 export type EntrenoFuerzaCreateForm = z.infer<typeof entrenoFuerzaCreateSchema>
 export type SerieFuerzaCreateForm = z.infer<typeof serieFuerzaCreateSchema>
 export type SerieFuerzaPatchForm = z.infer<typeof serieFuerzaPatchSchema>
+
+// Adapter validado (FE-ZOD-001/002): entreno activo, apertura, cierre y series son las
+// respuestas persistidas que maneja la cola offline (FE-OFF-002/003/004). Gimnasios,
+// ejercicios y musculos quedan afuera a proposito -- ya tienen normalizadores tolerantes
+// a variantes de campo entre datos cacheados viejos y nuevos, y reemplazarlos por Zod
+// estricto es un cambio mas delicado que se deja para cuando se cubra el catalogo.
+const entrenoFuerzaBaseSchema = z.object({
+  estado: z.string(),
+  inicio_at: z.string(),
+  fin_at: z.string().nullable(),
+  nombre_gimnasio: z.string().nullish(),
+  nombre_cadena: z.string().nullish(),
+  comuna: z.string().nullish(),
+  direccion: z.string().nullish(),
+  latitud: z.number().nullish(),
+  longitud: z.number().nullish(),
+})
+
+export const serieFuerzaResponseSchema = z.object({
+  id_fuerza_detalle: z.number().int(),
+  es_calentamiento: z.boolean(),
+  cantidad_peso: z.number(),
+  repeticiones: z.number().int(),
+  id_ejercicio: z.number().int().nullish(),
+  nombre_ejercicio: z.string().nullish(),
+  tipo_ejercicio: z.string().nullish(),
+  subcategoria_ejercicio: z.string().nullish(),
+  url_video: z.string().nullish(),
+  url_imagen: z.string().nullish(),
+  url_animacion: z.string().nullish(),
+})
+
+export const entrenoFuerzaResponseSchema = entrenoFuerzaBaseSchema.extend({
+  id_entrenamiento: z.number().int(),
+  id_entrenamiento_fuerza: z.number().int(),
+})
+
+export const entrenosFuerzaListResponseSchema = z.array(entrenoFuerzaResponseSchema)
+
+export const entrenoFuerzaSerieResponseSchema = entrenoFuerzaBaseSchema.extend({
+  id_entrenamiento_fuerza: z.number().int(),
+  series: z.array(serieFuerzaResponseSchema).optional(),
+})
+
+export type SerieFuerzaResponse = z.infer<typeof serieFuerzaResponseSchema>
+export type EntrenoFuerzaResponse = z.infer<typeof entrenoFuerzaResponseSchema>
+// sync_error es solo-cliente (ver types/entrenamientos.ts): la apertura offline lo agrega
+// sobre el cache cuando el backend rechaza el alta, el backend nunca lo manda.
+export type EntrenoFuerzaSerieResponse = z.infer<typeof entrenoFuerzaSerieResponseSchema> & {
+  sync_error?: string | null
+}

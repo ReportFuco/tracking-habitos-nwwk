@@ -99,19 +99,13 @@ export interface EntrenoFuerzaCierre {
   client_request_id: string
 }
 
-export interface EntrenoFuerzaResponse {
-  id_entrenamiento: number
-  id_entrenamiento_fuerza: number
-  estado: string
-  inicio_at: string
-  fin_at: string | null
-  nombre_gimnasio?: string | null
-  nombre_cadena?: string | null
-  comuna?: string | null
-  direccion?: string | null
-  latitud?: number | null
-  longitud?: number | null
-}
+// Derivados de los schemas Zod en modules/entrenamientos/schemas/entrenamientos.schema.ts
+// (FE-ZOD-002): el schema es la fuente de verdad, esto es solo el punto de import.
+export type {
+  EntrenoFuerzaResponse,
+  EntrenoFuerzaSerieResponse,
+  SerieFuerzaResponse,
+} from "@/modules/entrenamientos/schemas/entrenamientos.schema"
 
 export interface SerieFuerzaCreate {
   id_ejercicio: number
@@ -128,38 +122,4 @@ export interface SerieFuerzaPatch {
   es_calentamiento?: boolean | null
   cantidad_peso?: number | null
   repeticiones?: number | null
-}
-
-export interface SerieFuerzaResponse {
-  id_fuerza_detalle: number
-  es_calentamiento: boolean
-  cantidad_peso: number
-  repeticiones: number
-  id_ejercicio?: number | null
-  nombre_ejercicio?: string | null
-  tipo_ejercicio?: string | null
-  subcategoria_ejercicio?: string | null
-  url_video?: string | null
-  // Miniatura y animacion del ejercicio. Opcionales porque una sesion cacheada de antes de
-  // que el backend las expusiera se sigue leyendo, y ahi se cae al catalogo por nombre.
-  url_imagen?: string | null
-  url_animacion?: string | null
-}
-
-export interface EntrenoFuerzaSerieResponse {
-  id_entrenamiento_fuerza: number
-  estado: string
-  inicio_at: string
-  fin_at: string | null
-  nombre_gimnasio?: string | null
-  nombre_cadena?: string | null
-  comuna?: string | null
-  direccion?: string | null
-  latitud?: number | null
-  longitud?: number | null
-  series?: SerieFuerzaResponse[]
-  // Campo solo-cliente: la apertura offline no pudo sincronizarse (el backend ya tenia
-  // otro entreno activo) y el entreno local se conserva a proposito para no perder series
-  // ya registradas. El backend nunca manda este campo.
-  sync_error?: string | null
 }

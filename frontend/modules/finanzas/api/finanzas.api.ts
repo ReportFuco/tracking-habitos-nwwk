@@ -1,4 +1,11 @@
 import { api } from "@/lib/api"
+import { parseApiResponse } from "@/lib/api-schema"
+import {
+  cuentaResponseSchema,
+  cuentasListResponseSchema,
+  movimientoResponseSchema,
+  movimientosPageResponseSchema,
+} from "@/modules/finanzas/schemas/finanzas.schema"
 import {
   AnaliticaDistribucionItem,
   AnaliticaResumenResponse,
@@ -96,17 +103,17 @@ export const FinanzasAPI = {
 
   getCuentas: async (): Promise<CuentaResponse[]> => {
     const { data } = await api.get("/api/finanzas/cuentas/")
-    return data
+    return parseApiResponse(cuentasListResponseSchema, data, "GET /api/finanzas/cuentas/")
   },
 
   createCuenta: async (payload: CuentaCreate): Promise<CuentaResponse> => {
     const { data } = await api.post("/api/finanzas/cuentas/", payload)
-    return data
+    return parseApiResponse(cuentaResponseSchema, data, "POST /api/finanzas/cuentas/")
   },
 
   updateCuenta: async (idCuenta: number, payload: CuentaPatch): Promise<CuentaResponse> => {
     const { data } = await api.patch(`/api/finanzas/cuentas/${idCuenta}`, payload)
-    return data
+    return parseApiResponse(cuentaResponseSchema, data, "PATCH /api/finanzas/cuentas/:id")
   },
 
   deleteCuenta: async (idCuenta: number): Promise<void> => {
@@ -116,7 +123,11 @@ export const FinanzasAPI = {
   getMovimientos: async (params?: { offset?: number; limit?: number }): Promise<MovimientosPageResponse> => {
     try {
       const { data } = await api.get("/api/finanzas/movimientos/", { params })
-      return data
+      return parseApiResponse(
+        movimientosPageResponseSchema,
+        data,
+        "GET /api/finanzas/movimientos/",
+      )
     } catch (err: unknown) {
       if ((err as { response?: { status?: number } })?.response?.status === 404) {
         return { items: [], offset: 0, limit: params?.limit ?? 20, total_gasto_mensual: 0 }
@@ -127,12 +138,12 @@ export const FinanzasAPI = {
 
   getMovimientoById: async (idMovimiento: number): Promise<MovimientoResponse> => {
     const { data } = await api.get(`/api/finanzas/movimientos/${idMovimiento}`)
-    return data
+    return parseApiResponse(movimientoResponseSchema, data, "GET /api/finanzas/movimientos/:id")
   },
 
   createMovimiento: async (payload: MovimientoCreate): Promise<MovimientoResponse> => {
     const { data } = await api.post("/api/finanzas/movimientos/", payload)
-    return data
+    return parseApiResponse(movimientoResponseSchema, data, "POST /api/finanzas/movimientos/")
   },
 
   updateMovimiento: async (
@@ -140,7 +151,11 @@ export const FinanzasAPI = {
     payload: MovimientoPatch
   ): Promise<MovimientoResponse> => {
     const { data } = await api.patch(`/api/finanzas/movimientos/${idMovimiento}`, payload)
-    return data
+    return parseApiResponse(
+      movimientoResponseSchema,
+      data,
+      "PATCH /api/finanzas/movimientos/:id",
+    )
   },
 
   getAnaliticaResumen: async (params?: {

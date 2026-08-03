@@ -1,4 +1,11 @@
 import { api } from "@/lib/api"
+import { parseApiResponse } from "@/lib/api-schema"
+import {
+  entrenoFuerzaResponseSchema,
+  entrenoFuerzaSerieResponseSchema,
+  entrenosFuerzaListResponseSchema,
+  serieFuerzaResponseSchema,
+} from "@/modules/entrenamientos/schemas/entrenamientos.schema"
 import {
   EjercicioCreate,
   EjercicioEdit,
@@ -228,36 +235,48 @@ export const EntrenamientosAPI = {
 
   getEntrenosFuerza: async (): Promise<EntrenoFuerzaResponse[]> => {
     const { data } = await api.get("/api/entrenamientos/fuerza/")
-    return data
+    return parseApiResponse(entrenosFuerzaListResponseSchema, data, "GET /api/entrenamientos/fuerza/")
   },
 
   createEntrenoFuerza: async (payload: EntrenoFuerzaCreate): Promise<EntrenoFuerzaResponse> => {
     const { data } = await api.post("/api/entrenamientos/fuerza/", payload)
-    return data
+    return parseApiResponse(entrenoFuerzaResponseSchema, data, "POST /api/entrenamientos/fuerza/")
   },
 
   getEntrenoFuerzaActivo: async (): Promise<EntrenoFuerzaSerieResponse> => {
     const { data } = await api.get("/api/entrenamientos/fuerza/activo")
-    return data
+    return parseApiResponse(
+      entrenoFuerzaSerieResponseSchema,
+      data,
+      "GET /api/entrenamientos/fuerza/activo",
+    )
   },
 
   getEntrenoFuerzaDetalle: async (
     idEntrenamientoFuerza: number
   ): Promise<EntrenoFuerzaSerieResponse> => {
     const { data } = await api.get(`/api/entrenamientos/fuerza/${idEntrenamientoFuerza}`)
-    return data
+    return parseApiResponse(
+      entrenoFuerzaSerieResponseSchema,
+      data,
+      "GET /api/entrenamientos/fuerza/:id",
+    )
   },
 
   closeEntrenoFuerzaActivo: async (
     payload: EntrenoFuerzaCierre
   ): Promise<EntrenoFuerzaResponse> => {
     const { data } = await api.patch("/api/entrenamientos/fuerza/activo/cerrar", payload)
-    return data
+    return parseApiResponse(
+      entrenoFuerzaResponseSchema,
+      data,
+      "PATCH /api/entrenamientos/fuerza/activo/cerrar",
+    )
   },
 
   createSerieFuerza: async (payload: SerieFuerzaCreate): Promise<SerieFuerzaResponse> => {
     const { data } = await api.post("/api/entrenamientos/series/", payload)
-    return data
+    return parseApiResponse(serieFuerzaResponseSchema, data, "POST /api/entrenamientos/series/")
   },
 
   updateSerieFuerza: async (
@@ -265,7 +284,7 @@ export const EntrenamientosAPI = {
     payload: SerieFuerzaPatch
   ): Promise<SerieFuerzaResponse> => {
     const { data } = await api.patch(`/api/entrenamientos/series/${idFuerzaDetalle}`, payload)
-    return data
+    return parseApiResponse(serieFuerzaResponseSchema, data, "PATCH /api/entrenamientos/series/:id")
   },
 
   deleteSerieFuerza: async (idFuerzaDetalle: number): Promise<void> => {

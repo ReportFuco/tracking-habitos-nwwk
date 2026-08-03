@@ -761,9 +761,47 @@ Resultado (2026-08-03, claude — parcial, solo item 1 del orden sugerido):
     `getProfile` comparten schema, listado con una fila incompleta rechaza, `updatePerfil`
     valida su respuesta. Suite completa 35/35. `npm run lint`, `npx tsc --noEmit`,
     `npm run build` (42 rutas).
-- Pendientes o riesgos residuales (por eso `[~]`, no `[x]`): items 2-4 del orden sugerido
-  (entreno activo/series/apertura-cierre, movimientos paginados y cuentas, catalogos de
-  optimismo offline) quedan sin tocar. `AuthRegisterResponse` tampoco se valido.
+- Pendientes o riesgos residuales de esta parte: `AuthRegisterResponse` no se valido
+  (shape distinto, menor riesgo, no es la query persistida del guard offline).
+
+**Resultado, parte 2 — items 2 y 3 (2026-08-03, claude):**
+- Archivos: `frontend/modules/entrenamientos/schemas/entrenamientos.schema.ts`,
+  `frontend/modules/entrenamientos/types/entrenamientos.ts`,
+  `frontend/modules/entrenamientos/api/entrenamientos.api.ts`,
+  `frontend/tests/entrenamientos-api-schema.test.ts` (nuevo),
+  `frontend/modules/finanzas/schemas/finanzas.schema.ts`,
+  `frontend/modules/finanzas/types/finanzas.ts`, `frontend/modules/finanzas/api/finanzas.api.ts`,
+  `frontend/tests/finanzas-api-schema.test.ts` (nuevo).
+- Item 2 (entreno activo/series/apertura-cierre): `EntrenoFuerzaResponse`,
+  `EntrenoFuerzaSerieResponse` y `SerieFuerzaResponse` se derivan ahora de schemas Zod en
+  vez de interfaces manuales paralelas; los seis metodos de `EntrenamientosAPI` que las
+  devuelven (`getEntrenosFuerza`, `createEntrenoFuerza`, `getEntrenoFuerzaActivo`,
+  `getEntrenoFuerzaDetalle`, `closeEntrenoFuerzaActivo`, `createSerieFuerza`,
+  `updateSerieFuerza`) validan con `parseApiResponse`. `sync_error` (el campo solo-cliente
+  que agrego FE-OFF-004 para el aviso de conflicto) queda como interseccion de tipos sobre
+  el schema, no como parte de el, porque el backend nunca lo manda.
+  - **A proposito no se toco** `gimnasios`/`ejercicios`/`musculos`: esos adapters ya tienen
+    normalizadores manuales (`normalizeEjercicio`, `normalizeMusculo`, etc.) pensados para
+    tolerar variantes de nombre de campo entre datos cacheados viejos y nuevos; pasarlos a
+    Zod estricto sin revisar esa compatibilidad hacia atras es mas riesgoso y es
+    literalmente el item 4 de esta misma tarjeta (catalogos de optimismo offline), no el 2.
+- Item 3 (movimientos paginados y cuentas): mismo patron para `CuentaResponse` y
+  `MovimientoResponse`/`MovimientosPageResponse` en el modulo `finanzas`. De paso,
+  `TipoMovimiento`/`TipoGasto` (antes un union type suelto en `types/finanzas.ts`, sin
+  relacion con el `z.enum(TIPOS_MOVIMIENTO)` que ya usaba el formulario) pasan a derivarse
+  del mismo `tipoMovimientoSchema`/`tipoGastoSchema` que usa `movimientoCreateSchema` —
+  una sola fuente para los valores del enum, no dos.
+  - El catch de 404 en `getMovimientos` (mes sin movimientos → pagina vacia) se dejo
+    intacto y se agrego un test que confirma que sigue funcionando sin que la validacion
+    lo intercepte (`ApiSchemaError` no tiene `.response`, asi que ese catch especifico a
+    404 de Axios no lo atrapa por error).
+- Pruebas: `entrenamientos-api-schema.test.ts` (8 casos) y `finanzas-api-schema.test.ts`
+  (8 casos) — incluyen respuesta valida, campo obligatorio ausente, tipo invalido dentro
+  de un array anidado (series/items), y el caso de 404 real de movimientos sin tocar.
+  `npm run lint`, `npx tsc --noEmit`, `npm test` (8 archivos, 51/51), `npm run build`
+  (42 rutas).
+- Pendiente: item 4 (catalogos de optimismo offline: gimnasios, ejercicios, musculos)
+  sigue sin tocar, por lo de arriba. Por eso la tarjeta queda `[~]`, no `[x]`.
 
 **Corregido aparte (2026-08-03, claude):** el bug de `DELETE /api/usuarios/{id_usuario}`
 detectado de paso arriba. `eliminar_usuario_soft` filtraba por `User.id == id_usuario`

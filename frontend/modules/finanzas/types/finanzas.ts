@@ -1,6 +1,21 @@
-export type TipoMovimiento = "gasto" | "ingreso"
+// Derivados de los schemas Zod en modules/finanzas/schemas/finanzas.schema.ts (FE-ZOD-002):
+// el schema es la fuente de verdad, esto es solo el punto de import. Se importan (no solo
+// re-exportan) porque este archivo tambien los usa mas abajo.
+import type {
+  CuentaResponse,
+  MovimientoResponse,
+  MovimientosPageResponse,
+  TipoGasto,
+  TipoMovimiento,
+} from "@/modules/finanzas/schemas/finanzas.schema"
 
-export type TipoGasto = "variable" | "fijo"
+export type {
+  CuentaResponse,
+  MovimientoResponse,
+  MovimientosPageResponse,
+  TipoGasto,
+  TipoMovimiento,
+}
 
 export interface BancoCreate {
   nombre_banco: string
@@ -57,15 +72,6 @@ export interface CuentaPatch {
   nombre_cuenta?: string | null
 }
 
-export interface CuentaResponse {
-  id_cuenta: number
-  nombre_cuenta: string
-  nombre_banco?: string | null
-  nombre_producto?: string | null
-  id_producto_financiero?: number | null
-  created_at: string
-}
-
 export interface MovimientoCreate {
   client_request_id?: string
   id_categoria: number
@@ -87,33 +93,6 @@ export interface MovimientoPatch {
   tipo_movimiento?: TipoMovimiento | null
   tipo_gasto?: TipoGasto | null
   monto?: number | null
-}
-
-export interface MovimientoResponse {
-  id_transaccion: number
-  client_request_id?: string | null
-  tipo_movimiento: TipoMovimiento
-  tipo_gasto: TipoGasto
-  categoria?: string | null
-  nombre_cuenta?: string | null
-  compras_vinculadas?: { id_compra: number }[]
-  total_compras_vinculadas?: number
-  diferencia_total_compras?: number
-  monto: number
-  descripcion: string | null
-  en_lugar_compra: boolean
-  latitud?: number | null
-  longitud?: number | null
-  precision_ubicacion?: number | null
-  created_at: string
-  pendiente_sincronizacion?: boolean
-}
-
-export interface MovimientosPageResponse {
-  items: MovimientoResponse[]
-  offset: number
-  limit: number
-  total_gasto_mensual: number
 }
 
 export interface AnaliticaResumenResponse {
