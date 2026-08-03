@@ -95,7 +95,7 @@ Resultado (2026-08-02, claude):
 
 ### FE-OFF-001 — Politica fail-fast para mutaciones solo-online
 
-- Estado: `[ ]`.
+- Estado: `[x]`.
 - Prioridad: P0.
 - Archivos iniciales: `frontend/app/providers.tsx`,
   `frontend/modules/auth/hooks/useAuth.tsx`, hooks de cada dominio y
@@ -128,6 +128,44 @@ Pruebas minimas:
 - Hook/test de alta usuario offline.
 - Una mutation CRUD representativa offline.
 - Axios timeout/backend caido con navegador online.
+
+Resultado (2026-08-02, claude):
+- Archivos: `frontend/lib/online-only.ts` (nuevo), `frontend/tests/online-only.test.ts`
+  (nuevo), `frontend/modules/auth/hooks/useAuth.tsx`,
+  `frontend/modules/finanzas/hooks/useFinanzas.tsx`,
+  `frontend/modules/entrenamientos/hooks/useEntrenamientos.tsx`,
+  `frontend/modules/compras/hooks/useCompras.tsx`,
+  `frontend/modules/nutricion/hooks/useNutricion.tsx`.
+- Decisiones:
+  - Helper comun `runOnlineOnlyAction` (usa `onlineManager.isOnline()`): si no hay red,
+    no llama la mutation y devuelve `{ ok: false, message }` al instante; si hay red,
+    deja que Axios falle solo (timeout/backend caido no se intercepta).
+  - Reemplazo el `runAction` local (sin gate) por este helper en todas las mutaciones sin
+    cola offline: bancos/categorias/cuentas/editar-movimiento en finanzas; compras
+    completo; nutricion completo (consumos, detalle, metas, pesos); gimnasios, iniciar
+    entreno, editar/borrar serie en entrenamientos.
+  - `useAuth.tsx`: login, register y logout chequean `isAppOffline()` antes de disparar
+    la mutation. Logout offline limpia sesion/cache local igual que el catch existente,
+    sin esperar la revocacion server-side (inalcanzable sin red).
+  - No toque `cerrarEntrenoFuerzaActivo` ni `agregarSerieFuerza` (useEntrenamientos.tsx):
+    esas dos usan mutations con defaults registrados para reconstruirse offline y deben
+    terminar encolando (`mutate()` sin await), no fallando rapido; ese arreglo especifico
+    es FE-OFF-002, que ademas comparte archivo. Quedo un comentario en el codigo
+    explicando por que siguen con el `runAction` viejo.
+  - No toque los managers admin (`productos-manager.tsx`, `cadenas-manager.tsx`,
+    `tablas-admin-manager.tsx`) ni `ejercicios-catalogo.tsx`: llaman `mutateAsync`
+    directo sin pasar por un hook de dominio y no estaban en el alcance inicial de la
+    tarjeta. Mismo bug potencial, pendiente para una tarjeta aparte si se decide cubrir
+    admin offline.
+  - `usePerfil.tsx`/`useUsuarios.tsx` no usan TanStack mutations (Axios + `useState`
+    directo), asi que no tienen el problema de `networkMode: "online"`; no se tocaron.
+- Pruebas: `frontend/tests/online-only.test.ts` (4 casos: alta de usuario offline, CRUD
+  representativo offline, timeout con navegador online no bloqueado, caso online
+  exitoso). `npm run lint`, `npx tsc --noEmit`, `npm test` (4 archivos, 16/16),
+  `npm run build` (42 rutas).
+- Pendientes o riesgos residuales: managers admin y `ejercicios-catalogo.tsx` sin cubrir
+  (ver arriba). No hay test de hook renderizado (React Testing Library no esta instalado
+  todavia, ver Fase 5.1); la cobertura quedo a nivel del helper compartido.
 
 ### FE-OFF-002 — Desbloquear la cola ya existente de series y cierre
 

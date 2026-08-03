@@ -4,6 +4,7 @@ import { createContext, ReactNode, useContext, useEffect } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { getFriendlyErrorMessage } from "@/lib/error-messages"
+import { runOnlineOnlyAction } from "@/lib/online-only"
 import { queryKeys } from "@/lib/query-keys"
 import { ComprasAPI } from "@/modules/compras/api/compras.api"
 import { CompraCreate, CompraPatch } from "@/modules/compras/types/compras"
@@ -45,16 +46,6 @@ const useComprasState = () => {
     await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })))
   }
 
-  const runAction = async <T,>(action: () => Promise<T>) => {
-    try {
-      await action()
-      return { ok: true as const }
-    } catch (err) {
-      const message = getFriendlyErrorMessage(err)
-      return { ok: false as const, message }
-    }
-  }
-
   const compraCreateMutation = useMutation({
     mutationFn: ComprasAPI.createCompra,
     onSuccess: () => invalidate(queryKeys.compras.compras),
@@ -84,11 +75,11 @@ const useComprasState = () => {
     fetchResumen: () =>
       invalidate(queryKeys.compras.cadenas, queryKeys.compras.locales, queryKeys.compras.compras),
     crearCompra: (payload: CompraCreate) =>
-      runAction(() => compraCreateMutation.mutateAsync(payload)),
+      runOnlineOnlyAction(() => compraCreateMutation.mutateAsync(payload)),
     editarCompra: (idCompra: number, payload: CompraPatch) =>
-      runAction(() => compraUpdateMutation.mutateAsync({ idCompra, payload })),
+      runOnlineOnlyAction(() => compraUpdateMutation.mutateAsync({ idCompra, payload })),
     eliminarCompra: (idCompra: number) =>
-      runAction(() => compraDeleteMutation.mutateAsync(idCompra)),
+      runOnlineOnlyAction(() => compraDeleteMutation.mutateAsync(idCompra)),
   }
 }
 

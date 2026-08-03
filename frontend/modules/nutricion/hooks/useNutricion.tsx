@@ -4,6 +4,7 @@ import { createContext, ReactNode, useContext, useEffect } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { getFriendlyErrorMessage } from "@/lib/error-messages"
+import { runOnlineOnlyAction } from "@/lib/online-only"
 import { queryKeys } from "@/lib/query-keys"
 import { NutricionAPI } from "@/modules/nutricion/api/nutricion.api"
 import {
@@ -57,16 +58,6 @@ const useNutricionState = () => {
 
   const invalidate = async (...keys: readonly (readonly unknown[])[]) => {
     await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })))
-  }
-
-  const runAction = async <T,>(action: () => Promise<T>) => {
-    try {
-      await action()
-      return { ok: true as const }
-    } catch (err) {
-      const message = getFriendlyErrorMessage(err)
-      return { ok: false as const, message }
-    }
   }
 
   const consumoCreateMutation = useMutation({
@@ -157,26 +148,26 @@ const useNutricionState = () => {
         queryKeys.nutricion.tablas
       ),
     crearConsumo: (payload: ConsumoCreate) =>
-      runAction(() => consumoCreateMutation.mutateAsync(payload)),
+      runOnlineOnlyAction(() => consumoCreateMutation.mutateAsync(payload)),
     editarConsumo: (idConsumo: number, payload: ConsumoPatch) =>
-      runAction(() => consumoUpdateMutation.mutateAsync({ idConsumo, payload })),
+      runOnlineOnlyAction(() => consumoUpdateMutation.mutateAsync({ idConsumo, payload })),
     eliminarConsumo: (idConsumo: number) =>
-      runAction(() => consumoDeleteMutation.mutateAsync(idConsumo)),
+      runOnlineOnlyAction(() => consumoDeleteMutation.mutateAsync(idConsumo)),
     crearConsumoDetalle: (payload: ConsumoDetalleCreate) =>
-      runAction(() => consumoDetalleCreateMutation.mutateAsync(payload)),
+      runOnlineOnlyAction(() => consumoDetalleCreateMutation.mutateAsync(payload)),
     editarConsumoDetalle: (idDetalle: number, payload: ConsumoDetallePatch) =>
-      runAction(() => consumoDetalleUpdateMutation.mutateAsync({ idDetalle, payload })),
+      runOnlineOnlyAction(() => consumoDetalleUpdateMutation.mutateAsync({ idDetalle, payload })),
     eliminarConsumoDetalle: (idDetalle: number) =>
-      runAction(() => consumoDetalleDeleteMutation.mutateAsync(idDetalle)),
+      runOnlineOnlyAction(() => consumoDetalleDeleteMutation.mutateAsync(idDetalle)),
     crearMeta: (payload: MetaNutricionalCreate) =>
-      runAction(() => metaCreateMutation.mutateAsync(payload)),
+      runOnlineOnlyAction(() => metaCreateMutation.mutateAsync(payload)),
     editarMeta: (idMeta: number, payload: MetaNutricionalPatch) =>
-      runAction(() => metaUpdateMutation.mutateAsync({ idMeta, payload })),
-    eliminarMeta: (idMeta: number) => runAction(() => metaDeleteMutation.mutateAsync(idMeta)),
-    crearPeso: (payload: PesoCreate) => runAction(() => pesoCreateMutation.mutateAsync(payload)),
+      runOnlineOnlyAction(() => metaUpdateMutation.mutateAsync({ idMeta, payload })),
+    eliminarMeta: (idMeta: number) => runOnlineOnlyAction(() => metaDeleteMutation.mutateAsync(idMeta)),
+    crearPeso: (payload: PesoCreate) => runOnlineOnlyAction(() => pesoCreateMutation.mutateAsync(payload)),
     editarPeso: (idPeso: number, payload: PesoPatch) =>
-      runAction(() => pesoUpdateMutation.mutateAsync({ idPeso, payload })),
-    eliminarPeso: (idPeso: number) => runAction(() => pesoDeleteMutation.mutateAsync(idPeso)),
+      runOnlineOnlyAction(() => pesoUpdateMutation.mutateAsync({ idPeso, payload })),
+    eliminarPeso: (idPeso: number) => runOnlineOnlyAction(() => pesoDeleteMutation.mutateAsync(idPeso)),
   }
 }
 

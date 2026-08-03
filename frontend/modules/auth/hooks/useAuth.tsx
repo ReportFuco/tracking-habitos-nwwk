@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { clearStoredSession } from "@/lib/auth-session"
 import { clearPersistedQueryCache } from "@/lib/query-persistence"
 import { getFriendlyErrorMessage } from "@/lib/error-messages"
+import { OFFLINE_ACTION_MESSAGE, isAppOffline } from "@/lib/online-only"
 import { queryKeys } from "@/lib/query-keys"
 import { AuthAPI } from "@/modules/auth/api/auth.api"
 import { useProfile } from "@/modules/auth/hooks/useProfile"
@@ -65,6 +66,14 @@ export const useAuth = () => {
   const login = async (payload: AuthLoginPayload) => {
     setError(null)
 
+    // Sin red, mutateAsync quedaria pending/paused hasta reconectar (networkMode
+    // "online" de TanStack). El login no tiene ni puede tener cola offline: depende de
+    // credenciales frescas contra el backend.
+    if (isAppOffline()) {
+      setError(OFFLINE_ACTION_MESSAGE)
+      return { ok: false as const, message: OFFLINE_ACTION_MESSAGE }
+    }
+
     try {
       await loginMutation.mutateAsync(payload)
       return { ok: true as const }
@@ -78,6 +87,13 @@ export const useAuth = () => {
   const register = async (payload: AuthRegisterPayload) => {
     setError(null)
 
+    // El alta de usuario requiere conexion: nunca hay que persistir la contraseña para
+    // reintentar despues, asi que falla al instante en vez de encolarse.
+    if (isAppOffline()) {
+      setError(OFFLINE_ACTION_MESSAGE)
+      return { ok: false as const, message: OFFLINE_ACTION_MESSAGE }
+    }
+
     try {
       await registerMutation.mutateAsync(payload)
       return { ok: true as const }
@@ -89,6 +105,15 @@ export const useAuth = () => {
   }
 
   const logout = async () => {
+    // El logout local (limpiar sesion y cache) tiene que funcionar aunque no haya red;
+    // solo se salta la revocacion server-side, que de todas formas es inalcanzable.
+    if (isAppOffline()) {
+      clearStoredSession()
+      queryClient.clear()
+      await clearPersistedQueryCache()
+      return
+    }
+
     try {
       await logoutMutation.mutateAsync()
     } catch {

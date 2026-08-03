@@ -4,6 +4,7 @@ import { createContext, ReactNode, useCallback, useContext, useState } from "rea
 import { AxiosError } from "axios"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { getFriendlyErrorMessage } from "@/lib/error-messages"
+import { runOnlineOnlyAction } from "@/lib/online-only"
 import { queryKeys } from "@/lib/query-keys"
 import { EntrenamientosAPI } from "@/modules/entrenamientos/api/entrenamientos.api"
 import { entrenamientosMutationKeys } from "@/modules/entrenamientos/offline/entrenamientos-offline"
@@ -89,6 +90,12 @@ const useEntrenamientosState = () => {
     await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })))
   }, [queryClient])
 
+  // Cierre y alta de serie usan mutations con defaults registrados para reconstruirse
+  // offline (ver app/providers.tsx), pero hoy siguen esperando mutateAsync sin chequear
+  // la red: quedan pending/paused hasta reconectar en vez de confirmar la cola al
+  // instante. Ese arreglo especifico es FE-OFF-002; por eso estas dos siguen con este
+  // runAction sin gate y el resto de mutaciones (sin cola offline) pasa a
+  // runOnlineOnlyAction.
   const runAction = useCallback(async <T,>(action: () => Promise<T>) => {
     try {
       await action()
@@ -239,20 +246,20 @@ const useEntrenamientosState = () => {
     fetchEntrenamientoActivo,
     fetchDetalleEntrenoFuerza,
     crearGimnasio: (payload: GimnasioCreate) =>
-      runAction(() => gimnasioCreateMutation.mutateAsync(payload)),
+      runOnlineOnlyAction(() => gimnasioCreateMutation.mutateAsync(payload)),
     editarGimnasio: (idGimnasio: number, payload: GimnasioEdit) =>
-      runAction(() => gimnasioUpdateMutation.mutateAsync({ idGimnasio, payload })),
+      runOnlineOnlyAction(() => gimnasioUpdateMutation.mutateAsync({ idGimnasio, payload })),
     eliminarGimnasio: (idGimnasio: number) =>
-      runAction(() => gimnasioDeleteMutation.mutateAsync(idGimnasio)),
+      runOnlineOnlyAction(() => gimnasioDeleteMutation.mutateAsync(idGimnasio)),
     iniciarEntrenoFuerza: (payload: EntrenoFuerzaCreate) =>
-      runAction(() => entrenoCreateMutation.mutateAsync(payload)),
+      runOnlineOnlyAction(() => entrenoCreateMutation.mutateAsync(payload)),
     cerrarEntrenoFuerzaActivo: () => runAction(() => entrenoCloseMutation.mutateAsync()),
     agregarSerieFuerza: (payload: SerieFuerzaCreate) =>
       runAction(() => serieCreateMutation.mutateAsync(payload)),
     editarSerieFuerza: (idFuerzaDetalle: number, payload: SerieFuerzaPatch) =>
-      runAction(() => serieUpdateMutation.mutateAsync({ idFuerzaDetalle, payload })),
+      runOnlineOnlyAction(() => serieUpdateMutation.mutateAsync({ idFuerzaDetalle, payload })),
     eliminarSerieFuerza: (idFuerzaDetalle: number) =>
-      runAction(() => serieDeleteMutation.mutateAsync(idFuerzaDetalle)),
+      runOnlineOnlyAction(() => serieDeleteMutation.mutateAsync(idFuerzaDetalle)),
   }
 }
 

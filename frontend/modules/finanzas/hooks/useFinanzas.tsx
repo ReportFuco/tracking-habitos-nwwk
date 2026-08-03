@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { getFriendlyErrorMessage } from "@/lib/error-messages"
+import { runOnlineOnlyAction } from "@/lib/online-only"
 import { queryKeys } from "@/lib/query-keys"
 import { FinanzasAPI } from "@/modules/finanzas/api/finanzas.api"
 import { finanzasMutationKeys } from "@/modules/finanzas/offline/movimientos-offline"
@@ -96,16 +97,6 @@ const useFinanzasState = () => {
 
   const invalidateFinanzas = async (...keys: readonly (readonly unknown[])[]) => {
     await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })))
-  }
-
-  const runAction = async <T,>(action: () => Promise<T>): ActionResult => {
-    try {
-      await action()
-      return { ok: true as const }
-    } catch (err) {
-      const message = getFriendlyErrorMessage(err)
-      return { ok: false as const, message }
-    }
   }
 
   const bancoCreateMutation = useMutation({
@@ -238,30 +229,30 @@ const useFinanzasState = () => {
     error: error ? getFriendlyErrorMessage(error) : null,
     fetchCatalogos,
     loadMoreMovimientos,
-    crearBanco: (payload: BancoCreate) => runAction(() => bancoCreateMutation.mutateAsync(payload)),
+    crearBanco: (payload: BancoCreate) => runOnlineOnlyAction(() => bancoCreateMutation.mutateAsync(payload)),
     editarBanco: (idBanco: number, payload: BancoCreate) =>
-      runAction(() => bancoUpdateMutation.mutateAsync({ idBanco, payload })),
-    eliminarBanco: (idBanco: number) => runAction(() => bancoDeleteMutation.mutateAsync(idBanco)),
+      runOnlineOnlyAction(() => bancoUpdateMutation.mutateAsync({ idBanco, payload })),
+    eliminarBanco: (idBanco: number) => runOnlineOnlyAction(() => bancoDeleteMutation.mutateAsync(idBanco)),
     crearCategoria: (payload: CategoriaCreate) =>
-      runAction(() => categoriaCreateMutation.mutateAsync(payload)),
+      runOnlineOnlyAction(() => categoriaCreateMutation.mutateAsync(payload)),
     editarCategoria: (idCategoria: number, payload: CategoriaPatch) =>
-      runAction(() => categoriaUpdateMutation.mutateAsync({ idCategoria, payload })),
+      runOnlineOnlyAction(() => categoriaUpdateMutation.mutateAsync({ idCategoria, payload })),
     eliminarCategoria: (idCategoria: number) =>
-      runAction(() => categoriaDeleteMutation.mutateAsync(idCategoria)),
-    crearCuenta: (payload: CuentaCreate) => runAction(() => cuentaCreateMutation.mutateAsync(payload)),
+      runOnlineOnlyAction(() => categoriaDeleteMutation.mutateAsync(idCategoria)),
+    crearCuenta: (payload: CuentaCreate) => runOnlineOnlyAction(() => cuentaCreateMutation.mutateAsync(payload)),
     editarCuenta: (idCuenta: number, payload: CuentaPatch) =>
-      runAction(() => cuentaUpdateMutation.mutateAsync({ idCuenta, payload })),
-    eliminarCuenta: (idCuenta: number) => runAction(() => cuentaDeleteMutation.mutateAsync(idCuenta)),
+      runOnlineOnlyAction(() => cuentaUpdateMutation.mutateAsync({ idCuenta, payload })),
+    eliminarCuenta: (idCuenta: number) => runOnlineOnlyAction(() => cuentaDeleteMutation.mutateAsync(idCuenta)),
     crearMovimiento: async (payload: MovimientoCreate): ActionResult => {
       if (!onlineManager.isOnline()) {
         movimientoCreateMutation.mutate(payload)
         return { ok: true, queued: true }
       }
 
-      return runAction(() => movimientoCreateMutation.mutateAsync(payload))
+      return runOnlineOnlyAction(() => movimientoCreateMutation.mutateAsync(payload))
     },
     editarMovimiento: (idMovimiento: number, payload: MovimientoPatch) =>
-      runAction(() => movimientoUpdateMutation.mutateAsync({ idMovimiento, payload })),
+      runOnlineOnlyAction(() => movimientoUpdateMutation.mutateAsync({ idMovimiento, payload })),
     getProductosByBanco,
   }
 }
