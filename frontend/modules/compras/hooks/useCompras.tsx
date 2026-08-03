@@ -7,6 +7,7 @@ import { getFriendlyErrorMessage } from "@/lib/error-messages"
 import { runOnlineOnlyAction } from "@/lib/online-only"
 import { queryKeys } from "@/lib/query-keys"
 import { ComprasAPI } from "@/modules/compras/api/compras.api"
+import { cadenasQueryOptions } from "@/modules/compras/queries"
 import { CompraCreate, CompraPatch } from "@/modules/compras/types/compras"
 
 const FIVE_MINUTES = 1000 * 60 * 5
@@ -21,13 +22,7 @@ const ComprasContext = createContext<ComprasContextValue | null>(null)
 const useComprasState = () => {
   const queryClient = useQueryClient()
 
-  const cadenasQuery = useQuery({
-    queryKey: queryKeys.compras.cadenas,
-    queryFn: ComprasAPI.getCadenas,
-    staleTime: ONE_DAY,
-    gcTime: ONE_WEEK,
-    meta: persistMeta,
-  })
+  const cadenasQuery = useQuery(cadenasQueryOptions())
   const localesQuery = useQuery({
     queryKey: queryKeys.compras.locales,
     queryFn: ComprasAPI.getLocales,

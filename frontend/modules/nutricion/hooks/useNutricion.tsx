@@ -7,6 +7,7 @@ import { getFriendlyErrorMessage } from "@/lib/error-messages"
 import { runOnlineOnlyAction } from "@/lib/online-only"
 import { queryKeys } from "@/lib/query-keys"
 import { NutricionAPI } from "@/modules/nutricion/api/nutricion.api"
+import { tablasQueryOptions } from "@/modules/nutricion/queries"
 import {
   ConsumoCreate,
   ConsumoDetalleCreate,
@@ -19,8 +20,6 @@ import {
 } from "@/modules/nutricion/types/nutricion"
 
 const FIVE_MINUTES = 1000 * 60 * 5
-const ONE_DAY = 1000 * 60 * 60 * 24
-const ONE_WEEK = ONE_DAY * 7
 const persistMeta = { persist: true }
 
 type NutricionContextValue = ReturnType<typeof useNutricionState>
@@ -48,13 +47,7 @@ const useNutricionState = () => {
     staleTime: FIVE_MINUTES,
     meta: persistMeta,
   })
-  const tablasQuery = useQuery({
-    queryKey: queryKeys.nutricion.tablas,
-    queryFn: NutricionAPI.getTablas,
-    staleTime: ONE_DAY,
-    gcTime: ONE_WEEK,
-    meta: persistMeta,
-  })
+  const tablasQuery = useQuery(tablasQueryOptions())
 
   const invalidate = async (...keys: readonly (readonly unknown[])[]) => {
     await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })))

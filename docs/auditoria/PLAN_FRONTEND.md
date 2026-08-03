@@ -550,7 +550,7 @@ Resultado (2026-08-03, claude):
 
 ### FE-TQ-002 — Centralizar queryOptions y mutationOptions
 
-- Estado: `[ ]`.
+- Estado: `[~]`.
 - Prioridad: P1.
 - Archivos: hooks/components que definen la misma key con opciones diferentes.
 
@@ -566,6 +566,43 @@ Criterios de aceptacion:
 - Una query key no cambia de politica de persistencia segun el ultimo consumidor.
 - No se duplican literales de tiempos ni keys en componentes.
 - Invalidaciones usan roots/factories documentadas.
+
+Resultado (2026-08-03, claude — parcial):
+- Archivos: `frontend/modules/compras/queries.ts` (nuevo),
+  `frontend/modules/nutricion/queries.ts` (nuevo),
+  `frontend/modules/compras/hooks/useCompras.tsx`,
+  `frontend/modules/compras/components/cadenas-manager.tsx`,
+  `frontend/modules/nutricion/hooks/useNutricion.tsx`,
+  `frontend/modules/nutricion/components/tablas-admin-manager.tsx`.
+- Se encontraron y corrigieron los dos casos reales (no hipoteticos) de la regla que
+  rompia el criterio de aceptacion:
+  - `queryKeys.compras.cadenas`: `useCompras` la definia con
+    `staleTime: 1 dia, gcTime: 1 semana, meta.persist: true`; `CadenasManager` la volvia a
+    definir con `useQuery({queryKey, queryFn})` sin nada de eso. El manager admin, al
+    montar despues, le pisaba la politica de cache/persistencia al hook.
+  - `queryKeys.nutricion.tablas`: mismo problema entre `useNutricion` y
+    `TablasAdminManager`.
+  - En ambos casos se creo `queryOptions()` (helper de TanStack Query, no un objeto
+    plano) por recurso en un archivo `queries.ts` nuevo del modulo, y los dos
+    consumidores pasaron a `useQuery(xQueryOptions())`. Con una sola fuente de verdad,
+    diverger de politica queda estructuralmente imposible, no solo evitado por
+    disciplina.
+  - Se revisaron otros pares sospechosos (`queryKeys.catalogo.productos` en
+    `productos-manager.tsx` y `tablas-admin-manager.tsx`) y **no** son un bug real: ambos
+    ya definen la query sin extras (staleTime/gcTime/meta), asi que no hay politica que
+    diverja; no se tocaron para no agregar abstraccion donde no habia problema.
+- Pendiente (por eso el estado queda `[~]`, no `[x]`): esta tarjeta habla de "cada
+  modulo" y de mutations repetidas (accion 4), y solo se cubrieron los dos casos
+  verificados arriba. No se reviso exhaustivamente finanzas/entrenamientos/catalogo/auth
+  en busca de mas duplicados, ni se creo una convencion de `mutationOptions()` (no se
+  encontraron mutations realmente duplicadas para los dos recursos corregidos: ni
+  `cadenas` ni `tablas` tienen CRUD definido dos veces, solo la query de lectura). Un
+  barrido completo del resto de modulos queda para otra sesion/tarjeta si se decide
+  seguir.
+- Pruebas: `npm run lint`, `npx tsc --noEmit`, `npm test` (4 archivos, 25/25),
+  `npm run build` (42 rutas). No se agregaron tests nuevos: es una extraccion mecanica
+  sin cambio de comportamiento (mismos valores de staleTime/gcTime/meta que ya
+  usaba el hook), cubierta por los tests de persistencia existentes.
 
 ### FE-TQ-003 — Provider de persistencia estable
 

@@ -11,6 +11,7 @@ import { SearchableCombobox } from "@/components/forms/searchable-combobox"
 import { InvalidNumericInputError, parseOptionalNumber, parseRequiredNumber } from "@/lib/parse-numeric"
 import { queryKeys } from "@/lib/query-keys"
 import { NutricionAPI } from "@/modules/nutricion/api/nutricion.api"
+import { tablasQueryOptions } from "@/modules/nutricion/queries"
 import { CatalogoAPI } from "@/modules/catalogo/api/catalogo.api"
 import type { TablaNutricionalResponse } from "@/modules/nutricion/types/nutricion"
 
@@ -84,10 +85,7 @@ export function TablasAdminManager() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const isEditing = editingId !== null
 
-  const tablasQuery = useQuery({
-    queryKey: queryKeys.nutricion.tablas,
-    queryFn: NutricionAPI.getTablas,
-  })
+  const tablasQuery = useQuery(tablasQueryOptions())
   const productosQuery = useQuery({
     queryKey: queryKeys.catalogo.productos(),
     queryFn: () => CatalogoAPI.getProductos(),

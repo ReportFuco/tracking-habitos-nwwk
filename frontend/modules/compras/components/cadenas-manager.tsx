@@ -9,6 +9,7 @@ import { EditorialInput, FormPanel } from "@/components/forms/editorial-form"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { queryKeys } from "@/lib/query-keys"
 import { ComprasAPI } from "@/modules/compras/api/compras.api"
+import { cadenasQueryOptions } from "@/modules/compras/queries"
 
 export function CadenasManager() {
   const queryClient = useQueryClient()
@@ -16,10 +17,7 @@ export function CadenasManager() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const isEditing = editingId !== null
 
-  const cadenasQuery = useQuery({
-    queryKey: queryKeys.compras.cadenas,
-    queryFn: ComprasAPI.getCadenas,
-  })
+  const cadenasQuery = useQuery(cadenasQueryOptions())
 
   const invalidate = () =>
     Promise.all([
