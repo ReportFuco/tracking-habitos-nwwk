@@ -851,23 +851,90 @@ coincidian por casualidad, o desactivaba a otra persona si coincidian.
 
 ### FE-ZOD-003 — Corregir deriva compras/nutricion y formularios restantes
 
-- Estado: `[ ]`.
+- Estado: `[~]`.
 - Prioridad: P1/P2.
 - Depende de: `FE-ZOD-001`.
 
 Acciones:
 
-1. Alinear `LocalResponse.id_cadena` nullable.
-2. Alinear metas nutricionales y proteger `formatDate`.
-3. Agregar schemas de cadenas, locales, tablas y catalogo.
-4. Reemplazar `Number(...)` inseguro por helpers/schemas de coercion.
-5. Validar rangos geograficos, fechas reales, orden de fechas, telefono y unidades.
+1. Alinear `LocalResponse.id_cadena` nullable. `[x]`
+2. Alinear metas nutricionales y proteger `formatDate`. `[x]`
+3. Agregar schemas de cadenas, locales, tablas y catalogo. `[x]`
+4. Reemplazar `Number(...)` inseguro por helpers/schemas de coercion. `[ ]` no iniciado.
+5. Validar rangos geograficos, fechas reales, orden de fechas, telefono y unidades. `[ ]`
+   no iniciado.
+
+Resultado (items 1-3):
+
+- Bugs de contrato confirmados y corregidos:
+  - `LocalResponse.id_cadena` era `number` en el frontend pero el backend siempre lo
+    manda `Optional[int]` (`backend/app/schemas/compras/local.py`) — ya alineado en
+    `compras.schema.ts`.
+  - `CompraResponse.total` no existe en el backend (el campo real es `total_compra`,
+    ver `backend/app/schemas/compras/compra.py`): `compra.total` era `undefined`
+    siempre. `compras-manager.tsx` mostraba el total como si a veces faltara (chequeo
+    `typeof compra.total === "number"`) cuando en realidad nunca estaba. Renombrado a
+    `total_compra`, que el backend siempre calcula (default `Decimal("0")`), asi que se
+    saco el chequeo condicional.
+  - `MetaNutricionalResponse`/`TablaNutricionalResponse` declaraban `fecha_fin`,
+    `calorias_objetivo`, `porcion_cantidad`, `calorias`, etc. como requeridos, pero el
+    backend los tiene todos `Optional` (metas sin fecha de fin y tablas incompletas son
+    validas). `metas-manager.tsx::formatDate(null)` crasheaba (`TypeError` en
+    `null.split(...)`) al listar cualquier meta sin fecha de fin — ahora `formatDate`
+    devuelve "Sin fecha". El calculo de "meta activa" (`metas-manager.tsx`,
+    `nutricion-home-overview.tsx`) trataba una meta sin fecha de fin como nunca activa
+    (`today <= null` es `false` en JS); ahora una meta con `fecha_fin: null` se
+    considera sin fecha de cierre.
+  - `TablaNutricionalResponse.nombre_producto` existia en el tipo frontend y se lee en
+    `tabla-manager.tsx` (busqueda y display) y `tablas-admin-manager.tsx`, pero el
+    backend nunca lo calculaba (`TablaNutricional` no tenia relacion `producto` cargada
+    ni el schema el campo) — la busqueda por nombre de producto en la tabla nutricional
+    estaba silenciosamente rota. Mismo patron que `nombre_marca` en catalogo: property
+    en el modelo + `selectinload` en las rutas + campo en el response schema.
+  - Formulario "Nuevo producto" (catalogo) mostraba Marca y Codigo de barra como
+    "Opcional" pero el backend los exigia (`ProductoCreate.id_marca`/`codigo_barra` no
+    eran `Optional`) — creaba un 422 silencioso al dejarlos vacios. Decision del usuario:
+    relajar el backend en vez de forzar el formulario. `Producto.id_marca` y
+    `Producto.codigo_barra` pasaron a nullable (modelo, schema, migracion
+    `472033ea3c1b`), y las rutas ya no intentan validar marca/duplicado de codigo cuando
+    el valor es `None` (antes `Producto.codigo_barra == None` generaba `IS NULL` y
+    bloqueaba crear un segundo producto sin codigo de barra).
+- Archivos backend: `backend/app/models/catalogo.py`, `backend/app/schemas/catalogo/producto.py`,
+  `backend/app/routes/catalogo/producto.py`, `backend/app/models/nutricion.py`,
+  `backend/app/schemas/nutricion/tabla_nutricional.py`,
+  `backend/app/routes/nutricion/tabla_nutricional.py`,
+  `backend/app/alembic/versions/472033ea3c1b_producto_marca_codigo_barra_nullable.py`,
+  `backend/tests/test_catalogo_producto.py`, `backend/tests/test_nutricion_tabla.py`.
+- Archivos frontend: `modules/catalogo/schemas/catalogo.schema.ts` (nuevo),
+  `modules/catalogo/types/catalogo.ts`, `modules/catalogo/api/catalogo.api.ts`,
+  `modules/compras/schemas/compras.schema.ts`, `modules/compras/types/compras.ts`,
+  `modules/compras/api/compras.api.ts`, `modules/compras/components/compras-manager.tsx`,
+  `modules/nutricion/schemas/nutricion.schema.ts`, `modules/nutricion/types/nutricion.ts`,
+  `modules/nutricion/api/nutricion.api.ts`, `modules/nutricion/components/metas-manager.tsx`,
+  `modules/nutricion/components/nutricion-home-overview.tsx`,
+  `modules/nutricion/components/tabla-manager.tsx`,
+  `modules/nutricion/components/tablas-admin-manager.tsx`.
+- Todos los adapters de `compras.api.ts`, `nutricion.api.ts` y `catalogo.api.ts` (incluido
+  `updateCadena`, que se habia quedado sin validar en `FE-ZOD-001`) ahora pasan la
+  respuesta por `parseApiResponse` siguiendo la convencion de `FE-ZOD-001`.
+- Pruebas: backend 37/37 (`pytest tests/`, incluye 3 casos nuevos: producto sin
+  marca/codigo de barra, editar para limpiar codigo de barra, tabla nutricional con
+  `nombre_producto` derivado). Frontend: lint limpio, `tsc --noEmit` limpio, 57/57 tests
+  (`npm test`), `npm run build` exitoso. Migracion verificada con
+  `alembic downgrade -1 && alembic upgrade head`.
+- Pendiente (items 4 y 5, quedan para una vuelta futura de esta misma tarjeta): reemplazar
+  `Number(...)` inseguro en los formularios de compras/nutricion/catalogo por un helper
+  que rechace `NaN` (ya existe `lib/parse-numeric.ts` con `parseRequiredNumber`/
+  `parseOptionalNumber`, usado hoy solo en `tablas-admin-manager.tsx` — falta extenderlo a
+  `compras-manager.tsx`, `metas-manager.tsx`, `peso-manager.tsx`, `productos-manager.tsx`,
+  `locales-manager.tsx`); y validar rangos geograficos (lat/lon), fechas reales,
+  orden fecha_inicio/fecha_fin, telefono y unidades permitidas.
 
 Criterios de aceptacion:
 
-- Contract tests reflejan los schemas FastAPI actuales.
-- `NaN` no se serializa silenciosamente como `null`.
-- Ningun formatter recibe null sin manejarlo.
+- Contract tests reflejan los schemas FastAPI actuales. `[x]`
+- `NaN` no se serializa silenciosamente como `null`. `[ ]` pendiente (item 4).
+- Ningun formatter recibe null sin manejarlo. `[x]`
 
 ### FE-ZOD-004 — Evaluar generacion desde OpenAPI
 

@@ -1,5 +1,16 @@
 export type TipoComida = "desayuno" | "colacion" | "almuerzo" | "once" | "cena" | "snack"
 
+// Derivados de los schemas Zod en modules/nutricion/schemas/nutricion.schema.ts
+// (FE-ZOD-001): el schema es la fuente de verdad, esto es solo el punto de import para
+// el resto del modulo.
+export type {
+  ConsumoDetalleResponse,
+  ConsumoResponse,
+  MetaNutricionalResponse,
+  PesoResponse,
+  TablaNutricionalResponse,
+} from "@/modules/nutricion/schemas/nutricion.schema"
+
 export interface ConsumoCreate {
   fecha_consumo: string
   tipo_comida: TipoComida
@@ -10,14 +21,6 @@ export interface ConsumoPatch {
   fecha_consumo?: string | null
   tipo_comida?: TipoComida | null
   observacion?: string | null
-}
-
-export interface ConsumoResponse {
-  id_consumo: number
-  fecha_consumo: string
-  tipo_comida: TipoComida
-  observacion: string | null
-  created_at: string
 }
 
 export interface ConsumoDetalleCreate {
@@ -31,16 +34,6 @@ export interface ConsumoDetallePatch {
   id_producto?: number | null
   cantidad_consumida?: number | null
   unidad_consumida?: string | null
-}
-
-export interface ConsumoDetalleResponse {
-  id_consumo_detalle: number
-  id_consumo: number
-  id_producto: number
-  nombre_producto?: string | null
-  cantidad_consumida: number
-  unidad_consumida: string
-  created_at: string
 }
 
 export interface MetaNutricionalCreate {
@@ -61,17 +54,6 @@ export interface MetaNutricionalPatch {
   grasas_objetivo?: number | null
 }
 
-export interface MetaNutricionalResponse {
-  id_meta: number
-  fecha_inicio: string
-  fecha_fin: string
-  calorias_objetivo: number
-  proteinas_objetivo: number
-  carbohidratos_objetivo: number
-  grasas_objetivo: number
-  created_at: string
-}
-
 export interface PesoCreate {
   fecha_registro: string
   peso_kg: number
@@ -80,13 +62,6 @@ export interface PesoCreate {
 export interface PesoPatch {
   fecha_registro?: string | null
   peso_kg?: number | null
-}
-
-export interface PesoResponse {
-  id_peso: number
-  fecha_registro: string
-  peso_kg: number
-  created_at: string
 }
 
 export interface TablaNutricionalCreate {
@@ -112,20 +87,4 @@ export interface TablaNutricionalPatch {
   azucares?: number | null
   sodio?: number | null
   fibra?: number | null
-}
-
-export interface TablaNutricionalResponse {
-  id_tabla: number
-  id_producto: number
-  nombre_producto?: string | null
-  porcion_cantidad: number
-  porcion_unidad: string
-  calorias: number
-  proteinas: number
-  carbohidratos: number
-  grasas: number
-  azucares: number | null
-  sodio: number | null
-  fibra: number | null
-  created_at: string
 }

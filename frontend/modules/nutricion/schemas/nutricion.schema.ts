@@ -50,3 +50,72 @@ export type ConsumoCreateForm = z.infer<typeof consumoCreateSchema>
 export type ConsumoDetalleCreateForm = z.infer<typeof consumoDetalleCreateSchema>
 export type MetaCreateForm = z.infer<typeof metaCreateSchema>
 export type PesoCreateForm = z.infer<typeof pesoCreateSchema>
+
+// Adapter FE-ZOD-001 (ver docs/auditoria/PLAN_FRONTEND.md y lib/api-schema.ts): la
+// respuesta del backend se valida contra estos schemas antes de entrar al cache, y los
+// tipos de `types/nutricion.ts` se derivan de ellos en vez de declararse por separado.
+export const consumoResponseSchema = z.object({
+  id_consumo: z.number().int(),
+  fecha_consumo: z.string(),
+  tipo_comida: z.enum(TIPOS_COMIDA),
+  observacion: z.string().nullable(),
+  created_at: z.string(),
+})
+
+export const consumosListResponseSchema = z.array(consumoResponseSchema)
+
+export const consumoDetalleResponseSchema = z.object({
+  id_consumo_detalle: z.number().int(),
+  id_consumo: z.number().int(),
+  id_producto: z.number().int(),
+  cantidad_consumida: z.number(),
+  unidad_consumida: z.string(),
+})
+
+export const consumoDetallesListResponseSchema = z.array(consumoDetalleResponseSchema)
+
+export const metaNutricionalResponseSchema = z.object({
+  id_meta: z.number().int(),
+  fecha_inicio: z.string(),
+  fecha_fin: z.string().nullable(),
+  calorias_objetivo: z.number().nullable(),
+  proteinas_objetivo: z.number().nullable(),
+  carbohidratos_objetivo: z.number().nullable(),
+  grasas_objetivo: z.number().nullable(),
+  created_at: z.string(),
+})
+
+export const metasListResponseSchema = z.array(metaNutricionalResponseSchema)
+
+export const pesoResponseSchema = z.object({
+  id_peso: z.number().int(),
+  fecha_registro: z.string(),
+  peso_kg: z.number(),
+  created_at: z.string(),
+})
+
+export const pesosListResponseSchema = z.array(pesoResponseSchema)
+
+export const tablaNutricionalResponseSchema = z.object({
+  id_tabla: z.number().int(),
+  id_producto: z.number().int(),
+  nombre_producto: z.string().nullable(),
+  porcion_cantidad: z.number().nullable(),
+  porcion_unidad: z.string().nullable(),
+  calorias: z.number().nullable(),
+  proteinas: z.number().nullable(),
+  carbohidratos: z.number().nullable(),
+  grasas: z.number().nullable(),
+  azucares: z.number().nullable(),
+  sodio: z.number().nullable(),
+  fibra: z.number().nullable(),
+  created_at: z.string(),
+})
+
+export const tablasListResponseSchema = z.array(tablaNutricionalResponseSchema)
+
+export type ConsumoResponse = z.infer<typeof consumoResponseSchema>
+export type ConsumoDetalleResponse = z.infer<typeof consumoDetalleResponseSchema>
+export type MetaNutricionalResponse = z.infer<typeof metaNutricionalResponseSchema>
+export type PesoResponse = z.infer<typeof pesoResponseSchema>
+export type TablaNutricionalResponse = z.infer<typeof tablaNutricionalResponseSchema>

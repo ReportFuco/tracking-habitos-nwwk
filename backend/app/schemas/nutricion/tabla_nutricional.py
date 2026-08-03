@@ -38,6 +38,7 @@ class TablaNutricionalPatch(BaseModel):
 class TablaNutricionalResponse(BaseModel):
     id_tabla: int
     id_producto: int
+    nombre_producto: Optional[str]
     porcion_cantidad: Optional[Decimal]
     porcion_unidad: Optional[str]
     calorias: Optional[Decimal]

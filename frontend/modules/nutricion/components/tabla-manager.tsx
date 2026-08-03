@@ -65,7 +65,7 @@ export function TablaManager() {
                     {tabla.nombre_producto ?? `Producto #${tabla.id_producto}`}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Porcion {tabla.porcion_cantidad} {tabla.porcion_unidad}
+                    Porcion {tabla.porcion_cantidad ?? "—"} {tabla.porcion_unidad ?? ""}
                   </p>
                 </div>
                 <span
@@ -75,14 +75,14 @@ export function TablaManager() {
                     color: MODULE_COLOR,
                   }}
                 >
-                  {tabla.calorias} kcal
+                  {tabla.calorias ?? "—"} kcal
                 </span>
               </div>
 
               <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-muted-foreground">
-                <Macro label="Proteina" value={`${tabla.proteinas}g`} />
-                <Macro label="Carbos" value={`${tabla.carbohidratos}g`} />
-                <Macro label="Grasas" value={`${tabla.grasas}g`} />
+                <Macro label="Proteina" value={`${tabla.proteinas ?? "—"}g`} />
+                <Macro label="Carbos" value={`${tabla.carbohidratos ?? "—"}g`} />
+                <Macro label="Grasas" value={`${tabla.grasas ?? "—"}g`} />
               </div>
             </li>
           ))}

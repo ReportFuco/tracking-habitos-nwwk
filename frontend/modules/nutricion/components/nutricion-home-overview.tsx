@@ -17,7 +17,9 @@ export function NutricionHomeOverview() {
   const today = todayISO()
   const consumosHoy = consumos.filter((c) => c.fecha_consumo.slice(0, 10) === today).length
   const ultimoPeso = pesos[0]?.peso_kg ?? null
-  const metaActiva = metas.find((m) => m.fecha_inicio <= today && today <= m.fecha_fin) ?? metas[0]
+  const metaActiva =
+    metas.find((m) => m.fecha_inicio <= today && (m.fecha_fin === null || today <= m.fecha_fin)) ??
+    metas[0]
 
   const tiles = [
     {
@@ -94,7 +96,7 @@ export function NutricionHomeOverview() {
             Meta kcal
           </p>
           <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-            {loading ? "-" : metaActiva ? metaActiva.calorias_objetivo : "-"}
+            {loading ? "-" : metaActiva ? metaActiva.calorias_objetivo ?? "-" : "-"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
             {metaActiva ? "Meta activa" : "Sin meta activa"}

@@ -52,7 +52,7 @@ export function ComprasManager() {
     [compras]
   )
 
-  const totalGastado = sortedCompras.reduce((acc, compra) => acc + (compra.total ?? 0), 0)
+  const totalGastado = sortedCompras.reduce((acc, compra) => acc + compra.total_compra, 0)
   const localesUnicos = new Set(sortedCompras.map((c) => c.nombre_local).filter(Boolean)).size
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -234,19 +234,17 @@ export function ComprasManager() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {typeof compra.total === "number" ? (
-                      <span
-                        className={cn(
-                          "rounded-full px-2.5 py-1 text-xs font-semibold"
-                        )}
-                        style={{
-                          background: `color-mix(in oklch, ${MODULE_COLOR} 14%, transparent)`,
-                          color: MODULE_COLOR,
-                        }}
-                      >
-                        {formatCurrency(compra.total)}
-                      </span>
-                    ) : null}
+                    <span
+                      className={cn(
+                        "rounded-full px-2.5 py-1 text-xs font-semibold"
+                      )}
+                      style={{
+                        background: `color-mix(in oklch, ${MODULE_COLOR} 14%, transparent)`,
+                        color: MODULE_COLOR,
+                      }}
+                    >
+                      {formatCurrency(compra.total_compra)}
+                    </span>
                     <button
                       type="button"
                       onClick={() => handleDelete(compra.id_compra)}

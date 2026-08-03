@@ -68,12 +68,12 @@ const toPatchPayload = (f: FormState) => ({
 
 const toFormState = (t: TablaNutricionalResponse): FormState => ({
   id_producto: String(t.id_producto),
-  porcion_cantidad: String(t.porcion_cantidad),
-  porcion_unidad: t.porcion_unidad,
-  calorias: String(t.calorias),
-  proteinas: String(t.proteinas),
-  carbohidratos: String(t.carbohidratos),
-  grasas: String(t.grasas),
+  porcion_cantidad: t.porcion_cantidad != null ? String(t.porcion_cantidad) : "",
+  porcion_unidad: t.porcion_unidad ?? "",
+  calorias: t.calorias != null ? String(t.calorias) : "",
+  proteinas: t.proteinas != null ? String(t.proteinas) : "",
+  carbohidratos: t.carbohidratos != null ? String(t.carbohidratos) : "",
+  grasas: t.grasas != null ? String(t.grasas) : "",
   azucares: t.azucares != null ? String(t.azucares) : "",
   sodio: t.sodio != null ? String(t.sodio) : "",
   fibra: t.fibra != null ? String(t.fibra) : "",
@@ -232,8 +232,8 @@ export function TablasAdminManager() {
                     {tabla.nombre_producto ?? `#${tabla.id_producto}`}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    <div>{tabla.porcion_cantidad} {tabla.porcion_unidad} · {tabla.calorias} kcal</div>
-                    <div className="text-xs">P:{tabla.proteinas}g C:{tabla.carbohidratos}g G:{tabla.grasas}g</div>
+                    <div>{tabla.porcion_cantidad ?? "—"} {tabla.porcion_unidad ?? ""} · {tabla.calorias ?? "—"} kcal</div>
+                    <div className="text-xs">P:{tabla.proteinas ?? "—"}g C:{tabla.carbohidratos ?? "—"}g G:{tabla.grasas ?? "—"}g</div>
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">

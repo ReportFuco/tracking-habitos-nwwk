@@ -21,7 +21,8 @@ function addDays(base: string, days: number) {
   return d.toISOString().slice(0, 10)
 }
 
-function formatDate(value: string) {
+function formatDate(value: string | null) {
+  if (!value) return "Sin fecha"
   const [year, month, day] = value.split("T")[0].split("-")
   if (!year || !month || !day) return value
   return `${day}-${month}-${year}`
@@ -48,7 +49,9 @@ export function MetasManager() {
     [metas]
   )
 
-  const metaActiva = sortedMetas.find((m) => m.fecha_inicio <= today && today <= m.fecha_fin)
+  const metaActiva = sortedMetas.find(
+    (m) => m.fecha_inicio <= today && (m.fecha_fin === null || today <= m.fecha_fin)
+  )
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -217,7 +220,8 @@ export function MetasManager() {
         ) : (
           <ul className="flex flex-col gap-2">
             {sortedMetas.map((meta) => {
-              const activa = meta.fecha_inicio <= today && today <= meta.fecha_fin
+              const activa =
+                meta.fecha_inicio <= today && (meta.fecha_fin === null || today <= meta.fecha_fin)
               return (
                 <li
                   key={meta.id_meta}
@@ -227,7 +231,7 @@ export function MetasManager() {
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-foreground">
-                          {meta.calorias_objetivo} kcal / dia
+                          {meta.calorias_objetivo ?? "—"} kcal / dia
                         </p>
                         {activa ? (
                           <span
@@ -256,9 +260,9 @@ export function MetasManager() {
                   </div>
 
                   <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-                    <span>P {meta.proteinas_objetivo}g</span>
-                    <span>C {meta.carbohidratos_objetivo}g</span>
-                    <span>G {meta.grasas_objetivo}g</span>
+                    <span>P {meta.proteinas_objetivo ?? "—"}g</span>
+                    <span>C {meta.carbohidratos_objetivo ?? "—"}g</span>
+                    <span>G {meta.grasas_objetivo ?? "—"}g</span>
                   </div>
                 </li>
               )
@@ -277,7 +281,7 @@ function MacroTile({
 }: {
   icon: typeof Target
   label: string
-  value: number
+  value: number | null
 }) {
   return (
     <div className={cn("rounded-[1rem] bg-[color:var(--surface-lowest)] p-3")}>
@@ -285,7 +289,7 @@ function MacroTile({
         <Icon className="size-3" style={{ color: MODULE_COLOR }} />
         {label}
       </p>
-      <p className="mt-1 text-lg font-semibold tracking-tight text-foreground">{value}</p>
+      <p className="mt-1 text-lg font-semibold tracking-tight text-foreground">{value ?? "—"}</p>
     </div>
   )
 }

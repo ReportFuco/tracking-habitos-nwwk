@@ -1,4 +1,17 @@
 import { api } from "@/lib/api"
+import { parseApiResponse } from "@/lib/api-schema"
+import {
+  consumoDetalleResponseSchema,
+  consumoDetallesListResponseSchema,
+  consumoResponseSchema,
+  consumosListResponseSchema,
+  metaNutricionalResponseSchema,
+  metasListResponseSchema,
+  pesoResponseSchema,
+  pesosListResponseSchema,
+  tablaNutricionalResponseSchema,
+  tablasListResponseSchema,
+} from "@/modules/nutricion/schemas/nutricion.schema"
 import {
   ConsumoCreate,
   ConsumoDetalleCreate,
@@ -20,22 +33,22 @@ import {
 export const NutricionAPI = {
   getConsumos: async (): Promise<ConsumoResponse[]> => {
     const { data } = await api.get("/api/nutricion/consumo/")
-    return data
+    return parseApiResponse(consumosListResponseSchema, data, "GET /api/nutricion/consumo/")
   },
 
   getConsumo: async (idConsumo: number): Promise<ConsumoResponse> => {
     const { data } = await api.get(`/api/nutricion/consumo/${idConsumo}`)
-    return data
+    return parseApiResponse(consumoResponseSchema, data, "GET /api/nutricion/consumo/{id}")
   },
 
   createConsumo: async (payload: ConsumoCreate): Promise<ConsumoResponse> => {
     const { data } = await api.post("/api/nutricion/consumo/", payload)
-    return data
+    return parseApiResponse(consumoResponseSchema, data, "POST /api/nutricion/consumo/")
   },
 
   updateConsumo: async (idConsumo: number, payload: ConsumoPatch): Promise<ConsumoResponse> => {
     const { data } = await api.patch(`/api/nutricion/consumo/${idConsumo}`, payload)
-    return data
+    return parseApiResponse(consumoResponseSchema, data, "PATCH /api/nutricion/consumo/{id}")
   },
 
   deleteConsumo: async (idConsumo: number): Promise<void> => {
@@ -46,14 +59,22 @@ export const NutricionAPI = {
     const { data } = await api.get(`/api/nutricion/consumo-detalle/`, {
       params: { id_consumo: idConsumo },
     })
-    return data
+    return parseApiResponse(
+      consumoDetallesListResponseSchema,
+      data,
+      "GET /api/nutricion/consumo-detalle/"
+    )
   },
 
   createConsumoDetalle: async (
     payload: ConsumoDetalleCreate
   ): Promise<ConsumoDetalleResponse> => {
     const { data } = await api.post(`/api/nutricion/consumo-detalle/`, payload)
-    return data
+    return parseApiResponse(
+      consumoDetalleResponseSchema,
+      data,
+      "POST /api/nutricion/consumo-detalle/"
+    )
   },
 
   updateConsumoDetalle: async (
@@ -61,7 +82,11 @@ export const NutricionAPI = {
     payload: ConsumoDetallePatch
   ): Promise<ConsumoDetalleResponse> => {
     const { data } = await api.patch(`/api/nutricion/consumo-detalle/${idDetalle}`, payload)
-    return data
+    return parseApiResponse(
+      consumoDetalleResponseSchema,
+      data,
+      "PATCH /api/nutricion/consumo-detalle/{id}"
+    )
   },
 
   deleteConsumoDetalle: async (idDetalle: number): Promise<void> => {
@@ -70,12 +95,12 @@ export const NutricionAPI = {
 
   getMetas: async (): Promise<MetaNutricionalResponse[]> => {
     const { data } = await api.get("/api/nutricion/meta/")
-    return data
+    return parseApiResponse(metasListResponseSchema, data, "GET /api/nutricion/meta/")
   },
 
   createMeta: async (payload: MetaNutricionalCreate): Promise<MetaNutricionalResponse> => {
     const { data } = await api.post("/api/nutricion/meta/", payload)
-    return data
+    return parseApiResponse(metaNutricionalResponseSchema, data, "POST /api/nutricion/meta/")
   },
 
   updateMeta: async (
@@ -83,7 +108,7 @@ export const NutricionAPI = {
     payload: MetaNutricionalPatch
   ): Promise<MetaNutricionalResponse> => {
     const { data } = await api.patch(`/api/nutricion/meta/${idMeta}`, payload)
-    return data
+    return parseApiResponse(metaNutricionalResponseSchema, data, "PATCH /api/nutricion/meta/{id}")
   },
 
   deleteMeta: async (idMeta: number): Promise<void> => {
@@ -92,17 +117,17 @@ export const NutricionAPI = {
 
   getPesos: async (): Promise<PesoResponse[]> => {
     const { data } = await api.get("/api/nutricion/peso/")
-    return data
+    return parseApiResponse(pesosListResponseSchema, data, "GET /api/nutricion/peso/")
   },
 
   createPeso: async (payload: PesoCreate): Promise<PesoResponse> => {
     const { data } = await api.post("/api/nutricion/peso/", payload)
-    return data
+    return parseApiResponse(pesoResponseSchema, data, "POST /api/nutricion/peso/")
   },
 
   updatePeso: async (idPeso: number, payload: PesoPatch): Promise<PesoResponse> => {
     const { data } = await api.patch(`/api/nutricion/peso/${idPeso}`, payload)
-    return data
+    return parseApiResponse(pesoResponseSchema, data, "PATCH /api/nutricion/peso/{id}")
   },
 
   deletePeso: async (idPeso: number): Promise<void> => {
@@ -111,17 +136,21 @@ export const NutricionAPI = {
 
   getTablas: async (): Promise<TablaNutricionalResponse[]> => {
     const { data } = await api.get("/api/nutricion/tabla/")
-    return data
+    return parseApiResponse(tablasListResponseSchema, data, "GET /api/nutricion/tabla/")
   },
 
   createTabla: async (payload: TablaNutricionalCreate): Promise<TablaNutricionalResponse> => {
     const { data } = await api.post("/api/nutricion/tabla/", payload)
-    return data
+    return parseApiResponse(tablaNutricionalResponseSchema, data, "POST /api/nutricion/tabla/")
   },
 
   updateTabla: async (idTabla: number, payload: TablaNutricionalPatch): Promise<TablaNutricionalResponse> => {
     const { data } = await api.patch(`/api/nutricion/tabla/${idTabla}`, payload)
-    return data
+    return parseApiResponse(
+      tablaNutricionalResponseSchema,
+      data,
+      "PATCH /api/nutricion/tabla/{id}"
+    )
   },
 
   deleteTabla: async (idTabla: number): Promise<void> => {

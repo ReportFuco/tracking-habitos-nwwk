@@ -73,12 +73,14 @@ async def obtener_producto(id_producto: int, db: AsyncSession = Depends(get_db),
 
 @router.post("/", response_model=ProductoResponse, status_code=status.HTTP_201_CREATED)
 async def crear_producto(data: ProductoCreate, db: AsyncSession = Depends(get_db), user=Depends(current_superuser)):
-    marca = await db.scalar(select(Marca).where(Marca.id_marca == data.id_marca))
-    if not marca:
-        raise HTTPException(status_code=404, detail="Marca no encontrada")
-    existente = await db.scalar(select(Producto).where(Producto.codigo_barra == data.codigo_barra))
-    if existente:
-        raise HTTPException(status_code=409, detail="El codigo de barra ya existe")
+    if data.id_marca is not None:
+        marca = await db.scalar(select(Marca).where(Marca.id_marca == data.id_marca))
+        if not marca:
+            raise HTTPException(status_code=404, detail="Marca no encontrada")
+    if data.codigo_barra is not None:
+        existente = await db.scalar(select(Producto).where(Producto.codigo_barra == data.codigo_barra))
+        if existente:
+            raise HTTPException(status_code=409, detail="El codigo de barra ya existe")
     payload = data.model_dump()
     payload["id_categoria"], payload["id_subcategoria"] = await _validar_categoria_subcategoria(
         db=db,
@@ -100,11 +102,11 @@ async def editar_producto(id_producto: int, data: ProductoPatch, db: AsyncSessio
     cambios = data.model_dump(exclude_unset=True)
     if not cambios:
         raise HTTPException(status_code=400, detail="No se enviaron cambios")
-    if "id_marca" in cambios:
+    if cambios.get("id_marca") is not None:
         marca = await db.scalar(select(Marca).where(Marca.id_marca == cambios["id_marca"]))
         if not marca:
             raise HTTPException(status_code=404, detail="Marca no encontrada")
-    if "codigo_barra" in cambios:
+    if cambios.get("codigo_barra") is not None:
         duplicado = await db.scalar(select(Producto).where(Producto.codigo_barra == cambios["codigo_barra"], Producto.id_producto != id_producto))
         if duplicado:
             raise HTTPException(status_code=409, detail="El codigo de barra ya existe")

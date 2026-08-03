@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.auth.fastapi_users import current_superuser, current_user_or_api_key
 from app.db import get_db
@@ -10,14 +11,22 @@ from app.schemas.nutricion import TablaNutricionalCreate, TablaNutricionalPatch,
 router = APIRouter(prefix="/tabla", tags=["Nutricion · Tabla nutricional"])
 
 async def _obtener_tabla(db: AsyncSession, id_tabla: int) -> TablaNutricional:
-    tabla = await db.scalar(select(TablaNutricional).where(TablaNutricional.id_tabla == id_tabla))
+    tabla = await db.scalar(
+        select(TablaNutricional)
+        .where(TablaNutricional.id_tabla == id_tabla)
+        .options(selectinload(TablaNutricional.producto))
+    )
     if not tabla:
         raise HTTPException(status_code=404, detail="Tabla nutricional no encontrada")
     return tabla
 
 @router.get("/", response_model=list[TablaNutricionalResponse], status_code=status.HTTP_200_OK)
 async def obtener_tablas(db: AsyncSession = Depends(get_db), user=Depends(current_user_or_api_key)):
-    result = await db.execute(select(TablaNutricional).order_by(TablaNutricional.id_tabla.desc()))
+    result = await db.execute(
+        select(TablaNutricional)
+        .options(selectinload(TablaNutricional.producto))
+        .order_by(TablaNutricional.id_tabla.desc())
+    )
     return result.scalars().all()
 
 @router.get("/{id_tabla}", response_model=TablaNutricionalResponse, status_code=status.HTTP_200_OK)
@@ -32,7 +41,7 @@ async def crear_tabla(data: TablaNutricionalCreate, db: AsyncSession = Depends(g
     tabla = TablaNutricional(**data.model_dump())
     db.add(tabla)
     await db.flush()
-    await db.refresh(tabla)
+    await db.refresh(tabla, attribute_names=["producto"])
     return tabla
 
 @router.patch("/{id_tabla}", response_model=TablaNutricionalResponse, status_code=status.HTTP_200_OK)
@@ -48,7 +57,7 @@ async def editar_tabla(id_tabla: int, data: TablaNutricionalPatch, db: AsyncSess
     for field, value in cambios.items():
         setattr(tabla, field, value)
     await db.flush()
-    await db.refresh(tabla)
+    await db.refresh(tabla, attribute_names=["producto"])
     return tabla
 
 @router.delete("/{id_tabla}", status_code=status.HTTP_204_NO_CONTENT)

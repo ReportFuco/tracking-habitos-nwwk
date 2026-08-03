@@ -6,11 +6,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProductoCreate(BaseModel):
-    id_marca: int
+    id_marca: Optional[int] = Field(default=None, examples=[1])
     id_categoria: Optional[int] = Field(default=None, examples=[1])
     id_subcategoria: Optional[int] = Field(default=None, examples=[1])
     nombre_producto: str = Field(..., examples=["Yogurt protein"])
-    codigo_barra: str = Field(..., examples=["7801234567890"])
+    codigo_barra: Optional[str] = Field(default=None, examples=["7801234567890"])
     sabor: Optional[str] = Field(default=None, examples=["Frutilla"])
     formato: Optional[str] = Field(default=None, examples=["Botella"])
     contenido_neto: Optional[Decimal] = Field(default=None, examples=[350])
@@ -37,12 +37,12 @@ class ProductoPatch(BaseModel):
 
 class ProductoResponse(BaseModel):
     id_producto: int
-    id_marca: int
+    id_marca: Optional[int]
     nombre_marca: Optional[str]
     id_categoria: Optional[int]
     id_subcategoria: Optional[int]
     nombre_producto: str
-    codigo_barra: str
+    codigo_barra: Optional[str]
     categoria: Optional[str]
     subcategoria: Optional[str]
     sabor: Optional[str]

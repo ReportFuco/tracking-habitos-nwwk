@@ -64,6 +64,12 @@ class TablaNutricional(Base):
 
     producto: Mapped["Producto"] = relationship(back_populates="tablas_nutricionales")
 
+    @property
+    def nombre_producto(self) -> str | None:
+        if not self.producto:
+            return None
+        return self.producto.nombre_producto
+
 
 class MetaNutricional(Base):
     __tablename__ = "meta_nutricional"

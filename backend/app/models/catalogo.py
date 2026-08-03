@@ -71,7 +71,7 @@ class Producto(Base):
     __table_args__ = {"schema": CATALOGO_SCHEMA}
 
     id_producto: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    id_marca: Mapped[int] = mapped_column(ForeignKey(table_ref(CATALOGO_SCHEMA, "marca.id_marca")), nullable=False)
+    id_marca: Mapped[int | None] = mapped_column(ForeignKey(table_ref(CATALOGO_SCHEMA, "marca.id_marca")))
     id_categoria: Mapped[int | None] = mapped_column(
         ForeignKey(table_ref(CATALOGO_SCHEMA, "categoria_producto.id_categoria"))
     )
@@ -79,7 +79,7 @@ class Producto(Base):
         ForeignKey(table_ref(CATALOGO_SCHEMA, "subcategoria_producto.id_subcategoria"))
     )
     nombre_producto: Mapped[str] = mapped_column(String(160), nullable=False)
-    codigo_barra: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    codigo_barra: Mapped[str | None] = mapped_column(String(64), unique=True)
     sabor: Mapped[str | None] = mapped_column(String(100))
     formato: Mapped[str | None] = mapped_column(String(100))
     contenido_neto: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
@@ -91,7 +91,7 @@ class Producto(Base):
         default=datetime.now,
     )
 
-    marca: Mapped["Marca"] = relationship(back_populates="productos")
+    marca: Mapped["Marca | None"] = relationship(back_populates="productos")
     categoria_rel: Mapped["CategoriaProducto | None"] = relationship(back_populates="productos")
     subcategoria_rel: Mapped["SubcategoriaProducto | None"] = relationship(back_populates="productos")
     tablas_nutricionales: Mapped[list["TablaNutricional"]] = relationship(back_populates="producto")
