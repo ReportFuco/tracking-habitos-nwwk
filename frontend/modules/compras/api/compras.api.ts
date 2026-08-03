@@ -1,4 +1,9 @@
 import { api } from "@/lib/api"
+import { parseApiResponse } from "@/lib/api-schema"
+import {
+  cadenaResponseSchema,
+  cadenasListResponseSchema,
+} from "@/modules/compras/schemas/compras.schema"
 import {
   CadenaCreate,
   CadenaPatch,
@@ -17,12 +22,12 @@ import {
 export const ComprasAPI = {
   getCadenas: async (): Promise<CadenaResponse[]> => {
     const { data } = await api.get("/api/compras/cadena/")
-    return data
+    return parseApiResponse(cadenasListResponseSchema, data, "GET /api/compras/cadena/")
   },
 
   createCadena: async (payload: CadenaCreate): Promise<CadenaResponse> => {
     const { data } = await api.post("/api/compras/cadena/", payload)
-    return data
+    return parseApiResponse(cadenaResponseSchema, data, "POST /api/compras/cadena/")
   },
 
   updateCadena: async (idCadena: number, payload: CadenaPatch): Promise<CadenaResponse> => {

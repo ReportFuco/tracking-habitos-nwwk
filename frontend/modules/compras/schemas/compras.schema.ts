@@ -2,6 +2,30 @@ import { z } from "zod"
 
 export const UNIDADES_COMPRA = ["unidad", "kg", "g", "lt", "ml", "pack"] as const
 
+// Adapter representativo de FE-ZOD-001 (ver docs/auditoria/PLAN_FRONTEND.md y
+// lib/api-schema.ts): la respuesta del backend se valida contra estos schemas antes de
+// entrar al cache, y los tipos de `types/compras.ts` se derivan de ellos en vez de
+// declararse por separado.
+export const cadenaResponseSchema = z.object({
+  id_cadena: z.number().int(),
+  nombre_cadena: z.string(),
+  created_at: z.string(),
+})
+
+export const cadenasListResponseSchema = z.array(cadenaResponseSchema)
+
+export const cadenaCreateRequestSchema = z.object({
+  nombre_cadena: z.string(),
+})
+
+export const cadenaPatchRequestSchema = z.object({
+  nombre_cadena: z.string().nullish(),
+})
+
+export type CadenaResponse = z.infer<typeof cadenaResponseSchema>
+export type CadenaCreate = z.infer<typeof cadenaCreateRequestSchema>
+export type CadenaPatch = z.infer<typeof cadenaPatchRequestSchema>
+
 export const compraCreateSchema = z.object({
   id_local: z.number().int().positive("Selecciona un local"),
   fecha_compra: z

@@ -643,7 +643,7 @@ Criterios de aceptacion:
 
 ### FE-ZOD-001 — Patron comun para adapters validados
 
-- Estado: `[ ]`.
+- Estado: `[x]`.
 - Prioridad: P1.
 - Ubicacion sugerida: capa compartida de validacion y schemas por modulo.
 
@@ -661,6 +661,43 @@ Criterios de aceptacion:
 - Datos invalidos no llegan al cache.
 - El error informa endpoint/campos sin loguear credenciales o PII completa.
 - La convencion queda documentada para los siguientes dominios.
+
+Resultado (2026-08-03, claude):
+- Archivos: `frontend/lib/api-schema.ts` (nuevo, la convencion documentada),
+  `frontend/modules/compras/schemas/compras.schema.ts`,
+  `frontend/modules/compras/types/compras.ts`,
+  `frontend/modules/compras/api/compras.api.ts`,
+  `frontend/tests/compras-api-schema.test.ts` (nuevo).
+- Convencion (documentada en el docstring de `lib/api-schema.ts` para que FE-ZOD-002/003
+  la sigan sin releer esta tarjeta):
+  - `<recurso>ResponseSchema` / `<recurso>ListResponseSchema` en
+    `modules/<dominio>/schemas/<dominio>.schema.ts`; el tipo se deriva con
+    `z.infer<typeof schema>`, nunca una interface manual en paralelo.
+  - `types/<dominio>.ts` re-exporta esos tipos (`export type { X } from ".../schema"`) en
+    vez de declararlos de nuevo — coincide con la regla ya escrita en
+    `docs/auditoria/README.md` ("z.infer debe ser la fuente de tipos").
+  - El adapter llama `parseApiResponse(schema, response.data, "METODO endpoint")` antes de
+    retornar. Solo se valida la respuesta, no el request: lo que el usuario tipeo ya paso
+    por el schema de formulario antes de llegar al adapter.
+  - `parseApiResponse` lanza `ApiSchemaError` (endpoint + lista de `{path, message}`) si
+    no matchea. Nunca se serializa el payload completo ni el valor que fallo, solo la
+    ruta del campo y el mensaje generico de Zod — verificado con test (ver abajo).
+  - Estrategia de buster: si un cambio de schema vuelve incompatible el cache ya
+    persistido, subir `QUERY_CACHE_SCHEMA_VERSION` en el mismo cambio; un campo opcional
+    nuevo no lo requiere.
+- Adapter representativo elegido: `ComprasAPI.getCadenas` (lista) y `.createCadena`
+  (alta), sobre `compras.cadena` — shape chico y sin nullables, bueno para dejar el
+  patron legible sin ruido. `CadenaCreate`/`CadenaPatch`/`CadenaResponse` en
+  `types/compras.ts` pasan de interfaces manuales a re-exports de los tipos inferidos.
+- Pruebas: `frontend/tests/compras-api-schema.test.ts` (5 casos): lista valida parsea
+  bien, lista con un campo invalido rechaza con `ApiSchemaError`, el error identifica
+  endpoint+campo sin exponer el valor invalido (con un valor tipo "token secreto" como
+  sentinela), alta valida resuelve, alta incompleta rechaza. `npm run lint`,
+  `npx tsc --noEmit`, `npm test` (5 archivos, 30/30), `npm run build` (42 rutas).
+- Pendientes o riesgos residuales: es un unico adapter de referencia, no una cobertura de
+  dominio. `FE-ZOD-002` (auth/perfil/entrenamiento/finanzas) y `FE-ZOD-003`
+  (compras/nutricion restante) son las que aplican esta convencion al resto de las
+  respuestas persistidas.
 
 ### FE-ZOD-002 — Contratos criticos de auth, perfil, finanzas y entrenamiento
 

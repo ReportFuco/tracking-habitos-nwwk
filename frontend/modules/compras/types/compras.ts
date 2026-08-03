@@ -1,16 +1,7 @@
-export interface CadenaCreate {
-  nombre_cadena: string
-}
-
-export interface CadenaPatch {
-  nombre_cadena?: string | null
-}
-
-export interface CadenaResponse {
-  id_cadena: number
-  nombre_cadena: string
-  created_at: string
-}
+// Derivados de los schemas Zod en modules/compras/schemas/compras.schema.ts (FE-ZOD-001):
+// el schema es la fuente de verdad, esto es solo el punto de import para el resto del
+// modulo.
+export type { CadenaCreate, CadenaPatch, CadenaResponse } from "@/modules/compras/schemas/compras.schema"
 
 export interface LocalCreate {
   id_cadena?: number | null
