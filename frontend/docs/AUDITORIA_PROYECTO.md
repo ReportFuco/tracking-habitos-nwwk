@@ -1,5 +1,9 @@
 # Auditoria tecnica del frontend
 
+> Documento historico (corte original: 2026-04-30). La auditoria vigente y su backlog
+> ejecutable estan en `../../docs/auditoria/README.md`. No usar este archivo como fuente de
+> estado actual sin contrastarlo con el codigo.
+
 Fecha: 2026-04-30
 
 ## Alcance

@@ -1,3 +1,6 @@
+# NO se usa en producción. Producción corre bare-metal vía systemd, sin Docker.
+# Ver DEPLOY.md en la raíz del repo para el flujo real (incluyendo por qué la DB
+# de acá abajo se llama distinto a la de producción).
 services:
   db:
     image: postgres:16

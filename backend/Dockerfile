@@ -1,3 +1,5 @@
+# NO se usa en producción. Producción corre bare-metal vía systemd, sin Docker.
+# Ver DEPLOY.md en la raíz del repo para el flujo real.
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

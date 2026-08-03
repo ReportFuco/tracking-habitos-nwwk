@@ -1,7 +1,8 @@
-# Notas de trabajo del monorepo. Contienen credenciales de infraestructura en texto
-# plano, no deben salir del equipo. Los docs de cada subproyecto (backend/docs,
-# frontend/docs) si se versionan: por eso el patron va anclado a la raiz.
-/docs/
+# Notas operativas de la raiz. Pueden contener credenciales y no deben salir del equipo.
+# La auditoria saneada es la unica excepcion versionable dentro de docs/.
+/docs/*
+!/docs/auditoria/
+!/docs/auditoria/**
 
 # Red de seguridad: ningun .env real se versiona, solo los .example.
 .env

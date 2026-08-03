@@ -1,5 +1,9 @@
 # Avances de la auditoria
 
+> Seguimiento historico iniciado en 2026-04-30. El plan vigente con IDs, dependencias,
+> criterios de aceptacion y verificaciones esta en
+> `../../docs/auditoria/PLAN_FRONTEND.md`.
+
 Seguimiento de las tareas definidas en `docs/AUDITORIA_PROYECTO.md`.
 
 Convenciones de estado:
