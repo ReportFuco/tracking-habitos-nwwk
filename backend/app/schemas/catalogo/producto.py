@@ -38,6 +38,7 @@ class ProductoPatch(BaseModel):
 class ProductoResponse(BaseModel):
     id_producto: int
     id_marca: int
+    nombre_marca: Optional[str]
     id_categoria: Optional[int]
     id_subcategoria: Optional[int]
     nombre_producto: str

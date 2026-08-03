@@ -17,6 +17,7 @@ async def _obtener_producto(db: AsyncSession, id_producto: int) -> Producto:
         .options(
             selectinload(Producto.categoria_rel),
             selectinload(Producto.subcategoria_rel),
+            selectinload(Producto.marca),
         )
     )
     if not producto:
@@ -60,6 +61,7 @@ async def obtener_productos(db: AsyncSession = Depends(get_db), user=Depends(cur
         .options(
             selectinload(Producto.categoria_rel),
             selectinload(Producto.subcategoria_rel),
+            selectinload(Producto.marca),
         )
         .order_by(Producto.nombre_producto)
     )
@@ -88,7 +90,7 @@ async def crear_producto(data: ProductoCreate, db: AsyncSession = Depends(get_db
     await db.flush()
     await db.refresh(
         producto,
-        attribute_names=["categoria_rel", "subcategoria_rel"],
+        attribute_names=["categoria_rel", "subcategoria_rel", "marca"],
     )
     return producto
 
@@ -127,7 +129,7 @@ async def editar_producto(id_producto: int, data: ProductoPatch, db: AsyncSessio
     await db.flush()
     await db.refresh(
         producto,
-        attribute_names=["categoria_rel", "subcategoria_rel"],
+        attribute_names=["categoria_rel", "subcategoria_rel", "marca"],
     )
     return producto
 

@@ -109,3 +109,9 @@ class Producto(Base):
         if not self.subcategoria_rel:
             return None
         return self.subcategoria_rel.nombre_subcategoria
+
+    @property
+    def nombre_marca(self) -> str | None:
+        if not self.marca:
+            return None
+        return self.marca.nombre_marca
