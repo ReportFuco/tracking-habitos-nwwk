@@ -701,7 +701,7 @@ Resultado (2026-08-03, claude):
 
 ### FE-ZOD-002 — Contratos criticos de auth, perfil, finanzas y entrenamiento
 
-- Estado: `[~]`.
+- Estado: `[x]`.
 - Prioridad: P1.
 - Depende de: `FE-ZOD-001`.
 
@@ -800,8 +800,37 @@ Resultado (2026-08-03, claude — parcial, solo item 1 del orden sugerido):
   de un array anidado (series/items), y el caso de 404 real de movimientos sin tocar.
   `npm run lint`, `npx tsc --noEmit`, `npm test` (8 archivos, 51/51), `npm run build`
   (42 rutas).
-- Pendiente: item 4 (catalogos de optimismo offline: gimnasios, ejercicios, musculos)
-  sigue sin tocar, por lo de arriba. Por eso la tarjeta queda `[~]`, no `[x]`.
+**Resultado, parte 3 — item 4, catalogos de optimismo offline (2026-08-03, claude):**
+- Archivos: `frontend/modules/entrenamientos/schemas/entrenamientos.schema.ts`,
+  `frontend/modules/entrenamientos/types/entrenamientos.ts`,
+  `frontend/modules/entrenamientos/api/entrenamientos.api.ts`,
+  `frontend/tests/entrenamientos-catalogo-schema.test.ts` (nuevo).
+- Decision tecnica (dos tratamientos distintos segun el riesgo real de cada endpoint, no
+  un solo patron forzado para los tres):
+  - **Gimnasios**: no tenia ningun normalizador ni validacion (`return data` crudo). Se le
+    aplico el patron estricto de FE-ZOD-001 sin reservas: `gimnasioResponseSchema` +
+    `parseApiResponse` en los 4 metodos (`getGimnasios`, `getGimnasioById`,
+    `createGimnasio`, `updateGimnasio`).
+  - **Ejercicios/musculos**: `normalizeEjercicio`/`normalizeMusculo`/
+    `normalizeSubcategoriaMusculo` ya toleran variantes de nombre de campo a proposito
+    (`id` vs `id_ejercicio`, `nombre` vs `nombre_ejercicio`, `tipo` vs `tipo_ejercicio`,
+    y variantes tipo `{value, label}` de un combobox). Reemplazar esa logica por Zod
+    estricto arriesgaba romper esa tolerancia sin poder probar contra todas las variantes
+    reales que cubre. Se dejo la logica intacta y se le saco lo *silencioso*: antes un
+    item invalido se descartaba con `.filter(x => x !== null)` sin dejar rastro (el
+    hallazgo original de `FRONTEND.md`, "normalizaciones silenciosas que ocultan
+    contratos rotos"); ahora cada descarte pasa por `logDescarte()`, que hace
+    `console.error` (no solo en dev) con el endpoint y el motivo, sin tumbar el resto de
+    la lista — un catalogo grande (dataset publico + ejercicios propios) no deberia
+    desaparecer entero por una fila mala.
+- Pruebas: `entrenamientos-catalogo-schema.test.ts` (6 casos) — gimnasio valido parsea,
+  gimnasio sin campo obligatorio rechaza, alta de gimnasio parsea; ejercicio con nombres
+  de campo legacy (`id`/`nombre_ejercicio`/`tipo`) sigue aceptandose igual que antes,
+  un ejercicio invalido se descarta y queda logueado (se espia `console.error`), una
+  subcategoria invalida se descarta sin tumbar el musculo ni el resto del array.
+  `npm run lint`, `npx tsc --noEmit`, `npm test` (9 archivos, 57/57), `npm run build`
+  (42 rutas).
+- Con esto se cierran los 4 items del orden sugerido de la tarjeta; pasa a `[x]`.
 
 **Corregido aparte (2026-08-03, claude):** el bug de `DELETE /api/usuarios/{id_usuario}`
 detectado de paso arriba. `eliminar_usuario_soft` filtraba por `User.id == id_usuario`

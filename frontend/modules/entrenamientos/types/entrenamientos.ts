@@ -16,17 +16,9 @@ export interface GimnasioEdit {
   longitud?: number | null
 }
 
-export interface GimnasioResponse {
-  id_gimnasio: number
-  nombre_gimnasio: string
-  nombre_cadena: string | null
-  direccion: string
-  comuna: string | null
-  latitud: number
-  longitud: number
-  activo: boolean
-  created_at: string
-}
+// Derivado del schema Zod en modules/entrenamientos/schemas/entrenamientos.schema.ts
+// (FE-ZOD-002).
+export type { GimnasioResponse } from "@/modules/entrenamientos/schemas/entrenamientos.schema"
 
 export interface EjercicioCreate {
   nombre: string

@@ -72,10 +72,28 @@ export type SerieFuerzaCreateForm = z.infer<typeof serieFuerzaCreateSchema>
 export type SerieFuerzaPatchForm = z.infer<typeof serieFuerzaPatchSchema>
 
 // Adapter validado (FE-ZOD-001/002): entreno activo, apertura, cierre y series son las
-// respuestas persistidas que maneja la cola offline (FE-OFF-002/003/004). Gimnasios,
-// ejercicios y musculos quedan afuera a proposito -- ya tienen normalizadores tolerantes
-// a variantes de campo entre datos cacheados viejos y nuevos, y reemplazarlos por Zod
-// estricto es un cambio mas delicado que se deja para cuando se cubra el catalogo.
+// respuestas persistidas que maneja la cola offline (FE-OFF-002/003/004).
+export const gimnasioResponseSchema = z.object({
+  id_gimnasio: z.number().int(),
+  nombre_gimnasio: z.string(),
+  nombre_cadena: z.string().nullable(),
+  direccion: z.string(),
+  comuna: z.string().nullable(),
+  latitud: z.number(),
+  longitud: z.number(),
+  activo: z.boolean(),
+  created_at: z.string(),
+})
+
+export const gimnasiosListResponseSchema = z.array(gimnasioResponseSchema)
+
+export type GimnasioResponse = z.infer<typeof gimnasioResponseSchema>
+
+// Ejercicios y musculos quedan afuera de este patron estricto a proposito -- ya tienen
+// normalizadores tolerantes a variantes de nombre de campo (id vs id_ejercicio, nombre vs
+// nombre_ejercicio, etc.) en entrenamientos.api.ts. Reemplazarlos por Zod estricto podia
+// romper esa tolerancia; en cambio se les saco lo silencioso (loguean lo que descartan)
+// sin tocar la logica.
 const entrenoFuerzaBaseSchema = z.object({
   estado: z.string(),
   inicio_at: z.string(),

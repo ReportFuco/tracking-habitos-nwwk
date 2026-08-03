@@ -4,6 +4,8 @@ import {
   entrenoFuerzaResponseSchema,
   entrenoFuerzaSerieResponseSchema,
   entrenosFuerzaListResponseSchema,
+  gimnasioResponseSchema,
+  gimnasiosListResponseSchema,
   serieFuerzaResponseSchema,
 } from "@/modules/entrenamientos/schemas/entrenamientos.schema"
 import {
@@ -55,8 +57,19 @@ const asListaDeTexto = (valor: unknown): string[] | null => {
   return items.length > 0 ? items : null
 }
 
-const normalizeEjercicio = (item: unknown): EjercicioResponse | null => {
+// Ejercicios y musculos vienen de un catalogo publico importado mas los que cada usuario
+// crea a mano, y el backend fue cambiando de nombre de campo con el tiempo (id vs
+// id_ejercicio, tipo vs tipo_ejercicio...). Estos normalizadores toleran esa variacion a
+// proposito -- no se reemplazan por Zod estricto, que rompería esa tolerancia -- pero
+// antes descartaban un item invalido en silencio. Ahora queda logueado (no solo en dev:
+// esto es evidencia de un contrato roto, ver FE-ZOD-002 item 4).
+const logDescarte = (endpoint: string, motivo: string, item: unknown) => {
+  console.error(`${endpoint}: se descarto un item invalido (${motivo})`, item)
+}
+
+const normalizeEjercicio = (item: unknown, endpoint: string): EjercicioResponse | null => {
   if (!item || typeof item !== "object") {
+    logDescarte(endpoint, "no es un objeto", item)
     return null
   }
 
@@ -68,6 +81,10 @@ const normalizeEjercicio = (item: unknown): EjercicioResponse | null => {
   const tipoLegacy = String(record.tipo ?? record.tipo_ejercicio ?? "").trim()
 
   if (!Number.isFinite(id) || id <= 0 || !nombre) {
+    logDescarte(endpoint, "sin id/nombre validos", {
+      id: record.id_ejercicio ?? record.id,
+      nombre: record.nombre ?? record.nombre_ejercicio,
+    })
     return null
   }
 
@@ -99,8 +116,13 @@ const normalizeEjercicio = (item: unknown): EjercicioResponse | null => {
   }
 }
 
-const normalizeSubcategoriaMusculo = (item: unknown, fallbackMusculoId: number): SubcategoriaMusculo | null => {
+const normalizeSubcategoriaMusculo = (
+  item: unknown,
+  fallbackMusculoId: number,
+  endpoint: string,
+): SubcategoriaMusculo | null => {
   if (!item || typeof item !== "object") {
+    logDescarte(endpoint, "subcategoria que no es un objeto", item)
     return null
   }
 
@@ -111,6 +133,10 @@ const normalizeSubcategoriaMusculo = (item: unknown, fallbackMusculoId: number):
   const codigo = String(record.codigo ?? record.value ?? nombre).trim()
 
   if (!Number.isFinite(id) || id <= 0 || !Number.isFinite(idMusculo) || idMusculo <= 0 || !nombre) {
+    logDescarte(endpoint, "subcategoria sin id/musculo/nombre validos", {
+      id: record.id_subcategoria_musculo ?? record.id,
+      nombre: record.nombre ?? record.label,
+    })
     return null
   }
 
@@ -123,8 +149,9 @@ const normalizeSubcategoriaMusculo = (item: unknown, fallbackMusculoId: number):
   }
 }
 
-const normalizeMusculo = (item: unknown): Musculo | null => {
+const normalizeMusculo = (item: unknown, endpoint: string): Musculo | null => {
   if (!item || typeof item !== "object") {
+    logDescarte(endpoint, "no es un objeto", item)
     return null
   }
 
@@ -134,6 +161,10 @@ const normalizeMusculo = (item: unknown): Musculo | null => {
   const codigo = String(record.codigo ?? record.value ?? record.tipo ?? nombre).trim()
 
   if (!Number.isFinite(id) || id <= 0 || !nombre) {
+    logDescarte(endpoint, "sin id/nombre validos", {
+      id: record.id_musculo ?? record.id,
+      nombre: record.nombre ?? record.label ?? record.tipo,
+    })
     return null
   }
 
@@ -143,7 +174,7 @@ const normalizeMusculo = (item: unknown): Musculo | null => {
     nombre,
     activo: typeof record.activo === "boolean" ? record.activo : true,
     subcategorias: toArray<unknown>(record.subcategorias)
-      .map((subcategoria) => normalizeSubcategoriaMusculo(subcategoria, id))
+      .map((subcategoria) => normalizeSubcategoriaMusculo(subcategoria, id, endpoint))
       .filter((subcategoria): subcategoria is SubcategoriaMusculo => subcategoria !== null),
   }
 }
@@ -174,11 +205,14 @@ export const EntrenamientosAPI = {
       Object.entries(params ?? {}).filter(([, valor]) => valor !== undefined && valor !== ""),
     )
 
-    const { data } = await api.get("/api/entrenamientos/ejercicios/", {
+    const endpoint = "GET /api/entrenamientos/ejercicios/"
+    const { data } = await api.get(endpoint, {
       params: Object.keys(activos).length > 0 ? activos : undefined,
     })
 
-    return toArray<unknown>(data).map(normalizeEjercicio).filter((item): item is EjercicioResponse => item !== null)
+    return toArray<unknown>(data)
+      .map((item) => normalizeEjercicio(item, endpoint))
+      .filter((item): item is EjercicioResponse => item !== null)
   },
 
   getEquipamientos: async (): Promise<string[]> => {
@@ -188,13 +222,18 @@ export const EntrenamientosAPI = {
   },
 
   createEjercicio: async (payload: EjercicioCreate): Promise<EjercicioResponse> => {
-    const { data } = await api.post("/api/entrenamientos/ejercicios/", toEjercicioPayload(payload))
-    return normalizeEjercicio(data) ?? (data as EjercicioResponse)
+    const endpoint = "POST /api/entrenamientos/ejercicios/"
+    const { data } = await api.post(endpoint, toEjercicioPayload(payload))
+    return normalizeEjercicio(data, endpoint) ?? (data as EjercicioResponse)
   },
 
   updateEjercicio: async (idEjercicio: number, payload: EjercicioEdit): Promise<EjercicioResponse> => {
-    const { data } = await api.patch(`/api/entrenamientos/ejercicios/${idEjercicio}`, toEjercicioPayload(payload))
-    return normalizeEjercicio(data) ?? (data as EjercicioResponse)
+    const endpoint = "PATCH /api/entrenamientos/ejercicios/:id"
+    const { data } = await api.patch(
+      `/api/entrenamientos/ejercicios/${idEjercicio}`,
+      toEjercicioPayload(payload),
+    )
+    return normalizeEjercicio(data, endpoint) ?? (data as EjercicioResponse)
   },
 
   deleteEjercicio: async (idEjercicio: number): Promise<void> => {
@@ -202,31 +241,38 @@ export const EntrenamientosAPI = {
   },
 
   getMusculos: async (): Promise<Musculo[]> => {
-    const { data } = await api.get("/api/entrenamientos/ejercicios/musculos")
+    const endpoint = "GET /api/entrenamientos/ejercicios/musculos"
+    const { data } = await api.get(endpoint)
 
-    return toArray<unknown>(data).map(normalizeMusculo).filter((item): item is Musculo => item !== null)
+    return toArray<unknown>(data)
+      .map((item) => normalizeMusculo(item, endpoint))
+      .filter((item): item is Musculo => item !== null)
   },
 
   getGimnasios: async (q?: string): Promise<GimnasioResponse[]> => {
     const { data } = await api.get("/api/entrenamientos/gimnasio/", {
       params: q ? { q } : undefined,
     })
-    return data
+    return parseApiResponse(gimnasiosListResponseSchema, data, "GET /api/entrenamientos/gimnasio/")
   },
 
   getGimnasioById: async (idGimnasio: number): Promise<GimnasioResponse> => {
     const { data } = await api.get(`/api/entrenamientos/gimnasio/${idGimnasio}`)
-    return data
+    return parseApiResponse(gimnasioResponseSchema, data, "GET /api/entrenamientos/gimnasio/:id")
   },
 
   createGimnasio: async (payload: GimnasioCreate): Promise<GimnasioResponse> => {
     const { data } = await api.post("/api/entrenamientos/gimnasio/", payload)
-    return data
+    return parseApiResponse(gimnasioResponseSchema, data, "POST /api/entrenamientos/gimnasio/")
   },
 
   updateGimnasio: async (idGimnasio: number, payload: GimnasioEdit): Promise<GimnasioResponse> => {
     const { data } = await api.patch(`/api/entrenamientos/gimnasio/${idGimnasio}`, payload)
-    return data
+    return parseApiResponse(
+      gimnasioResponseSchema,
+      data,
+      "PATCH /api/entrenamientos/gimnasio/:id",
+    )
   },
 
   deleteGimnasio: async (idGimnasio: number): Promise<void> => {
