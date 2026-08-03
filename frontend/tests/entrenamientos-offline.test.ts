@@ -25,6 +25,7 @@ import {
   entrenamientosMutationKeys,
   isSeriePendiente,
   registerEntrenamientosMutationDefaults,
+  runEntrenoActivoAction,
 } from "@/modules/entrenamientos/offline/entrenamientos-offline"
 import type {
   EntrenoFuerzaSerieResponse,
@@ -273,5 +274,88 @@ describe("cola offline del entreno activo", () => {
 
     expect(queryClient.getQueryData(ACTIVO_KEY)).toBeNull()
     expect(EntrenamientosAPI.closeEntrenoFuerzaActivo).not.toHaveBeenCalled()
+  })
+
+  it("cerrar despues de series encoladas se sincroniza detras, respetando el orden del scope", async () => {
+    const queryClient = crearClient()
+    await sembrarEntrenoActivo(queryClient)
+
+    const secuencia: string[] = []
+    vi.mocked(EntrenamientosAPI.createSerieFuerza).mockImplementation(async (payload) => {
+      secuencia.push(`serie:${payload.repeticiones}`)
+      return {
+        id_fuerza_detalle: payload.repeticiones,
+        es_calentamiento: payload.es_calentamiento,
+        cantidad_peso: payload.cantidad_peso,
+        repeticiones: payload.repeticiones,
+      }
+    })
+    vi.mocked(EntrenamientosAPI.closeEntrenoFuerzaActivo).mockImplementation(async () => {
+      secuencia.push("cierre")
+      return {
+        id_entrenamiento: 3,
+        id_entrenamiento_fuerza: 7,
+        estado: "cerrado",
+        inicio_at: "2026-07-28T10:00:00",
+        fin_at: "2026-07-28T11:00:00",
+      }
+    })
+
+    onlineManager.setOnline(false)
+    void encolarSerie(queryClient, serie(8))
+    void encolarSerie(queryClient, serie(10))
+    void queryClient
+      .getMutationCache()
+      .build(queryClient, { mutationKey: entrenamientosMutationKeys.entrenoClose })
+      .execute(undefined)
+      .catch(() => undefined)
+    await settle()
+
+    // El cierre ya vacio el activo en su onMutate, antes de reconectar.
+    expect(queryClient.getQueryData(ACTIVO_KEY)).toBeNull()
+
+    onlineManager.setOnline(true)
+    await queryClient.resumePausedMutations()
+
+    expect(secuencia).toEqual(["serie:8", "serie:10", "cierre"])
+  })
+})
+
+describe("runEntrenoActivoAction: wrapper de series y cierre", () => {
+  it("sin conexion: encola con mutate() y resuelve queued al instante, sin esperar a reconectar", async () => {
+    const mutate = vi.fn()
+    const mutateAsync = vi.fn().mockResolvedValue(undefined)
+    onlineManager.setOnline(false)
+
+    const resultado = await runEntrenoActivoAction({ mutate, mutateAsync }, serie(8))
+
+    expect(resultado).toEqual({ ok: true, queued: true })
+    expect(mutate).toHaveBeenCalledWith(serie(8))
+    expect(mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it("con conexion: espera mutateAsync y no marca queued", async () => {
+    const mutate = vi.fn()
+    const mutateAsync = vi.fn().mockResolvedValue(undefined)
+    onlineManager.setOnline(true)
+
+    const resultado = await runEntrenoActivoAction({ mutate, mutateAsync }, undefined)
+
+    expect(resultado).toEqual({ ok: true })
+    expect(mutateAsync).toHaveBeenCalledTimes(1)
+    expect(mutate).not.toHaveBeenCalled()
+  })
+
+  it("con conexion y backend que rechaza: devuelve el mensaje sin marcar queued", async () => {
+    const mutate = vi.fn()
+    const mutateAsync = vi.fn().mockRejectedValue(new Error("rechazada por el backend"))
+    onlineManager.setOnline(true)
+
+    const resultado = await runEntrenoActivoAction({ mutate, mutateAsync }, serie(8))
+
+    expect(resultado.ok).toBe(false)
+    if (!resultado.ok) {
+      expect(resultado.message).toBe("rechazada por el backend")
+    }
   })
 })

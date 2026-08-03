@@ -275,8 +275,10 @@ export function EntrenamientoActivoCard() {
     const resultado = await cerrarEntrenoFuerzaActivo()
 
     if (resultado.ok) {
-      toast.success("Sesion cerrada", {
-        description: "Tu entrenamiento ya paso al historico.",
+      toast.success(resultado.queued ? "Sesion guardada sin conexion" : "Sesion cerrada", {
+        description: resultado.queued
+          ? "Ya no aparece como activa; se terminara de cerrar al recuperar la conexion."
+          : "Tu entrenamiento ya paso al historico.",
       })
       router.push("/app/entrenamientos")
       return

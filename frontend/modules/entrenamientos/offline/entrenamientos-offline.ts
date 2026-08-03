@@ -1,7 +1,8 @@
 "use client"
 
-import type { QueryClient } from "@tanstack/react-query"
+import type { QueryClient, UseMutationResult } from "@tanstack/react-query"
 import { queryKeys } from "@/lib/query-keys"
+import { isAppOffline, runOnlineOnlyAction } from "@/lib/online-only"
 import { EntrenamientosAPI } from "@/modules/entrenamientos/api/entrenamientos.api"
 import type {
   EjercicioResponse,
@@ -154,4 +155,28 @@ export const registerEntrenamientosMutationDefaults = (queryClient: QueryClient)
     },
     onSettled: invalidateEntreno,
   })
+}
+
+export type QueueableActionResult = Promise<
+  { ok: true; queued?: boolean } | { ok: false; message: string }
+>
+
+/**
+ * Ejecuta serieCreate/entrenoClose sin bloquear la UI offline.
+ *
+ * Ambas mutations comparten scope (ENTRENO_ACTIVO_SCOPE_ID), asi que TanStack ya las
+ * reenvia de a una y en el orden en que se encolaron; lo unico que faltaba era no
+ * esperar mutateAsync cuando no hay red, porque con networkMode "online" esa promesa
+ * no resuelve hasta reconectar y deja el formulario en isPending para siempre.
+ */
+export const runEntrenoActivoAction = async <TData, TVariables>(
+  mutation: Pick<UseMutationResult<TData, Error, TVariables>, "mutate" | "mutateAsync">,
+  variables: TVariables,
+): QueueableActionResult => {
+  if (isAppOffline()) {
+    mutation.mutate(variables)
+    return { ok: true, queued: true }
+  }
+
+  return runOnlineOnlyAction(() => mutation.mutateAsync(variables))
 }

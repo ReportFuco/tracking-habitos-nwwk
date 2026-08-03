@@ -169,7 +169,7 @@ Resultado (2026-08-02, claude):
 
 ### FE-OFF-002 — Desbloquear la cola ya existente de series y cierre
 
-- Estado: `[ ]`.
+- Estado: `[x]`.
 - Prioridad: P0.
 - Archivos: `frontend/modules/entrenamientos/hooks/useEntrenamientos.tsx`,
   `frontend/modules/entrenamientos/components/entrenamiento-activo-card.tsx`,
@@ -203,6 +203,47 @@ Pruebas minimas:
 - Extender `frontend/tests/entrenamientos-offline.test.ts`.
 - Agregar una prueba del wrapper/hook que verifique que el resultado `queued` resuelve sin
   reconectar.
+
+Resultado (2026-08-02, claude):
+- Archivos: `frontend/modules/entrenamientos/offline/entrenamientos-offline.ts`,
+  `frontend/modules/entrenamientos/hooks/useEntrenamientos.tsx`,
+  `frontend/modules/entrenamientos/components/entrenamiento-activo-card.tsx`,
+  `frontend/tests/entrenamientos-offline.test.ts`.
+- Decisiones:
+  - Nuevo `runEntrenoActivoAction(mutation, variables)` en `entrenamientos-offline.ts`
+    (junto a los defaults, porque ya sabe que serieCreate/entrenoClose comparten scope):
+    sin red llama `mutation.mutate(variables)` sin esperar y devuelve
+    `{ ok: true, queued: true }` al instante; con red usa `runOnlineOnlyAction` (de
+    `lib/online-only.ts`, agregado en FE-OFF-001) para esperar `mutateAsync` y traducir
+    el error. Es generico sobre `Pick<UseMutationResult<...>, "mutate" | "mutateAsync">`
+    para poder testearlo con mocks planos, sin QueryClient.
+  - `useEntrenamientos.tsx`: `cerrarEntrenoFuerzaActivo`/`agregarSerieFuerza` pasan a usar
+    este wrapper en vez del `runAction` viejo (que esperaba `mutateAsync` siempre). Se
+    quito ese `runAction` local, ya sin usos. `submitting` ahora excluye
+    `entrenoCloseMutation`/`serieCreateMutation` cuando estan `isPaused` (mismo patron que
+    `submittingMovimiento` en finanzas), para no bloquear el formulario mientras la cola
+    espera reconexion.
+  - `entrenamiento-activo-card.tsx`: el toast de cierre distingue "Sesion guardada sin
+    conexion" (queued) de "Sesion cerrada" (online), igual que hace
+    `movimiento-form.tsx` en finanzas. No se agrego toast de "queued" para agregar serie
+    a proposito: la insignia "Pendiente" (`CloudOff`, ya existente en
+    `registro-serie.tsx`/`series-sesion.tsx` via `isSeriePendiente`) ya confirma la cola
+    al instante y un toast por serie seria ruido (una rutina guarda una serie por
+    minuto).
+  - La garantia de orden (serie antes que cierre) no es codigo nuevo: ya la daba el
+    `scope: { id: ENTRENO_ACTIVO_SCOPE_ID }` compartido en `registerEntrenamientosMutationDefaults`
+    (MutationCache.canRun solo corre una mutation por scope a la vez). Lo que faltaba era
+    que la UI no se quedara esperando `mutateAsync` para poder seguir encolando.
+- Pruebas: `frontend/tests/entrenamientos-offline.test.ts` — nuevo caso de integracion
+  "cerrar despues de series encoladas se sincroniza detras, respetando el orden del
+  scope" (dos series + cierre offline, reconecta, verifica orden exacto
+  `serie:8, serie:10, cierre`) y tres casos unitarios de `runEntrenoActivoAction`
+  (offline encola sin llamar mutateAsync, online espera mutateAsync sin marcar queued,
+  online y rechazo devuelve el mensaje). `npm run lint`, `npx tsc --noEmit`, `npm test`
+  (4 archivos, 20/20), `npm run build` (42 rutas).
+- Pendientes o riesgos residuales: no se agrego una prueba end-to-end de PWA/navegador
+  real (eso es `FE-PWA-002`, depende de `FE-PWA-001`). `registro-serie.tsx` no necesito
+  cambios de codigo (solo se beneficia del `submitting` corregido en el hook).
 
 ### FE-OFF-003 — Idempotencia de entrenamiento end-to-end
 

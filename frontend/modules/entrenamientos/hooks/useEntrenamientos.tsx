@@ -7,7 +7,10 @@ import { getFriendlyErrorMessage } from "@/lib/error-messages"
 import { runOnlineOnlyAction } from "@/lib/online-only"
 import { queryKeys } from "@/lib/query-keys"
 import { EntrenamientosAPI } from "@/modules/entrenamientos/api/entrenamientos.api"
-import { entrenamientosMutationKeys } from "@/modules/entrenamientos/offline/entrenamientos-offline"
+import {
+  entrenamientosMutationKeys,
+  runEntrenoActivoAction,
+} from "@/modules/entrenamientos/offline/entrenamientos-offline"
 import {
   EntrenoFuerzaCreate,
   EntrenoFuerzaResponse,
@@ -89,22 +92,6 @@ const useEntrenamientosState = () => {
   const invalidate = useCallback(async (...keys: readonly (readonly unknown[])[]) => {
     await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })))
   }, [queryClient])
-
-  // Cierre y alta de serie usan mutations con defaults registrados para reconstruirse
-  // offline (ver app/providers.tsx), pero hoy siguen esperando mutateAsync sin chequear
-  // la red: quedan pending/paused hasta reconectar en vez de confirmar la cola al
-  // instante. Ese arreglo especifico es FE-OFF-002; por eso estas dos siguen con este
-  // runAction sin gate y el resto de mutaciones (sin cola offline) pasa a
-  // runOnlineOnlyAction.
-  const runAction = useCallback(async <T,>(action: () => Promise<T>) => {
-    try {
-      await action()
-      return { ok: true as const }
-    } catch (err) {
-      const message = getFriendlyErrorMessage(err)
-      return { ok: false as const, message }
-    }
-  }, [])
 
   const gimnasioCreateMutation = useMutation({
     mutationFn: EntrenamientosAPI.createGimnasio,
@@ -233,8 +220,10 @@ const useEntrenamientosState = () => {
       gimnasioUpdateMutation.isPending ||
       gimnasioDeleteMutation.isPending ||
       entrenoCreateMutation.isPending ||
-      entrenoCloseMutation.isPending ||
-      serieCreateMutation.isPending ||
+      // Pausada offline: no cuenta como "enviando" o el formulario queda bloqueado hasta
+      // reconectar aunque la operacion ya haya quedado confirmada en cola.
+      (entrenoCloseMutation.isPending && !entrenoCloseMutation.isPaused) ||
+      (serieCreateMutation.isPending && !serieCreateMutation.isPaused) ||
       serieUpdateMutation.isPending ||
       serieDeleteMutation.isPending,
     error: error ? getFriendlyErrorMessage(error) : null,
@@ -253,9 +242,9 @@ const useEntrenamientosState = () => {
       runOnlineOnlyAction(() => gimnasioDeleteMutation.mutateAsync(idGimnasio)),
     iniciarEntrenoFuerza: (payload: EntrenoFuerzaCreate) =>
       runOnlineOnlyAction(() => entrenoCreateMutation.mutateAsync(payload)),
-    cerrarEntrenoFuerzaActivo: () => runAction(() => entrenoCloseMutation.mutateAsync()),
+    cerrarEntrenoFuerzaActivo: () => runEntrenoActivoAction(entrenoCloseMutation, undefined),
     agregarSerieFuerza: (payload: SerieFuerzaCreate) =>
-      runAction(() => serieCreateMutation.mutateAsync(payload)),
+      runEntrenoActivoAction(serieCreateMutation, payload),
     editarSerieFuerza: (idFuerzaDetalle: number, payload: SerieFuerzaPatch) =>
       runOnlineOnlyAction(() => serieUpdateMutation.mutateAsync({ idFuerzaDetalle, payload })),
     eliminarSerieFuerza: (idFuerzaDetalle: number) =>
