@@ -509,7 +509,7 @@ Criterios de aceptacion:
 
 ### FE-TQ-001 — Alinear dependencias y ownership
 
-- Estado: `[ ]`.
+- Estado: `[x]`.
 - Prioridad: P1.
 - Archivos: `frontend/package.json`, lockfile y tests.
 
@@ -526,6 +526,27 @@ Criterios de aceptacion:
 - Una sola linea de versiones TanStack compatible.
 - `npm ls @tanstack/query-core` no muestra duplicados por el frontend.
 - Tests de restauracion pasan.
+
+Resultado (2026-08-03, claude):
+- Archivos: `frontend/package.json`, `frontend/package-lock.json`.
+- Decisiones:
+  - `@tanstack/react-query`, `-devtools` y `-persist-client` estaban en `^5.100.5` mientras
+    `query-async-storage-persister` ya pedia `^5.101.4`; instalar resolvia dos
+    `@tanstack/query-core` distintos (`5.100.5` y `5.101.4`). Se alinearon los tres a
+    `^5.101.4` (misma version que ya tenia el async persister).
+  - `@tanstack/query-sync-storage-persister` se elimino: `grep` confirmo cero imports en
+    `.ts`/`.tsx` (solo aparecia en `package.json`/lockfile), coincide con el hallazgo de
+    `FRONTEND.md`.
+  - `@tanstack/query-persist-client-core` se agrego como devDependency directa: los tres
+    archivos de test que lo importan (`entrenamientos-offline.test.ts`,
+    `finanzas-offline.test.ts`, `query-persistence.test.ts`) dependian de que quedara
+    hoisted transitivamente, sin declararlo.
+- Pruebas: `npm ls @tanstack/query-core` (una sola linea, `5.101.4`),
+  `npm audit --omit=dev` (0 vulnerabilidades), `npm run lint`, `npx tsc --noEmit`,
+  `npm test` (4 archivos, 25/25 — incluye los tests de restauracion de
+  `query-persistence.test.ts`, `finanzas-offline.test.ts` y
+  `entrenamientos-offline.test.ts`), `npm run build` (42 rutas).
+- Pendientes o riesgos residuales: ninguno para esta tarjeta puntual.
 
 ### FE-TQ-002 — Centralizar queryOptions y mutationOptions
 
