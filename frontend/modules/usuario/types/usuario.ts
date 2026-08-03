@@ -1,19 +1,4 @@
-export interface Usuario {
-  id_usuario: number
-  username: string
-  nombre: string
-  apellido: string
-  telefono: string
-  email: string
-  is_active: boolean
-  is_superuser: boolean
-  created_at: string
-}
-
-export interface UsuarioPerfilPatch {
-  username?: string
-  nombre?: string
-  apellido?: string
-  telefono?: string
-  email?: string
-}
+// Derivados de los schemas Zod en modules/usuario/schemas/usuario.schema.ts (FE-ZOD-002):
+// el schema es la fuente de verdad, esto es solo el punto de import para el resto del
+// modulo.
+export type { Usuario, UsuarioPerfilPatchInput as UsuarioPerfilPatch } from "@/modules/usuario/schemas/usuario.schema"

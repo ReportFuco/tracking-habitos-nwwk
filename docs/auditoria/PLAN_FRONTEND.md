@@ -701,7 +701,7 @@ Resultado (2026-08-03, claude):
 
 ### FE-ZOD-002 — Contratos criticos de auth, perfil, finanzas y entrenamiento
 
-- Estado: `[ ]`.
+- Estado: `[~]`.
 - Prioridad: P1.
 - Depende de: `FE-ZOD-001`.
 
@@ -718,6 +718,57 @@ Criterios de aceptacion:
 - Requests y tipos duplicados se derivan del schema correspondiente.
 - Enums dejan de tener dos fuentes de verdad.
 - Tests cubren nullables, fechas, enums y payload corrupto.
+
+Resultado (2026-08-03, claude — parcial, solo item 1 del orden sugerido):
+- Archivos backend: `backend/app/schemas/usuario/usuario.py`,
+  `backend/app/routes/usuarios/usuario.py`, `backend/tests/test_usuario_perfil.py` (nuevo).
+- Archivos frontend: `frontend/modules/usuario/schemas/usuario.schema.ts`,
+  `frontend/modules/usuario/types/usuario.ts`, `frontend/modules/usuario/api/usuario.api.ts`,
+  `frontend/modules/auth/types/auth.ts`, `frontend/modules/auth/api/auth.api.ts`,
+  `frontend/tests/usuario-perfil-schema.test.ts` (nuevo).
+- **Bug real encontrado antes de poder validar nada** (consultado y aprobado por el
+  usuario arreglarlo en el backend, no solo en el frontend): `GET /api/usuarios/perfil`
+  nunca mandaba `is_active` (el frontend lo tipaba igual como boolean obligatorio) y
+  `GET /api/usuarios/` (listado admin) no mandaba ni `is_active` ni `is_superuser`.
+  `perfil-summary-card.tsx` y, mas grave, `usuarios-admin-manager.tsx` (la pantalla real
+  de un admin para gestionar usuarios) mostraban esos badges siempre en el mismo estado
+  incorrecto. Arreglo: `UsuarioResponse` (schema backend) gana `is_active`/`is_superuser`
+  con un `model_validator(mode="before")` que los aplana desde la relacion `Usuario.user`
+  (mismo patron ya usado para gimnasio/ejercicio en otros schemas), y las rutas que la
+  usan (`/perfil`, `/`, `PATCH /perfil`) pasan a eager-cargar esa relacion con
+  `selectinload`. `UsuarioPerfilResponse` queda como subclase vacia (ya no necesitaba
+  redeclarar `is_superuser`).
+- Consolidacion de contrato duplicado (`FE-ZOD-002` pide "enums/tipos duplicados se
+  derivan del schema"): `UsuarioProfile` (modulo `auth`) y `Usuario` (modulo `usuario`)
+  apuntaban al mismo endpoint (`/api/usuarios/perfil`) con dos interfaces manuales que ya
+  habian derivado (`is_active`/`is_superuser` opcionales en una, obligatorios en otra).
+  Se creo un unico `usuarioResponseSchema` en `modules/usuario/schemas/usuario.schema.ts`;
+  `types/usuario.ts` re-exporta `Usuario` desde ahi, y `modules/auth/types/auth.ts` hace
+  `export type { Usuario as UsuarioProfile } from ".../usuario"` en vez de declarar de
+  nuevo — cruce de modulos deliberado (auth ya depende conceptualmente de usuario), no se
+  toco `FE-ARCH-001`.
+  - `AuthAPI.getProfile`, `UsuariosAPI.getPerfil/getAll/updatePerfil` validan con
+    `parseApiResponse` sobre el mismo schema.
+  - `AuthRegisterResponse` (alta de cuenta) **no** se toco: shape distinto, menor riesgo,
+    y no es la query persistida que controla el guard offline.
+- Pruebas:
+  - Backend: `test_usuario_perfil.py` (2 casos) — el perfil propio incluye
+    is_active/is_superuser reales; el listado admin refleja el is_active/is_superuser de
+    *cada fila*, no el del admin que pide el listado (ese habria sido el bug si se
+    hubiera rellenado mal). Suite completa 32/32.
+  - Frontend: `usuario-perfil-schema.test.ts` (5 casos) — perfil valido parsea,
+    perfil sin `is_active` rechaza con `ApiSchemaError` (el bug concreto), `getPerfil` y
+    `getProfile` comparten schema, listado con una fila incompleta rechaza, `updatePerfil`
+    valida su respuesta. Suite completa 35/35. `npm run lint`, `npx tsc --noEmit`,
+    `npm run build` (42 rutas).
+- Pendientes o riesgos residuales (por eso `[~]`, no `[x]`): items 2-4 del orden sugerido
+  (entreno activo/series/apertura-cierre, movimientos paginados y cuentas, catalogos de
+  optimismo offline) quedan sin tocar. `AuthRegisterResponse` tampoco se valido. Al
+  arreglar el backend se detecto tambien que `DELETE /api/usuarios/{id_usuario}` (baja
+  logica) filtra por `User.id == id_usuario`, pero el frontend le pasa
+  `Usuario.id_usuario` (dos espacios de id distintos, ver comentario en
+  `test_ownership.py` sobre "ruido para desalinear user.id vs usuario.id_usuario") — no
+  se toco por estar fuera del alcance de esta tarjeta; queda para revisar aparte.
 
 ### FE-ZOD-003 — Corregir deriva compras/nutricion y formularios restantes
 

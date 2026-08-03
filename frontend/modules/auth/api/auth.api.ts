@@ -1,4 +1,6 @@
 import { api } from "@/lib/api"
+import { parseApiResponse } from "@/lib/api-schema"
+import { usuarioResponseSchema } from "@/modules/usuario/schemas/usuario.schema"
 import {
   AuthLoginPayload,
   AuthRegisterPayload,
@@ -40,6 +42,6 @@ export const AuthAPI = {
 
   getProfile: async (): Promise<UsuarioProfile> => {
     const { data } = await api.get("/api/usuarios/perfil")
-    return data
+    return parseApiResponse(usuarioResponseSchema, data, "GET /api/usuarios/perfil")
   },
 }

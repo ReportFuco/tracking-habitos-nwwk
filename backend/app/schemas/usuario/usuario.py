@@ -49,16 +49,32 @@ class UsuarioResponse(BaseModel):
     telefono: str = Field(..., examples=["56978086719"])
     email: str = Field(..., examples=["frarancibia.g@gmail.com"])
     created_at: datetime = Field(examples=["2025-12-29T23:43:49.887Z"])
+    is_active: bool = Field(..., examples=[True, False])
+    is_superuser: bool = Field(..., examples=[False, True])
 
     model_config = ConfigDict(
         from_attributes=True,
         title="Respuesta Usuario"
     )
 
+    # is_active/is_superuser viven en auth.user, no en usuarios.usuario. Se aplanan desde
+    # la relacion en vez de declarar dos schemas de perfil paralelos que pueden derivar
+    # (ver docs/auditoria/PLAN_FRONTEND.md, FE-ZOD-002): quien arme la query tiene que
+    # cargar `Usuario.user` (selectinload), si no estos dos campos quedan ausentes y la
+    # validacion falla en vez de mentir con un default.
+    @model_validator(mode="before")
+    @classmethod
+    def flatten_user(cls, data: Any) -> Any:
+        if hasattr(data, "user") and data.user:
+            data = data.__dict__.copy()
+            auth_user = data.pop("user")
+            data["is_active"] = auth_user.is_active
+            data["is_superuser"] = auth_user.is_superuser
+
+        return data
+
 
 class UsuarioPerfilResponse(UsuarioResponse):
-    is_superuser: bool = Field(..., examples=[False, True])
-
     model_config = ConfigDict(
         from_attributes=True,
         title="Respuesta Perfil Usuario"

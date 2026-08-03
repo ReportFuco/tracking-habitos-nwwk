@@ -1,7 +1,8 @@
-from sqlalchemy.ext.asyncio import AsyncSession 
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, HTTPException, Depends, status
 from app.db import get_db
 from sqlalchemy import select, or_, and_
+from sqlalchemy.orm import selectinload
 from app.models import Usuario, User
 from app.auth.fastapi_users import current_user_or_api_key, current_superuser
 from app.schemas.usuario import ( 
@@ -16,7 +17,9 @@ router = APIRouter(tags=["Usuario"])
 
 async def obtener_usuario_actual(user, db: AsyncSession) -> Usuario:
     usuario = await db.scalar(
-        select(Usuario).where(Usuario.auth_user_id == user.id)
+        select(Usuario)
+        .where(Usuario.auth_user_id == user.id)
+        .options(selectinload(Usuario.user))
     )
     if not usuario:
         raise HTTPException(
@@ -33,9 +36,7 @@ async def obtener_mi_perfil(
     user = Depends(current_user_or_api_key),
     db: AsyncSession = Depends(get_db),
 ):
-    perfil = await obtener_usuario_actual(user, db)
-    perfil_data = UsuarioResponse.model_validate(perfil).model_dump()
-    return {**perfil_data, "is_superuser": user.is_superuser}
+    return await obtener_usuario_actual(user, db)
 
 
 @router.get(
@@ -51,7 +52,7 @@ async def obtener_usuarios(
 ):
     
     usuarios = (
-        await db.execute(select(Usuario))
+        await db.execute(select(Usuario).options(selectinload(Usuario.user)))
     ).scalars().all()
 
     return usuarios
