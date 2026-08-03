@@ -763,12 +763,24 @@ Resultado (2026-08-03, claude — parcial, solo item 1 del orden sugerido):
     `npm run build` (42 rutas).
 - Pendientes o riesgos residuales (por eso `[~]`, no `[x]`): items 2-4 del orden sugerido
   (entreno activo/series/apertura-cierre, movimientos paginados y cuentas, catalogos de
-  optimismo offline) quedan sin tocar. `AuthRegisterResponse` tampoco se valido. Al
-  arreglar el backend se detecto tambien que `DELETE /api/usuarios/{id_usuario}` (baja
-  logica) filtra por `User.id == id_usuario`, pero el frontend le pasa
-  `Usuario.id_usuario` (dos espacios de id distintos, ver comentario en
-  `test_ownership.py` sobre "ruido para desalinear user.id vs usuario.id_usuario") — no
-  se toco por estar fuera del alcance de esta tarjeta; queda para revisar aparte.
+  optimismo offline) quedan sin tocar. `AuthRegisterResponse` tampoco se valido.
+
+**Corregido aparte (2026-08-03, claude):** el bug de `DELETE /api/usuarios/{id_usuario}`
+detectado de paso arriba. `eliminar_usuario_soft` filtraba por `User.id == id_usuario`
+(espacio de ids de `auth.user`), pero el frontend (`usuarios-admin-manager.tsx` vía
+`UsuariosAPI.desactivar`) siempre mando `Usuario.id_usuario` (espacio de
+`usuarios.usuario`) — el mismo id que ya usa correctamente el borrado permanente de al
+lado. En la practica el endpoint nunca encontraba al usuario correcto: 404 si los ids no
+coincidian por casualidad, o desactivaba a otra persona si coincidian.
+- Archivos: `backend/app/routes/usuarios/usuario.py`, `backend/tests/test_usuario_perfil.py`.
+- Fix: la ruta ahora busca `Usuario` por `id_usuario` con `selectinload(Usuario.user)` y
+  desactiva `usuario.user.is_active`, en vez de consultar `User` directo. Import de `User`
+  eliminado del archivo (ya no se usa ahi).
+- Pruebas: 2 casos nuevos — desactivar con `id_usuario` real apaga `is_active` en la fila
+  correcta (antes habria dado 404 con el filtro viejo), y desactivar a alguien ya inactivo
+  sigue dando 404. Suite completa 34/34.
+- Sin cambios de frontend: el frontend ya mandaba el id correcto, el bug era enteramente
+  del filtro en el backend.
 
 ### FE-ZOD-003 — Corregir deriva compras/nutricion y formularios restantes
 

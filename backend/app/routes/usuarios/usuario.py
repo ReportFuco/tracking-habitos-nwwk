@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from app.db import get_db
 from sqlalchemy import select, or_, and_
 from sqlalchemy.orm import selectinload
-from app.models import Usuario, User
+from app.models import Usuario
 from app.auth.fastapi_users import current_user_or_api_key, current_superuser
 from app.schemas.usuario import ( 
     UsuarioResponse,
@@ -123,23 +123,23 @@ async def eliminar_usuario_soft(
     db: AsyncSession = Depends(get_db),
     user = Depends(current_superuser)
 ):
-    usuario = (
-        await db.execute(
-            select(User)
-            .where(
-                User.id == id_usuario,
-                User.is_active.is_(True)
-            )
-        )
-    ).scalar_one_or_none()
-    
-    if not usuario:
+    # `id_usuario` es el PK de usuarios.usuario (el que manda el frontend, el mismo que
+    # usa el borrado permanente de abajo), no el de auth.user: filtrar por User.id era el
+    # bug -- comparaba contra el espacio de ids equivocado y nunca encontraba a nadie con
+    # el id que en realidad se le pasa desde la pantalla de admin.
+    usuario = await db.scalar(
+        select(Usuario)
+        .where(Usuario.id_usuario == id_usuario)
+        .options(selectinload(Usuario.user))
+    )
+
+    if not usuario or not usuario.user or not usuario.user.is_active:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Usuario no encontrado o ya ha sido desactivado."
         )
 
-    usuario.is_active = False
+    usuario.user.is_active = False
 
 
 @router.delete(
