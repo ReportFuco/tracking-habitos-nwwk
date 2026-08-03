@@ -1,7 +1,15 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { ChevronDown, CloudOff, PencilLine, Plus, Repeat, Trash2 } from "lucide-react"
+import {
+  ChevronDown,
+  CloudOff,
+  Dumbbell,
+  PencilLine,
+  Plus,
+  Repeat,
+  Trash2,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { EjercicioMedia } from "@/modules/entrenamientos/components/ejercicio-media"
 import {
@@ -109,6 +117,7 @@ export function SeriesSesion({
 }) {
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set())
   const [editandoId, setEditandoId] = useState<number | null>(null)
+  const [confirmandoEliminarId, setConfirmandoEliminarId] = useState<number | null>(null)
   const [edicion, setEdicion] = useState(initialEdicion)
 
   const grupos = useMemo(() => agrupar(series, ejercicios), [series, ejercicios])
@@ -127,6 +136,7 @@ export function SeriesSesion({
     })
 
   const abrirEdicion = (serie: SerieFuerzaResponse) => {
+    setConfirmandoEliminarId(null)
     setEditandoId(serie.id_fuerza_detalle)
     setEdicion({
       cantidad_peso: String(serie.cantidad_peso),
@@ -154,19 +164,30 @@ export function SeriesSesion({
 
   if (grupos.length === 0) {
     return (
-      <div className="rounded-[1.25rem] bg-surface-lowest p-5 text-sm leading-6 text-muted-foreground shadow-(--shadow-airy) sm:rounded-[1.5rem] sm:p-6">
-        Aun no registras series en esta sesion. Elige un ejercicio y la primera aparecera
-        aqui al instante.
+      <div className="rounded-[1.25rem] bg-surface-lowest p-5 text-center shadow-(--shadow-airy) sm:rounded-[1.5rem] sm:p-6">
+        <span
+          className="mx-auto flex size-12 items-center justify-center rounded-[1rem] text-[color:var(--module-entrenamientos)]"
+          style={{
+            background: "color-mix(in oklch, var(--module-entrenamientos) 10%, transparent)",
+          }}
+        >
+          <Dumbbell className="size-5" aria-hidden />
+        </span>
+        <p className="mt-3 text-sm font-medium text-foreground">Tu sesion empieza con una serie</p>
+        <p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-muted-foreground">
+          Elige un ejercicio y, cuando guardes, veras aqui el progreso y el acceso rapido
+          para repetirlo.
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {grupos.map((grupo) => (
-        <section key={grupo.musculo} className="space-y-2">
+        <section key={grupo.musculo} className="space-y-2.5">
           <div className="flex items-baseline justify-between gap-3 px-1">
-            <h3 className="font-label text-[0.65rem] uppercase tracking-[0.2em] text-foreground sm:text-[0.7rem]">
+            <h3 className="text-sm font-semibold text-foreground">
               {grupo.musculo}
             </h3>
             <span className="shrink-0 text-[11px] text-muted-foreground">
@@ -183,22 +204,24 @@ export function SeriesSesion({
             // Solo se puede seguir con el ejercicio si se encontro en el catalogo, que es
             // de donde sale la animacion que necesita el panel de registro.
             const ejercicioCatalogo = item.ejercicio
+            const panelId = `series-${normalizarTexto(item.clave).replace(/[^a-z0-9]+/g, "-")}`
 
             return (
               <article
                 key={item.clave}
-                className="overflow-hidden rounded-[1.25rem] bg-surface-lowest shadow-(--shadow-airy) sm:rounded-[1.5rem]"
+                className="overflow-hidden rounded-[1.25rem] border border-(--border)/15 bg-surface-lowest shadow-(--shadow-airy) sm:rounded-[1.5rem]"
               >
-                <div className="flex items-center gap-2 pr-2.5">
+                <div className="flex items-center gap-2 pr-3">
                   <button
                     type="button"
                     onClick={() => alternar(item.clave)}
                     aria-expanded={abierto}
-                    className="flex min-w-0 flex-1 touch-manipulation items-center gap-3 p-2.5 text-left sm:p-3"
+                    aria-controls={panelId}
+                    className="flex min-h-18 min-w-0 flex-1 touch-manipulation items-center gap-3 p-3 text-left focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring focus-visible:outline-none"
                   >
                     <EjercicioMedia src={item.imagen} alt="" size={48} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">
+                      <p className="line-clamp-2 text-sm leading-snug font-semibold text-foreground">
                         {item.nombre}
                       </p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -209,7 +232,7 @@ export function SeriesSesion({
                     </div>
                     <ChevronDown
                       aria-hidden
-                      className="size-4 shrink-0 text-muted-foreground transition-transform duration-300"
+                      className="size-4 shrink-0 text-muted-foreground transition-transform duration-300 motion-reduce:transition-none"
                       style={{ transform: abierto ? "rotate(180deg)" : "rotate(0deg)" }}
                     />
                   </button>
@@ -221,7 +244,7 @@ export function SeriesSesion({
                       type="button"
                       onClick={() => onContinuar(ejercicioCatalogo)}
                       aria-label={`Agregar otra serie de ${item.nombre}`}
-                      className="flex size-11 shrink-0 touch-manipulation items-center justify-center rounded-full text-[color:var(--module-entrenamientos)] transition hover:bg-surface-low focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-95"
+                      className="flex size-11 shrink-0 touch-manipulation items-center justify-center rounded-full text-[color:var(--module-entrenamientos)] transition hover:bg-surface-low focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
                       style={{
                         background:
                           "color-mix(in oklch, var(--module-entrenamientos) 10%, transparent)",
@@ -233,10 +256,17 @@ export function SeriesSesion({
                 </div>
 
                 <div
-                  className="grid transition-[grid-template-rows] duration-300 ease-in-out"
+                  className="grid transition-[grid-template-rows] duration-300 ease-in-out motion-reduce:transition-none"
                   style={{ gridTemplateRows: abierto ? "1fr" : "0fr" }}
                 >
-                  <div className="overflow-hidden">
+                  <div
+                    id={panelId}
+                    role="region"
+                    aria-label={`Series de ${item.nombre}`}
+                    aria-hidden={!abierto}
+                    inert={!abierto}
+                    className="overflow-hidden"
+                  >
                     <div className="space-y-2 border-t border-(--border)/20 px-2.5 py-3 sm:px-3">
                       {item.series.map((serie, indice) =>
                         editandoId === serie.id_fuerza_detalle ? (
@@ -304,7 +334,7 @@ export function SeriesSesion({
                         ) : (
                           <div
                             key={serie.id_fuerza_detalle}
-                            className="flex min-w-0 items-center gap-2 rounded-[0.875rem] bg-surface-low px-3 py-2"
+                            className="flex min-h-12 min-w-0 flex-wrap items-center gap-2 rounded-[0.95rem] bg-surface-low px-3 py-2"
                           >
                             <span className="w-4 shrink-0 font-label text-[10px] text-muted-foreground">
                               {indice + 1}
@@ -317,7 +347,7 @@ export function SeriesSesion({
                               }`}
                               title={serie.es_calentamiento ? "Calentamiento" : "Trabajo"}
                             >
-                              {serie.es_calentamiento ? "C" : "T"}
+                              {serie.es_calentamiento ? "Calent." : "Trabajo"}
                             </span>
                             <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                               <span className="font-semibold">
@@ -341,14 +371,37 @@ export function SeriesSesion({
                                 <CloudOff className="size-3" aria-hidden />
                                 Pendiente
                               </span>
+                            ) : confirmandoEliminarId === serie.id_fuerza_detalle ? (
+                              <div className="flex w-full shrink-0 items-center justify-end gap-2 border-t border-(--border)/20 pt-2 sm:w-auto sm:border-0 sm:pt-0">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  autoFocus
+                                  className="min-h-11 rounded-full px-3"
+                                  onClick={() => setConfirmandoEliminarId(null)}
+                                >
+                                  Cancelar
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="min-h-11 rounded-full px-3"
+                                  onClick={() => {
+                                    onEliminar(serie.id_fuerza_detalle)
+                                    setConfirmandoEliminarId(null)
+                                  }}
+                                >
+                                  Eliminar
+                                </Button>
+                              </div>
                             ) : (
-                              <div className="flex shrink-0 gap-0.5">
+                              <div className="flex shrink-0 gap-2">
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   aria-label="Editar serie"
                                   onClick={() => abrirEdicion(serie)}
-                                  className="size-9 p-0 text-muted-foreground hover:text-primary"
+                                  className="size-11 rounded-full p-0 text-muted-foreground hover:text-primary"
                                 >
                                   <PencilLine className="size-3.5" aria-hidden />
                                 </Button>
@@ -356,8 +409,8 @@ export function SeriesSesion({
                                   variant="ghost"
                                   size="sm"
                                   aria-label="Eliminar serie"
-                                  onClick={() => onEliminar(serie.id_fuerza_detalle)}
-                                  className="size-9 p-0 text-muted-foreground hover:text-destructive"
+                                  onClick={() => setConfirmandoEliminarId(serie.id_fuerza_detalle)}
+                                  className="size-11 rounded-full p-0 text-muted-foreground hover:text-destructive"
                                 >
                                   <Trash2 className="size-3.5" aria-hidden />
                                 </Button>

@@ -3,9 +3,10 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { ArrowRight, TriangleAlert } from "lucide-react"
+import { ArrowRight, ListChecks, Plus, TriangleAlert } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -119,6 +120,7 @@ export function EntrenamientoActivoCard() {
 
   const [modo, setModo] = useState<Modo>({ tipo: "picker" })
   const [dialogoCierre, setDialogoCierre] = useState(false)
+  const [vistaMovil, setVistaMovil] = useState<"registro" | "resumen">("registro")
 
   useEffect(() => {
     if (ejercicios.length === 0) {
@@ -260,6 +262,7 @@ export function EntrenamientoActivoCard() {
     async (ejercicio: EjercicioResponse) => {
       if (modo.tipo !== "reasignar") {
         setModo({ tipo: "registro", idEjercicio: ejercicio.id_ejercicio })
+        setVistaMovil("registro")
         return
       }
 
@@ -269,6 +272,7 @@ export function EntrenamientoActivoCard() {
 
       if (guardado) {
         setModo(modo.anterior)
+        setVistaMovil("resumen")
       }
     },
     [modo, guardarEdicion],
@@ -337,19 +341,24 @@ export function EntrenamientoActivoCard() {
         </div>
       ) : null}
 
-      <header className="rounded-[1.5rem] bg-surface-low p-4 sm:rounded-[1.75rem] sm:p-5">
+      <header className="rounded-[1.5rem] bg-surface-lowest p-4 shadow-(--shadow-airy) sm:rounded-[1.75rem] sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-label text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground sm:text-[0.68rem]">
+            <p className="flex items-center gap-2 font-label text-[0.68rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              <span
+                className="size-2 rounded-full"
+                style={{ background: "var(--module-entrenamientos)" }}
+                aria-hidden
+              />
               Sesion en curso
             </p>
-            <p className="mt-1 truncate text-base font-semibold tracking-tight text-foreground sm:text-lg">
+            <p className="mt-1 truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">
               {entrenamientoActivo.nombre_gimnasio ?? "Entrenamiento actual"}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <span
-              className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em]"
+              className="inline-flex min-h-8 items-center rounded-full px-3 text-xs font-medium"
               style={{
                 background:
                   "color-mix(in oklch, var(--module-entrenamientos) 10%, transparent)",
@@ -363,7 +372,7 @@ export function EntrenamientoActivoCard() {
               size="sm"
               onClick={() => setDialogoCierre(true)}
               disabled={submitting}
-              className="min-h-10 text-foreground hover:text-primary"
+              className="min-h-11 rounded-full px-4 text-foreground hover:text-primary"
             >
               Cerrar
             </Button>
@@ -372,10 +381,13 @@ export function EntrenamientoActivoCard() {
 
         {total > 0 ? (
           <div className="mt-3 space-y-1.5">
-            <div className="flex h-1.5 overflow-hidden rounded-full bg-surface-variant">
+            <div
+              className="flex h-2 overflow-hidden rounded-full bg-surface-variant"
+              aria-hidden
+            >
               {trabajo > 0 ? (
                 <div
-                  className="h-full"
+                  className="h-full transition-[width] duration-300 motion-reduce:transition-none"
                   style={{
                     width: `${(trabajo / total) * 100}%`,
                     background: "var(--module-entrenamientos)",
@@ -384,7 +396,7 @@ export function EntrenamientoActivoCard() {
               ) : null}
               {calentamiento > 0 ? (
                 <div
-                  className="h-full"
+                  className="h-full transition-[width] duration-300 motion-reduce:transition-none"
                   style={{
                     width: `${(calentamiento / total) * 100}%`,
                     background:
@@ -393,15 +405,58 @@ export function EntrenamientoActivoCard() {
                 />
               ) : null}
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              {trabajo} de trabajo · {calentamiento} de calentamiento
-            </p>
+            <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span>{trabajo} de trabajo</span>
+              <span>{calentamiento} de calentamiento</span>
+            </div>
           </div>
         ) : null}
       </header>
 
+      <div
+        role="group"
+        aria-label="Mostrar en el entrenamiento activo"
+        className="grid grid-cols-2 gap-1 rounded-[1.2rem] bg-surface-low p-1 xl:hidden"
+      >
+        <button
+          type="button"
+          aria-pressed={vistaMovil === "registro"}
+          onClick={() => setVistaMovil("registro")}
+          className={cn(
+            "flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-[0.95rem] px-3 text-sm transition motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+            vistaMovil === "registro"
+              ? "bg-surface-lowest font-medium text-foreground shadow-(--shadow-airy)"
+              : "text-muted-foreground",
+          )}
+        >
+          <Plus className="size-4" aria-hidden />
+          Registrar
+        </button>
+        <button
+          type="button"
+          aria-pressed={vistaMovil === "resumen"}
+          onClick={() => setVistaMovil("resumen")}
+          className={cn(
+            "flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-[0.95rem] px-3 text-sm transition motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+            vistaMovil === "resumen"
+              ? "bg-surface-lowest font-medium text-foreground shadow-(--shadow-airy)"
+              : "text-muted-foreground",
+          )}
+        >
+          <ListChecks className="size-4" aria-hidden />
+          Resumen
+          {total > 0 ? (
+            <span className="flex min-w-5 items-center justify-center rounded-full bg-foreground/8 px-1.5 text-[11px]">
+              {total}
+            </span>
+          ) : null}
+        </button>
+      </div>
+
       <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)] xl:items-start">
-        <div className="min-w-0">
+        <div
+          className={cn("min-w-0", vistaMovil === "registro" ? "block" : "hidden", "xl:block")}
+        >
           {modo.tipo === "registro" && ejercicioEnRegistro ? (
             <RegistroSerie
               // Cada ejercicio parte con su propio estado en vez de heredar el anterior.
@@ -427,32 +482,51 @@ export function EntrenamientoActivoCard() {
                   : "Elige el grupo muscular y toca el ejercicio que vas a registrar."
               }
               onCancelar={
-                modo.tipo === "reasignar" ? () => setModo(modo.anterior) : undefined
+                modo.tipo === "reasignar"
+                  ? () => {
+                      setModo(modo.anterior)
+                      setVistaMovil("resumen")
+                    }
+                  : undefined
               }
             />
           )}
         </div>
 
-        <div className="min-w-0 space-y-3">
-          <p className="px-1 font-label text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground sm:text-[0.68rem]">
-            Lo que llevas hoy
-          </p>
+        <div
+          className={cn(
+            "min-w-0 space-y-3",
+            vistaMovil === "resumen" ? "block" : "hidden",
+            "xl:block",
+          )}
+        >
+          <div className="flex items-center justify-between gap-3 px-1">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Lo que llevas hoy</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Edita o repite desde aqui.</p>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {total} {total === 1 ? "serie" : "series"}
+            </span>
+          </div>
           <SeriesSesion
             series={series}
             ejercicios={ejercicios}
             submitting={submitting}
-            onContinuar={(ejercicio) =>
+            onContinuar={(ejercicio) => {
               setModo({ tipo: "registro", idEjercicio: ejercicio.id_ejercicio })
-            }
+              setVistaMovil("registro")
+            }}
             onGuardar={guardarEdicion}
             onEliminar={eliminar}
-            onReasignar={(idSerie) =>
+            onReasignar={(idSerie) => {
               setModo((previo) => ({
                 tipo: "reasignar",
                 idSerie,
                 anterior: previo.tipo === "reasignar" ? previo.anterior : previo,
               }))
-            }
+              setVistaMovil("registro")
+            }}
           />
         </div>
       </div>

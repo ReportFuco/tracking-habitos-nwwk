@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Search, X } from "lucide-react"
+import { ArrowRight, History, Search, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EjercicioMedia } from "@/modules/entrenamientos/components/ejercicio-media"
@@ -32,9 +32,10 @@ function TarjetaEjercicio({
     <button
       type="button"
       onClick={() => onSeleccionar(ejercicio)}
-      className="flex min-h-18 w-full touch-manipulation items-center gap-3 rounded-[1.15rem] bg-surface-lowest p-2.5 text-left shadow-(--shadow-airy) transition duration-200 hover:shadow-(--shadow-airy-lg) focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.99]"
+      aria-label={`Elegir ${ejercicio.nombre}`}
+      className="group flex min-h-20 w-full touch-manipulation items-center gap-3 rounded-[1.2rem] bg-surface-lowest p-3 text-left shadow-(--shadow-airy) transition duration-200 hover:shadow-(--shadow-airy-lg) focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100"
     >
-      <EjercicioMedia src={ejercicio.url_imagen} alt="" size={52} priority={priority} />
+      <EjercicioMedia src={ejercicio.url_imagen} alt="" size={56} priority={priority} />
       <div className="min-w-0 flex-1 space-y-0.5">
         <p className="line-clamp-2 text-sm leading-snug font-medium text-foreground">
           {ejercicio.nombre}
@@ -43,6 +44,12 @@ function TarjetaEjercicio({
           {ejercicio.equipamiento ?? describirGrupoEjercicio(ejercicio)}
         </p>
       </div>
+      <span
+        className="flex size-10 shrink-0 items-center justify-center rounded-full text-[color:var(--module-entrenamientos)] transition-colors group-hover:bg-surface-low"
+        aria-hidden
+      >
+        <ArrowRight className="size-4" />
+      </span>
     </button>
   )
 }
@@ -154,43 +161,57 @@ export function EjercicioPicker({
   const hayFiltro = idMusculo !== null || termino !== ""
 
   return (
-    <section className="rounded-[1.5rem] bg-surface-lowest shadow-(--shadow-airy-lg) sm:rounded-[1.75rem]">
-      <div className="space-y-4 px-4 py-5 sm:px-6 sm:py-6">
+    <section className="overflow-hidden rounded-[1.5rem] bg-surface-lowest shadow-(--shadow-airy-lg) sm:rounded-[1.75rem]">
+      <div className="space-y-5 p-4 sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="inline-flex items-center gap-1.5 font-label text-[0.62rem] uppercase tracking-[0.2em] text-muted-foreground sm:text-[0.68rem]">
+            <div className="flex items-center gap-2">
               <span
-                aria-hidden
-                className="size-1.5 rounded-full"
+                className="flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-tertiary-foreground"
                 style={{ background: "var(--module-entrenamientos)" }}
-              />
+                aria-hidden
+              >
+                1
+              </span>
+              <p className="font-label text-[0.68rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Elige un ejercicio
+              </p>
+            </div>
+            <h2 className="mt-2 text-lg font-semibold tracking-[-0.01em] text-foreground sm:text-xl">
               {titulo}
-            </p>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{descripcion}</p>
+            </h2>
+            <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">{descripcion}</p>
           </div>
           {onCancelar ? (
-            <Button variant="ghost" size="sm" onClick={onCancelar} className="shrink-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onCancelar}
+              className="min-h-11 shrink-0 rounded-full px-4"
+            >
               Cancelar
             </Button>
           ) : null}
         </div>
 
         {recientes.length > 0 ? (
-          <div className="space-y-2">
-            <p className="font-label text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-              En esta sesion
+          <div className="space-y-2.5 rounded-[1.25rem] bg-surface-low p-3 sm:p-4">
+            <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <History className="size-4 text-[color:var(--module-entrenamientos)]" aria-hidden />
+              Repetir un ejercicio de esta sesion
             </p>
             {/* Scroll horizontal en vez de envolver: no empuja el catalogo hacia abajo. */}
-            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-6 sm:px-6">
+            <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:-mx-4 sm:px-4">
               {recientes.map((ejercicio) => (
                 <button
                   key={ejercicio.id_ejercicio}
                   type="button"
                   onClick={() => onSeleccionar(ejercicio)}
-                  className="flex w-20 shrink-0 touch-manipulation flex-col items-center gap-1.5 rounded-[1rem] p-1 text-center transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-95"
+                  aria-label={`Volver a registrar ${ejercicio.nombre}`}
+                  className="flex w-44 shrink-0 touch-manipulation items-center gap-2.5 rounded-[1rem] bg-surface-lowest p-2 text-left shadow-(--shadow-airy) transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
                 >
-                  <EjercicioMedia src={ejercicio.url_imagen} alt="" size={56} />
-                  <span className="line-clamp-2 text-[11px] leading-tight text-muted-foreground">
+                  <EjercicioMedia src={ejercicio.url_imagen} alt="" size={44} />
+                  <span className="line-clamp-2 text-xs leading-snug font-medium text-foreground">
                     {ejercicio.nombre}
                   </span>
                 </button>
@@ -199,33 +220,41 @@ export function EjercicioPicker({
           </div>
         ) : null}
 
-        <div className="relative">
+        <div className="space-y-2">
+          <label htmlFor="buscar-ejercicio-activo" className="text-sm font-medium text-foreground">
+            Buscar en el catalogo
+          </label>
+          <div className="relative">
           <Search
             aria-hidden
             className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
           />
           <input
+            id="buscar-ejercicio-activo"
             type="search"
             inputMode="search"
             value={busqueda}
             onChange={(evento) => setBusqueda(evento.target.value)}
             placeholder="Buscar ejercicio o equipo..."
-            aria-label="Buscar ejercicio"
-            className="h-12 w-full rounded-3xl border-0 bg-surface-variant pr-11 pl-11 text-base text-foreground outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring sm:text-sm"
+            className="h-13 w-full rounded-[1rem] border-0 bg-surface-low pr-11 pl-11 text-base text-foreground outline-none transition motion-reduce:transition-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring sm:text-sm"
           />
           {busqueda ? (
             <button
               type="button"
               onClick={() => setBusqueda("")}
               aria-label="Limpiar busqueda"
-              className="absolute top-1/2 right-2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground"
+              className="absolute top-1/2 right-1 flex size-11 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               <X className="size-4" aria-hidden />
             </button>
           ) : null}
+          </div>
         </div>
 
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-6 sm:px-6">
+        <div
+          className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-6 sm:px-6"
+          aria-label="Filtrar por grupo muscular"
+        >
           <Chip activo={idMusculo === null} onClick={() => setIdMusculo(null)}>
             Todos
           </Chip>
@@ -249,6 +278,15 @@ export function EjercicioPicker({
               </span>
             </Chip>
           ))}
+        </div>
+
+        <div className="flex items-center justify-between gap-3" aria-live="polite">
+          <p className="text-sm font-medium text-foreground">
+            {hayFiltro ? "Resultados" : "Todos los ejercicios"}
+          </p>
+          <span className="text-xs text-muted-foreground">
+            {filtrados.length} {filtrados.length === 1 ? "ejercicio" : "ejercicios"}
+          </span>
         </div>
 
         {cargando && ejercicios.length === 0 ? (
@@ -286,7 +324,7 @@ export function EjercicioPicker({
           </div>
         ) : (
           <>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
               {mostrados.map((ejercicio, indice) => (
                 <TarjetaEjercicio
                   key={ejercicio.id_ejercicio}

@@ -129,8 +129,8 @@ export function EjercicioAnimacion({
               ? // Con la animacion corriendo el control se corre a una esquina para no
                 // tapar la demostracion. Queda siempre visible: en el telefono no hay
                 // hover que lo revele.
-                "absolute right-1.5 bottom-1.5 flex size-9 items-center justify-center rounded-full bg-foreground/50 text-background transition hover:bg-foreground/70"
-              : "absolute inset-0 flex items-center justify-center rounded-[1.25rem] bg-foreground/35 text-background transition hover:bg-foreground/45"
+                "absolute right-1.5 bottom-1.5 flex size-11 touch-manipulation items-center justify-center rounded-full bg-foreground/50 text-background transition hover:bg-foreground/70 focus-visible:ring-2 focus-visible:ring-background focus-visible:outline-none motion-reduce:transition-none"
+              : "absolute inset-0 flex touch-manipulation items-center justify-center rounded-[1.25rem] bg-foreground/35 text-background transition hover:bg-foreground/45 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-background focus-visible:outline-none motion-reduce:transition-none"
           }
         >
           {mostrandoAnimacion ? (

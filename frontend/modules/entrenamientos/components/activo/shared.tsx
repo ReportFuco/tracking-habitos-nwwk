@@ -1,5 +1,6 @@
 "use client"
 
+import { useId } from "react"
 import { Minus, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type {
@@ -101,7 +102,7 @@ export function Chip({
       onClick={onClick}
       aria-pressed={activo}
       className={cn(
-        "inline-flex min-h-10 shrink-0 touch-manipulation items-center gap-1.5 rounded-full px-3.5 text-sm whitespace-nowrap transition duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        "inline-flex min-h-11 shrink-0 touch-manipulation items-center gap-1.5 rounded-full px-4 text-sm whitespace-nowrap transition duration-200 motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         activo
           ? "font-medium text-tertiary-foreground shadow-(--shadow-airy)"
           : "bg-surface-lowest text-muted-foreground hover:text-foreground",
@@ -139,6 +140,8 @@ export function CampoNumerico({
   onChange: (valor: string) => void
   disabled?: boolean
 }) {
+  const inputId = useId()
+
   const ajustar = (delta: number) => {
     const actual = Number(valor)
     const base = Number.isFinite(actual) && valor !== "" ? actual : 0
@@ -147,14 +150,17 @@ export function CampoNumerico({
   }
 
   const claseBoton =
-    "flex size-11 shrink-0 touch-manipulation items-center justify-center rounded-full bg-surface-variant text-foreground transition hover:bg-surface-low focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-95 disabled:opacity-40"
+    "flex size-12 shrink-0 touch-manipulation items-center justify-center rounded-[1rem] bg-surface-lowest text-foreground shadow-(--shadow-airy) transition hover:bg-surface-variant focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100 disabled:opacity-40"
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 rounded-[1.25rem] bg-surface-low p-3 sm:p-4">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-label text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+        <label
+          htmlFor={inputId}
+          className="font-label text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground"
+        >
           {etiqueta}
-        </span>
+        </label>
         {sufijo ? <span className="text-[11px] text-muted-foreground">{sufijo}</span> : null}
       </div>
       <div className="flex items-center gap-2">
@@ -168,6 +174,7 @@ export function CampoNumerico({
           <Minus className="size-4" aria-hidden />
         </button>
         <input
+          id={inputId}
           type="number"
           inputMode={decimales ? "decimal" : "numeric"}
           min={minimo}
@@ -175,8 +182,7 @@ export function CampoNumerico({
           value={valor}
           disabled={disabled}
           onChange={(evento) => onChange(evento.target.value)}
-          aria-label={etiqueta}
-          className="h-12 min-w-0 flex-1 rounded-[1rem] border-0 bg-surface-variant px-2 text-center text-lg font-semibold text-foreground outline-none transition placeholder:font-normal placeholder:text-muted-foreground focus:ring-2 focus:ring-ring [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          className="h-14 min-w-0 flex-1 rounded-[1rem] border-0 bg-surface-lowest px-2 text-center text-2xl font-semibold tracking-tight text-foreground shadow-(--shadow-airy) outline-none transition motion-reduce:transition-none placeholder:font-normal placeholder:text-muted-foreground focus:ring-2 focus:ring-ring [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           placeholder="0"
         />
         <button
@@ -212,7 +218,7 @@ export function SelectorTipoSerie({
     <div
       role="group"
       aria-label="Tipo de serie"
-      className="grid grid-cols-2 gap-1 rounded-full bg-surface-variant p-1"
+      className="grid grid-cols-2 gap-1 rounded-[1.1rem] bg-surface-low p-1"
     >
       {opciones.map((opcion) => {
         const activo = opcion.valor === esCalentamiento
@@ -225,7 +231,7 @@ export function SelectorTipoSerie({
             aria-pressed={activo}
             onClick={() => onChange(opcion.valor)}
             className={cn(
-              "min-h-10 touch-manipulation rounded-full text-sm transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+              "min-h-11 touch-manipulation rounded-[0.9rem] text-sm transition motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
               activo
                 ? "bg-surface-lowest font-medium text-foreground shadow-(--shadow-airy)"
                 : "text-muted-foreground hover:text-foreground",
