@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from app.auth.fastapi_users import current_user_or_api_key
 from app.db.session import get_db
 from sqlalchemy import select
@@ -10,8 +11,9 @@ from app.notifications.service import (
     schedule_training_reminders,
 )
 from app.schemas.entrenamientos import (
-    EntrenoFuerzaResponse, 
-    EntrenoFuerzaCreate, 
+    EntrenoFuerzaResponse,
+    EntrenoFuerzaCreate,
+    EntrenoFuerzaCierre,
     EntrenoFuerzaSerieResponse
 )
 from app.models import (
@@ -160,6 +162,26 @@ async def activar_entrenamiento(
 ):
     usuario = await obtener_usuario_actual(user, db)
 
+    # La cola offline puede reenviar la misma solicitud si la respuesta se pierde. El
+    # identificador del cliente convierte ese reintento en una lectura del entreno ya
+    # abierto, evitando crear una sesion duplicada.
+    if data.client_request_id is not None:
+        entreno_existente = await db.scalar(
+            select(EntrenamientoFuerza)
+            .where(EntrenamientoFuerza.client_request_id == data.client_request_id)
+            .options(
+                selectinload(EntrenamientoFuerza.gimnasio),
+                selectinload(EntrenamientoFuerza.entrenamiento),
+            )
+        )
+        if entreno_existente is not None:
+            if entreno_existente.entrenamiento.id_usuario != usuario.id_usuario:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="El identificador de la solicitud ya fue utilizado.",
+                )
+            return entreno_existente
+
     # Serializa los inicios del mismo usuario para que dos taps simultaneos no creen
     # dos entrenamientos activos antes de que alguno sea visible para el otro.
     await db.execute(
@@ -209,10 +231,28 @@ async def activar_entrenamiento(
         id_entrenamiento=entreno.id_entrenamiento,
         id_gimnasio=data.id_gimnasio,
         inicio_at=datetime.now(timezone.utc),
+        client_request_id=data.client_request_id,
     )
 
     db.add(entreno_fuerza)
-    await db.flush()
+
+    try:
+        await db.flush()
+    except IntegrityError:
+        # Dos requests con la misma clave llegaron a la vez: la restriccion unica gano la
+        # carrera, asi que se descarta este intento y se devuelve el que sí se guardo.
+        await db.rollback()
+        if data.client_request_id is None:
+            raise
+        entreno_fuerza = await db.scalar(
+            select(EntrenamientoFuerza)
+            .where(EntrenamientoFuerza.client_request_id == data.client_request_id)
+            .options(selectinload(EntrenamientoFuerza.gimnasio))
+        )
+        if entreno_fuerza is None:
+            raise
+        return entreno_fuerza
+
     schedule_training_reminders(db, entreno_fuerza)
     await db.flush()
 
@@ -235,17 +275,37 @@ async def activar_entrenamiento(
     response_model=EntrenoFuerzaResponse
 )
 async def finalizar_sesion_fuerza(
+    data: EntrenoFuerzaCierre | None = Body(default=None),
     user = Depends(current_user_or_api_key),
     db:AsyncSession=Depends(get_db)
 ):
     usuario = await obtener_usuario_actual(user, db)
-    
+    # Se captura como valor plano: si el flush de abajo revierte, el objeto ORM queda
+    # expirado y volver a tocarlo dispararia un lazy-load sincrono invalido en async.
+    id_usuario = usuario.id_usuario
+    client_request_id = data.client_request_id if data else None
+
+    # Reintentar el cierre tras perder la respuesta no debe fallar ni reabrir nada: si esta
+    # clave ya cerro una sesion, se devuelve tal cual quedo la primera vez.
+    if client_request_id is not None:
+        ya_cerrado = await db.scalar(
+            select(EntrenamientoFuerza)
+            .join(Entrenamiento)
+            .where(
+                EntrenamientoFuerza.cierre_client_request_id == client_request_id,
+                Entrenamiento.id_usuario == id_usuario,
+            )
+            .options(selectinload(EntrenamientoFuerza.gimnasio))
+        )
+        if ya_cerrado is not None:
+            return ya_cerrado
+
     entreno_activo = (
         await db.execute(
             select(EntrenamientoFuerza)
             .where(
                 EntrenamientoFuerza.entrenamiento.has(
-                    Entrenamiento.id_usuario == usuario.id_usuario
+                    Entrenamiento.id_usuario == id_usuario
                 ),
                 EntrenamientoFuerza.estado == EstadoEntreno.ACTIVO
             ).options(
@@ -257,18 +317,38 @@ async def finalizar_sesion_fuerza(
 
     if not entreno_activo:
         raise HTTPException(
-            status_code=404, 
+            status_code=404,
             detail="No tienes sesiones activas."
         )
 
     entreno_activo.estado = EstadoEntreno.CERRADO
     entreno_activo.fin_at = datetime.now(timezone.utc)
+    entreno_activo.cierre_client_request_id = client_request_id
     await cancel_training_reminders(
         db,
         entreno_activo.id_entrenamiento_fuerza,
     )
 
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        # Otro reintento con la misma clave gano la carrera y ya cerro la sesion.
+        await db.rollback()
+        if client_request_id is None:
+            raise
+        ya_cerrado = await db.scalar(
+            select(EntrenamientoFuerza)
+            .join(Entrenamiento)
+            .where(
+                EntrenamientoFuerza.cierre_client_request_id == client_request_id,
+                Entrenamiento.id_usuario == id_usuario,
+            )
+            .options(selectinload(EntrenamientoFuerza.gimnasio))
+        )
+        if ya_cerrado is None:
+            raise
+        return ya_cerrado
+
     await db.refresh(entreno_activo)
 
     return EntrenoFuerzaResponse.model_validate(entreno_activo)

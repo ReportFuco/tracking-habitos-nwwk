@@ -90,6 +90,13 @@ export interface EjerciciosParams {
 export interface EntrenoFuerzaCreate {
   observacion?: string | null
   id_gimnasio: number
+  // Permite que un reintento (respuesta perdida offline) devuelva el entreno ya abierto
+  // en vez de crear uno duplicado.
+  client_request_id?: string
+}
+
+export interface EntrenoFuerzaCierre {
+  client_request_id: string
 }
 
 export interface EntrenoFuerzaResponse {
@@ -111,6 +118,9 @@ export interface SerieFuerzaCreate {
   es_calentamiento: boolean
   cantidad_peso: number
   repeticiones: number
+  // Permite que un reintento (respuesta perdida offline) devuelva la serie ya creada en
+  // vez de duplicarla.
+  client_request_id?: string
 }
 
 export interface SerieFuerzaPatch {

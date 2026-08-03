@@ -4,6 +4,7 @@ import {
   EjercicioEdit,
   EjerciciosParams,
   EjercicioResponse,
+  EntrenoFuerzaCierre,
   EntrenoFuerzaCreate,
   EntrenoFuerzaResponse,
   EntrenoFuerzaSerieResponse,
@@ -247,8 +248,10 @@ export const EntrenamientosAPI = {
     return data
   },
 
-  closeEntrenoFuerzaActivo: async (): Promise<EntrenoFuerzaResponse> => {
-    const { data } = await api.patch("/api/entrenamientos/fuerza/activo/cerrar")
+  closeEntrenoFuerzaActivo: async (
+    payload: EntrenoFuerzaCierre
+  ): Promise<EntrenoFuerzaResponse> => {
+    const { data } = await api.patch("/api/entrenamientos/fuerza/activo/cerrar", payload)
     return data
   },
 

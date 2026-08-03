@@ -2,14 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.db import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.entrenamiento import (
-    SerieFuerza, 
-    EntrenamientoFuerza, 
-    Entrenamiento, 
+    SerieFuerza,
+    EntrenamientoFuerza,
+    Entrenamiento,
     EnumEstadoEntrenamiento as EstadoEntreno,
     Ejercicios,
     SubcategoriaMusculo,
 )
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from app.schemas.entrenamientos import (
     SerieFuerzaCreate,
@@ -68,13 +69,45 @@ async def agregar_serie_fuerza(
     db:AsyncSession = Depends(get_db)
 ):
     usuario = await obtener_usuario_actual(user, db)
+    # Se captura como valor plano: si el flush de abajo revierte, el objeto ORM queda
+    # expirado y volver a tocarlo dispararia un lazy-load sincrono invalido en async.
+    id_usuario = usuario.id_usuario
+
+    serie_options = (
+        selectinload(SerieFuerza.ejercicio)
+        .selectinload(Ejercicios.subcategoria_musculo)
+        .selectinload(SubcategoriaMusculo.musculo)
+    )
+
+    # La cola offline puede reenviar la misma solicitud si la respuesta se pierde. El
+    # identificador del cliente convierte ese reintento en una lectura de la serie ya
+    # creada, evitando duplicarla.
+    if data.client_request_id is not None:
+        serie_existente = await db.scalar(
+            select(SerieFuerza)
+            .join(EntrenamientoFuerza)
+            .join(Entrenamiento)
+            .where(SerieFuerza.client_request_id == data.client_request_id)
+            .options(
+                serie_options,
+                selectinload(SerieFuerza.entrenamiento_fuerza)
+                .selectinload(EntrenamientoFuerza.entrenamiento),
+            )
+        )
+        if serie_existente is not None:
+            if serie_existente.entrenamiento_fuerza.entrenamiento.id_usuario != id_usuario:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="El identificador de la solicitud ya fue utilizado.",
+                )
+            return serie_existente
 
     entreno_activo = (
         await db.execute(
             select(EntrenamientoFuerza)
             .join(Entrenamiento)
             .where(
-                Entrenamiento.id_usuario == usuario.id_usuario,
+                Entrenamiento.id_usuario == id_usuario,
                 EntrenamientoFuerza.estado == EstadoEntreno.ACTIVO
             )
         )
@@ -94,26 +127,39 @@ async def agregar_serie_fuerza(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Ejercicio no encontrado."
         )
-    
+
     serie_fuerza = SerieFuerza(
         id_entrenamiento_fuerza=entreno_activo.id_entrenamiento_fuerza,
         id_ejercicio=data.id_ejercicio,
         es_calentamiento=data.es_calentamiento,
         cantidad_peso=data.cantidad_peso,
         repeticiones=data.repeticiones,
+        client_request_id=data.client_request_id,
     )
 
     db.add(serie_fuerza)
-    await db.flush()
+
+    try:
+        await db.flush()
+    except IntegrityError:
+        # Dos requests con la misma clave llegaron a la vez: la restriccion unica gano la
+        # carrera, asi que se descarta este intento y se devuelve el que sí se guardo.
+        await db.rollback()
+        if data.client_request_id is None:
+            raise
+        serie_fuerza = await db.scalar(
+            select(SerieFuerza)
+            .where(SerieFuerza.client_request_id == data.client_request_id)
+            .options(serie_options)
+        )
+        if serie_fuerza is None:
+            raise
+        return serie_fuerza
 
     serie_fuerza = await db.scalar(
         select(SerieFuerza)
         .where(SerieFuerza.id_fuerza_detalle == serie_fuerza.id_fuerza_detalle)
-        .options(
-            selectinload(SerieFuerza.ejercicio)
-            .selectinload(Ejercicios.subcategoria_musculo)
-            .selectinload(SubcategoriaMusculo.musculo)
-        )
+        .options(serie_options)
     )
 
     return serie_fuerza

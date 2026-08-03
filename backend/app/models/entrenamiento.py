@@ -3,14 +3,16 @@ from sqlalchemy import (
     String,
     Text,
     DateTime,
-    Float, 
+    Float,
     ForeignKey,
     text,
     Boolean,
     Enum as SQLEnum,
     SmallInteger,
     UniqueConstraint,
+    Uuid,
 )
+from uuid import UUID
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime, timezone
@@ -127,7 +129,12 @@ class EntrenamientoFuerza(Base):
         default=lambda: datetime.now(timezone.utc),
     )
     fin_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    
+
+    # Reintentar abrir/cerrar tras perder la respuesta no debe duplicar la fila ni el
+    # cierre: cada clave es unica y opcional (solo el cliente que la manda queda protegido).
+    client_request_id: Mapped[UUID | None] = mapped_column(Uuid(), nullable=True)
+    cierre_client_request_id: Mapped[UUID | None] = mapped_column(Uuid(), nullable=True)
+
     gimnasio = relationship("Gimnasio", back_populates="entrenamientos_fuerza")
     entrenamiento = relationship("Entrenamiento", back_populates="fuerza")
     series = relationship(
@@ -147,6 +154,7 @@ class SerieFuerza(Base):
     es_calentamiento: Mapped[bool] = mapped_column(Boolean)
     cantidad_peso: Mapped[float] = mapped_column(Float, nullable=False)
     repeticiones: Mapped[int] = mapped_column(Integer, nullable=False)
+    client_request_id: Mapped[UUID | None] = mapped_column(Uuid(), nullable=True)
 
     entrenamiento_fuerza = relationship(
         "EntrenamientoFuerza",

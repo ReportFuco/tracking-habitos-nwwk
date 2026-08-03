@@ -261,6 +261,42 @@ describe("cola offline del entreno activo", () => {
     expect(restantes).toEqual([8, 12])
   })
 
+  it("la client_request_id de una serie encolada no cambia al reenviarla", async () => {
+    const queryClient = crearClient()
+    await sembrarEntrenoActivo(queryClient)
+
+    const variables = {
+      ...serie(8),
+      client_request_id: "66666666-6666-4666-8666-666666666666",
+    }
+
+    onlineManager.setOnline(false)
+    void encolarSerie(queryClient, variables)
+    await settle()
+
+    const pausada = queryClient
+      .getMutationCache()
+      .getAll()
+      .find((mutation) => mutation.options.scope?.id === ENTRENO_ACTIVO_SCOPE_ID)
+    expect((pausada?.state.variables as SerieFuerzaCreate | undefined)?.client_request_id).toBe(
+      variables.client_request_id,
+    )
+
+    vi.mocked(EntrenamientosAPI.createSerieFuerza).mockResolvedValue({
+      id_fuerza_detalle: 99,
+      es_calentamiento: false,
+      cantidad_peso: 20,
+      repeticiones: 8,
+    })
+
+    onlineManager.setOnline(true)
+    await queryClient.resumePausedMutations()
+
+    expect(EntrenamientosAPI.createSerieFuerza).toHaveBeenCalledWith(
+      expect.objectContaining({ client_request_id: variables.client_request_id }),
+    )
+  })
+
   it("cerrar el entreno deja el activo vacio y se puede encolar sin conexion", async () => {
     const queryClient = crearClient()
     await sembrarEntrenoActivo(queryClient)
@@ -269,7 +305,7 @@ describe("cola offline del entreno activo", () => {
     void queryClient
       .getMutationCache()
       .build(queryClient, { mutationKey: entrenamientosMutationKeys.entrenoClose })
-      .execute(undefined)
+      .execute({ client_request_id: "44444444-4444-4444-8444-444444444444" })
     await settle()
 
     expect(queryClient.getQueryData(ACTIVO_KEY)).toBeNull()
@@ -307,7 +343,7 @@ describe("cola offline del entreno activo", () => {
     void queryClient
       .getMutationCache()
       .build(queryClient, { mutationKey: entrenamientosMutationKeys.entrenoClose })
-      .execute(undefined)
+      .execute({ client_request_id: "55555555-5555-4555-8555-555555555555" })
       .catch(() => undefined)
     await settle()
 

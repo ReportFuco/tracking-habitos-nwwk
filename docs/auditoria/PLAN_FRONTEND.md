@@ -247,7 +247,7 @@ Resultado (2026-08-02, claude):
 
 ### FE-OFF-003 — Idempotencia de entrenamiento end-to-end
 
-- Estado: `[ ]`.
+- Estado: `[x]`.
 - Prioridad: P0.
 - Alcance: frontend y backend.
 - Archivos iniciales: tipos/schemas/API/offline de entrenamiento en frontend; schemas,
@@ -278,6 +278,71 @@ No hacer:
 
 - No confiar solo en IDs temporales negativos del frontend.
 - No ampliar la outbox de entrenamiento antes de que el servidor sea idempotente.
+
+Resultado (2026-08-02, claude):
+- Archivos backend: `backend/app/models/entrenamiento.py`,
+  `backend/app/alembic/versions/d025097740d9_add_entrenamiento_fuerza_idempotencia.py` (nueva),
+  `backend/app/schemas/entrenamientos/{fuerza,series,__init__}.py`,
+  `backend/app/routes/entrenamientos/{fuerza,series_fuerza}.py`,
+  `backend/tests/test_entrenamiento_fuerza_idempotencia.py` (nueva).
+- Archivos frontend: `frontend/modules/entrenamientos/types/entrenamientos.ts`,
+  `.../api/entrenamientos.api.ts`, `.../offline/entrenamientos-offline.ts`,
+  `.../hooks/useEntrenamientos.tsx`, `.../components/entreno-fuerza-form.tsx`,
+  `.../components/entrenamiento-activo-card.tsx`, `frontend/tests/entrenamientos-offline.test.ts`.
+- Decisiones:
+  - Tres claves `client_request_id` UUID nullable+unicas independientes: abrir
+    (`entrenamiento_fuerza.client_request_id`), cerrar (columna nueva
+    `cierre_client_request_id`, no reutiliza la de abrir) y serie
+    (`serie_fuerza.client_request_id`). Constraint table-wide, no compuesta con
+    `id_usuario` (mismo patron que `movimiento.client_request_id`, que tampoco puede: esas
+    tablas no tienen columna directa `id_usuario`), con chequeo de pertenencia al usuario
+    en la ruta (409 si la clave ya fue usada por otro usuario).
+  - A diferencia de `movimientos` (que solo hace pre-check SELECT), acá se envuelve el
+    `flush()` en `try/except IntegrityError` + `rollback()` + re-`SELECT` por la clave, para
+    que dos requests concurrentes con la misma clave produzcan una sola escritura tambien
+    bajo carrera real, no solo en el caso feliz secuencial. Cuidado encontrado en el camino:
+    tras `rollback()` los objetos ORM quedan expirados, asi que `id_usuario` se captura como
+    variable plana antes de cualquier flush que pueda fallar (si no, un lazy-load post-rollback
+    revienta con `MissingGreenlet` en async SQLAlchemy).
+  - `client_request_id` sigue opcional en los tres schemas Pydantic (no rompe el camino de
+    auth por API key). En el frontend el de cierre es obligatorio (`EntrenoFuerzaCierre`, se
+    genera siempre) y los de abrir/serie son opcionales en el tipo pero se mandan siempre
+    desde donde se arma el payload.
+  - La clave de cierre se genera dentro del hook (`cerrarEntrenoFuerzaActivo` en
+    `useEntrenamientos.tsx`), no en el componente: es el unico llamador y no arma un payload
+    propio, asi `entrenamiento-activo-card.tsx` no cambia en su funcion `cerrar()`. Las de
+    abrir/serie se generan en los componentes que ya arman el payload (mismo patron que
+    `movimiento-form.tsx`).
+  - No se toco `EntrenoFuerzaResponse` ni `SerieFuerzaResponse`: el frontend no necesita leer
+    estas claves de vuelta, la reconciliacion optimista sigue via invalidacion/refetch.
+  - Se descubrio (y se corrigio la suposicion del plan) que SI existe infraestructura de
+    tests backend: `backend/tests/` ya tenia `test_ownership.py` con el patron
+    `AsyncSessionLocal() + trans = await db.begin() + llamar las funciones de ruta directo +
+    finally: await trans.rollback()`. Se siguio ese patron en vez de armar un
+    `conftest.py` con `httpx.AsyncClient`/`dependency_overrides` como decia el plan original
+    — mas simple y consistente con lo que ya existia.
+  - `backend/env` (venv local) estaba vacio (solo pip); se instalo
+    `pip install -r requirements.txt` con autorizacion del usuario para poder correr
+    migracion y tests contra el Postgres local real.
+  - El id de revision de la migracion tuvo que cambiarse dos veces: los primeros dos
+    intentos (`d4e5f6a7b8c9`, luego `a7b8c9d0e1f2`) colisionaban con revisiones existentes.
+    Se genero uno con `uuid4().hex[:12]` y se verifico contra todos los ids existentes antes
+    de usarlo.
+  - Correr alembic/pytest requiere `env -u DATABASE_URL -u CORS_ORIGINS` porque hay
+    variables de entorno globales (de otro proyecto) que pisan `backend/.env` — ver memoria
+    `env-vars-globales-pisan-dotenv`.
+- Pruebas:
+  - Backend: `alembic upgrade head`, `alembic downgrade -1 && alembic upgrade head` (OK),
+    `pytest tests/` — 30/30 (6 nuevos: misma clave no duplica abrir/cerrar/serie, clave
+    distinta sigue dando 409/404, claves distintas crean filas en orden).
+  - Frontend: `npm run lint`, `npx tsc --noEmit`, `npm test` (4 archivos, 21/21 — 1 nuevo:
+    la `client_request_id` de una serie encolada no cambia al reenviarla), `npm run build`
+    (42 rutas).
+- Pendientes o riesgos residuales: no se probo la carrera real (dos requests concurrentes
+  literales) end-to-end, solo el manejo de `IntegrityError` por inspeccion de codigo — para
+  simularla de verdad haria falta un test con dos conexiones/tareas concurrentes contra la
+  misma DB. `iniciarEntrenoFuerza` sigue sin cola offline (`FE-OFF-004` la agrega ahora que
+  el servidor es idempotente).
 
 ### FE-OFF-004 — Permitir iniciar/registrar entrenamiento offline
 

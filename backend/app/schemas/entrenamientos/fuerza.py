@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from datetime import datetime
+from uuid import UUID
 from .gimnasio import GimnasioSimpleResponse
 from .series import SerieFuerzaResponse
 
@@ -42,10 +43,21 @@ class EntrenoFuerzaResponse(BaseModel):
 class EntrenoFuerzaCreate(BaseModel):
     observacion:str | None = None
     id_gimnasio: int
+    # La cola offline puede reenviar la misma solicitud si la respuesta se pierde; con esta
+    # clave el reintento devuelve el entreno ya abierto en vez de crear uno duplicado.
+    client_request_id: UUID | None = Field(
+        None, description="Identificador generado por el cliente para reintentos seguros."
+    )
 
     model_config={
         "title":"Crear entreno de Fuerza"
     }
+
+
+class EntrenoFuerzaCierre(BaseModel):
+    client_request_id: UUID | None = Field(
+        None, description="Identificador generado por el cliente para reintentos seguros."
+    )
 
 
 class EntrenoFuerzaSerieResponse(BaseModel):

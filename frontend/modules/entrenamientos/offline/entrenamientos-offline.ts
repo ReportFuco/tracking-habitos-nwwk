@@ -6,6 +6,7 @@ import { isAppOffline, runOnlineOnlyAction } from "@/lib/online-only"
 import { EntrenamientosAPI } from "@/modules/entrenamientos/api/entrenamientos.api"
 import type {
   EjercicioResponse,
+  EntrenoFuerzaCierre,
   EntrenoFuerzaSerieResponse,
   SerieFuerzaCreate,
   SerieFuerzaResponse,
@@ -134,7 +135,8 @@ export const registerEntrenamientosMutationDefaults = (queryClient: QueryClient)
   })
 
   queryClient.setMutationDefaults(entrenamientosMutationKeys.entrenoClose, {
-    mutationFn: () => EntrenamientosAPI.closeEntrenoFuerzaActivo(),
+    mutationFn: (variables: EntrenoFuerzaCierre) =>
+      EntrenamientosAPI.closeEntrenoFuerzaActivo(variables),
     scope: { id: ENTRENO_ACTIVO_SCOPE_ID },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: activoKey })

@@ -12,6 +12,7 @@ import {
   runEntrenoActivoAction,
 } from "@/modules/entrenamientos/offline/entrenamientos-offline"
 import {
+  EntrenoFuerzaCierre,
   EntrenoFuerzaCreate,
   EntrenoFuerzaResponse,
   EjerciciosParams,
@@ -116,7 +117,7 @@ const useEntrenamientosState = () => {
   // offline. Ahi tambien viven su update optimista y la invalidacion.
   // Sin mutationFn inline TanStack no puede inferir el tipo de las variables, asi que se
   // declara explicito para no perder chequeo en los llamadores.
-  const entrenoCloseMutation = useMutation<EntrenoFuerzaResponse, Error, void>({
+  const entrenoCloseMutation = useMutation<EntrenoFuerzaResponse, Error, EntrenoFuerzaCierre>({
     mutationKey: entrenamientosMutationKeys.entrenoClose,
   })
   const serieCreateMutation = useMutation<SerieFuerzaResponse, Error, SerieFuerzaCreate>({
@@ -242,7 +243,10 @@ const useEntrenamientosState = () => {
       runOnlineOnlyAction(() => gimnasioDeleteMutation.mutateAsync(idGimnasio)),
     iniciarEntrenoFuerza: (payload: EntrenoFuerzaCreate) =>
       runOnlineOnlyAction(() => entrenoCreateMutation.mutateAsync(payload)),
-    cerrarEntrenoFuerzaActivo: () => runEntrenoActivoAction(entrenoCloseMutation, undefined),
+    // La clave se genera acá porque este es el único llamador y no arma un payload propio:
+    // así el componente que confirma el cierre no cambia.
+    cerrarEntrenoFuerzaActivo: () =>
+      runEntrenoActivoAction(entrenoCloseMutation, { client_request_id: crypto.randomUUID() }),
     agregarSerieFuerza: (payload: SerieFuerzaCreate) =>
       runEntrenoActivoAction(serieCreateMutation, payload),
     editarSerieFuerza: (idFuerzaDetalle: number, payload: SerieFuerzaPatch) =>

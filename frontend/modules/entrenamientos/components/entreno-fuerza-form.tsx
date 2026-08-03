@@ -63,7 +63,10 @@ export function EntrenoFuerzaFormCard() {
       return
     }
 
-    const result = await iniciarEntrenoFuerza(parsed.data)
+    const result = await iniciarEntrenoFuerza({
+      ...parsed.data,
+      client_request_id: crypto.randomUUID(),
+    })
 
     if (result.ok) {
       setForm(initialForm)

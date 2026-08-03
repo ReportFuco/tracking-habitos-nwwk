@@ -1,4 +1,5 @@
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from uuid import UUID
 
 class SerieFuerzaResponse(BaseModel):
     id_fuerza_detalle: int
@@ -46,6 +47,11 @@ class SerieFuerzaCreate(BaseModel):
     es_calentamiento: bool
     cantidad_peso: float
     repeticiones: int
+    # La cola offline puede reenviar la misma solicitud si la respuesta se pierde; con esta
+    # clave el reintento devuelve la serie ya creada en vez de duplicarla.
+    client_request_id: UUID | None = Field(
+        None, description="Identificador generado por el cliente para reintentos seguros."
+    )
 
 
 class SerieFuerzaPatch(BaseModel):

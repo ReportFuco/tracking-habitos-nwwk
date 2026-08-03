@@ -194,7 +194,10 @@ export function EntrenamientoActivoCard() {
         return false
       }
 
-      const resultado = await agregarSerieFuerza(validado.data)
+      const resultado = await agregarSerieFuerza({
+        ...validado.data,
+        client_request_id: crypto.randomUUID(),
+      })
 
       if (!resultado.ok) {
         toast.error("No pudimos guardar la serie", { description: resultado.message })
