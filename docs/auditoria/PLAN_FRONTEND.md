@@ -6,6 +6,10 @@ Este backlog convierte los hallazgos de `FRONTEND.md` en unidades implementables
 son estables: no renumerar tareas completadas; agregar nuevas tarjetas al final de la fase
 correspondiente.
 
+> Coordinacion activa: antes de editar el flujo de entrenamiento, revisar
+> [`COORDINACION.md`](./COORDINACION.md). Hay una reserva visual separada del trabajo
+> offline para evitar conflictos entre agentes.
+
 ## Regla de priorizacion
 
 - P0: riesgo de seguridad, perdida/duplicacion de datos o flujo bloqueante.
@@ -346,7 +350,7 @@ Resultado (2026-08-02, claude):
 
 ### FE-OFF-004 — Permitir iniciar/registrar entrenamiento offline
 
-- Estado: `[ ]`.
+- Estado: `[x]`.
 - Prioridad: P0 por requerimiento de producto.
 - Depende de: `FE-OFF-003` y `FE-OFF-002`.
 - Archivos: formulario/hook/offline de entrenamientos, cache del entreno activo y tests.
@@ -373,6 +377,62 @@ Criterios de aceptacion:
 - Tras matar/reabrir la PWA, el estado local sobrevive.
 - Al reconectar, backend contiene exactamente un entreno y las series en orden.
 - Conflictos no eliminan datos locales sin una accion explicita.
+
+Resultado (2026-08-03, claude):
+- Archivos: `frontend/modules/entrenamientos/offline/entrenamientos-offline.ts`,
+  `frontend/modules/entrenamientos/hooks/useEntrenamientos.tsx`,
+  `frontend/modules/entrenamientos/types/entrenamientos.ts`,
+  `frontend/modules/entrenamientos/components/entreno-fuerza-form.tsx`,
+  `frontend/modules/entrenamientos/components/entrenamiento-activo-card.tsx`,
+  `frontend/tests/entrenamientos-offline.test.ts`.
+- Decision de producto consultada al usuario (conflicto 409 al sincronizar la apertura,
+  tipicamente por abrir desde otro dispositivo): **mantener el entreno y las series
+  locales, mostrar error persistente**, no descartar nada automaticamente. Eligio esa
+  opcion sobre "descartar silenciosamente".
+- Decisiones tecnicas:
+  - `entrenoCreate` pasa a mutation con `mutationKey` + defaults registrados (mismo scope
+    `ENTRENO_ACTIVO_SCOPE_ID` que serie/cierre), en vez de mutation inline con
+    `mutationFn` directo. `iniciarEntrenoFuerza` usa `runEntrenoActivoAction` (de
+    FE-OFF-002/003) en lugar de `runOnlineOnlyAction`.
+  - `buildEntrenoOptimista` arma el entreno activo con id temporal negativo
+    (`nextOptimisticId`, mismo generador que las series) y el gimnasio resuelto del cache
+    de `gimnasios` (persistido, por eso funciona sin red). `onSuccess` hace
+    `{...current, ...created}`: la respuesta de abrir no trae `series`, asi que el spread
+    conserva las que ya se hayan encolado contra el entreno optimista.
+  - Descubrimiento clave que simplifico el diseño: `agregar_serie_fuerza` y
+    `finalizar_sesion_fuerza` en el backend resuelven el entreno activo por
+    `id_usuario + estado=activo`, no reciben `id_entrenamiento_fuerza` en el payload. El
+    id temporal negativo del entreno optimista es puramente de UI (badges, key de React);
+    no hace falta reconciliarlo hacia las mutations de serie/cierre.
+  - Conflicto (`onError` de `entrenoCreate`): no revierte al valor anterior. Guarda
+    `sync_error` (campo nuevo, solo-cliente, en `EntrenoFuerzaSerieResponse`) sobre el
+    mismo entreno optimista sin tocar sus series, y el `onSettled` **no invalida** la
+    query si hubo error (invalidar dispararia un refetch que traeria el entreno real del
+    servidor y pisaria el error recien guardado). Ademas se puso
+    `refetchOnReconnect: false` en `entrenamientoActivoQuery` y un guard en su `queryFn`
+    (usa el `client` que trae el `QueryFunctionContext` en TanStack Query v5) que, si el
+    cache ya tiene `sync_error`, devuelve ese valor sin pegarle al backend — evita que un
+    refetch en segundo plano (reconexion o remount tras `staleTime`) borre el aviso antes
+    de que el usuario lo vea. La UI (`entrenamiento-activo-card.tsx`) muestra un banner
+    persistente (no un toast, que se auto-cierra) con `sync_error`.
+  - `entreno-fuerza-form.tsx`: toast distingue "guardado sin conexion" (queued) de
+    "activo" (online), mismo patron que `movimiento-form.tsx`/cierre de entreno.
+  - Trabajo concurrente: otro agente (Codex) esta rediseñando visualmente
+    `ejercicio-picker.tsx`/`registro-serie.tsx`/`series-sesion.tsx` en paralelo (ver
+    `docs/auditoria/COORDINACION.md`, seccion "Reserva UX-ACTIVO-001"). Sin conflicto de
+    archivos: esta tarjeta no toco esos tres. Se dejo constancia en el mismo documento de
+    coordinacion.
+- Pruebas: 4 casos nuevos en `frontend/tests/entrenamientos-offline.test.ts` (abrir offline
+  muestra el gimnasio del cache al instante sin llamar al backend; abrir+series+cerrar
+  offline se sincroniza en el orden correcto al reconectar; sobrevive a recargar la app;
+  conflicto al sincronizar no borra el entreno ni las series locales). `npm run lint`,
+  `npx tsc --noEmit`, `npm test` (4 archivos, 25/25), `npm run build` (42 rutas).
+- Pendientes o riesgos residuales: no se hizo verificacion visual en navegador real
+  (offline simulado via DevTools) — no habia Playwright/chromium-cli instalado y el dev
+  server ya estaba corriendo compartido con el otro agente, instalar herramientas ahi
+  pareció mas riesgo que beneficio. La cobertura es la logica real de mutations/cache via
+  los tests automatizados, no una prueba end-to-end de UI. Queda pendiente si se quiere
+  esa verificacion adicional.
 
 ### FE-OFF-005 — Durabilidad y ownership de la outbox
 
@@ -786,4 +846,3 @@ Si durante una tarea aparece un hallazgo nuevo:
 - si es necesario para cumplir sus criterios, agregarlo a la misma tarjeta;
 - si expande el alcance, crear una nueva tarjeta con dependencia explicita;
 - si requiere decision de producto/backend/produccion, marcar `[!]` y detener esa parte.
-

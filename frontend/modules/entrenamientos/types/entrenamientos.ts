@@ -158,4 +158,8 @@ export interface EntrenoFuerzaSerieResponse {
   latitud?: number | null
   longitud?: number | null
   series?: SerieFuerzaResponse[]
+  // Campo solo-cliente: la apertura offline no pudo sincronizarse (el backend ya tenia
+  // otro entreno activo) y el entreno local se conserva a proposito para no perder series
+  // ya registradas. El backend nunca manda este campo.
+  sync_error?: string | null
 }

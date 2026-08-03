@@ -1,13 +1,16 @@
 "use client"
 
 import type { QueryClient, UseMutationResult } from "@tanstack/react-query"
+import { getFriendlyErrorMessage } from "@/lib/error-messages"
 import { queryKeys } from "@/lib/query-keys"
 import { isAppOffline, runOnlineOnlyAction } from "@/lib/online-only"
 import { EntrenamientosAPI } from "@/modules/entrenamientos/api/entrenamientos.api"
 import type {
   EjercicioResponse,
   EntrenoFuerzaCierre,
+  EntrenoFuerzaCreate,
   EntrenoFuerzaSerieResponse,
+  GimnasioResponse,
   SerieFuerzaCreate,
   SerieFuerzaResponse,
 } from "@/modules/entrenamientos/types/entrenamientos"
@@ -27,13 +30,14 @@ import type {
 export const ENTRENO_ACTIVO_SCOPE_ID = "entrenamientos-entreno-activo"
 
 export const entrenamientosMutationKeys = {
+  entrenoCreate: ["entrenamientos", "entreno", "create"] as const,
   serieCreate: ["entrenamientos", "serie", "create"] as const,
   entrenoClose: ["entrenamientos", "entreno", "close"] as const,
 }
 
 type ActivoCache = EntrenoFuerzaSerieResponse | null | undefined
 type SerieContext = { optimisticId: number }
-type CierreContext = { previous: ActivoCache }
+type PreviousActivoContext = { previous: ActivoCache }
 
 // Id temporal para la serie que todavia no viajo al backend. Negativo para no chocar
 // nunca con un id real y monotono decreciente, asi no se repite entre recargas.
@@ -43,6 +47,11 @@ const nextOptimisticId = () => -(Date.now() + optimisticSeq++)
 /** Una serie con id negativo esta encolada, todavia no confirmada por el backend. */
 export const isSeriePendiente = (serie: Pick<SerieFuerzaResponse, "id_fuerza_detalle">) =>
   serie.id_fuerza_detalle < 0
+
+/** Un entreno con id negativo esta encolado, todavia no confirmado por el backend. */
+export const isEntrenoPendiente = (
+  entreno: Pick<EntrenoFuerzaSerieResponse, "id_entrenamiento_fuerza">,
+) => entreno.id_entrenamiento_fuerza < 0
 
 // El nombre del ejercicio se busca en el cache de catalogos, que tambien se persiste, de
 // modo que la serie encolada se ve completa sin conexion en vez de aparecer en blanco.
@@ -60,6 +69,45 @@ const findEjercicio = (queryClient: QueryClient, idEjercicio: number) => {
   }
 
   return null
+}
+
+// El listado de gimnasios se cachea por texto de busqueda, asi que hay que recorrer todas
+// las entradas ya cargadas en vez de leer una sola query key.
+const findGimnasio = (queryClient: QueryClient, idGimnasio: number) => {
+  const entries = queryClient.getQueriesData<GimnasioResponse[]>({
+    queryKey: queryKeys.entrenamientos.gimnasiosRoot,
+  })
+
+  for (const [, gimnasios] of entries) {
+    const match = gimnasios?.find((item) => item.id_gimnasio === idGimnasio)
+
+    if (match) {
+      return match
+    }
+  }
+
+  return null
+}
+
+const buildEntrenoOptimista = (
+  queryClient: QueryClient,
+  variables: EntrenoFuerzaCreate,
+): EntrenoFuerzaSerieResponse => {
+  const gimnasio = findGimnasio(queryClient, variables.id_gimnasio)
+
+  return {
+    id_entrenamiento_fuerza: nextOptimisticId(),
+    estado: "activo",
+    inicio_at: new Date().toISOString(),
+    fin_at: null,
+    nombre_gimnasio: gimnasio?.nombre_gimnasio ?? null,
+    nombre_cadena: gimnasio?.nombre_cadena ?? null,
+    comuna: gimnasio?.comuna ?? null,
+    direccion: gimnasio?.direccion ?? null,
+    latitud: gimnasio?.latitud ?? null,
+    longitud: gimnasio?.longitud ?? null,
+    series: [],
+  }
 }
 
 const buildSerieOptimista = (
@@ -92,6 +140,39 @@ export const registerEntrenamientosMutationDefaults = (queryClient: QueryClient)
       queryClient.invalidateQueries({ queryKey: queryKeys.entrenamientos.fuerzaLista }),
     ])
   }
+
+  queryClient.setMutationDefaults(entrenamientosMutationKeys.entrenoCreate, {
+    mutationFn: (variables: EntrenoFuerzaCreate) => EntrenamientosAPI.createEntrenoFuerza(variables),
+    scope: { id: ENTRENO_ACTIVO_SCOPE_ID },
+    onMutate: async (variables: EntrenoFuerzaCreate) => {
+      await queryClient.cancelQueries({ queryKey: activoKey })
+      const previous = queryClient.getQueryData<ActivoCache>(activoKey)
+      queryClient.setQueryData<ActivoCache>(
+        activoKey,
+        buildEntrenoOptimista(queryClient, variables),
+      )
+      return { previous }
+    },
+    onSuccess: (created) => {
+      // La respuesta de abrir no trae `series`: el spread conserva las que ya se hayan
+      // encolado contra el entreno optimista mientras esta mutation esperaba salir.
+      queryClient.setQueryData<ActivoCache>(activoKey, (current) =>
+        current ? { ...current, ...created, sync_error: null } : current,
+      )
+    },
+    // No se revierte al valor anterior ni se descarta nada: el usuario ya vio su entreno
+    // y puede haber encolado series contra el. Un 409 (ya habia otro entreno activo,
+    // tipicamente desde otro dispositivo) queda como error persistente en el propio
+    // entreno para que el usuario decida, en vez de perder datos sin pedirlo.
+    onError: (error) => {
+      queryClient.setQueryData<ActivoCache>(activoKey, (current) =>
+        current ? { ...current, sync_error: getFriendlyErrorMessage(error) } : current,
+      )
+    },
+    // Si fallo, no se invalida: un refetch en ese momento traeria el entreno activo real
+    // del servidor (el que gano el conflicto) y pisaria el error recien guardado arriba.
+    onSettled: (_data, error) => (error ? undefined : invalidateEntreno()),
+  })
 
   queryClient.setMutationDefaults(entrenamientosMutationKeys.serieCreate, {
     mutationFn: (variables: SerieFuerzaCreate) => EntrenamientosAPI.createSerieFuerza(variables),
@@ -147,7 +228,7 @@ export const registerEntrenamientosMutationDefaults = (queryClient: QueryClient)
       return { previous }
     },
     onError: (_error, _variables, context) => {
-      const previous = (context as CierreContext | undefined)?.previous
+      const previous = (context as PreviousActivoContext | undefined)?.previous
 
       // Tras recargar la pagina la mutacion se rehidrata sin el contexto de onMutate; en
       // ese caso no hay nada que restaurar y el onSettled resincroniza con el backend.

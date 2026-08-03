@@ -1,0 +1,52 @@
+# Coordinacion de trabajo activo
+
+Actualizado: 2026-08-03 (America/Santiago).
+
+Este archivo evita que dos agentes editen al mismo tiempo el flujo critico de
+entrenamiento activo. Antes de tocar archivos listados aqui, revisar `git status --short`
+y esta reserva.
+
+## Reserva UX-ACTIVO-001 — Rediseño responsive del entrenamiento activo
+
+- Estado: `[~]` en progreso.
+- Responsable: Codex `/root` en la conversacion de rediseño UX.
+- Skill: `ui-ux-pro-max`.
+- Objetivo: simplificar la eleccion de ejercicio, el registro repetitivo de series y la
+  lectura del progreso, con experiencia mobile-first y accesible.
+- Archivos reservados:
+  - `frontend/modules/entrenamientos/components/activo/ejercicio-picker.tsx`
+  - `frontend/modules/entrenamientos/components/activo/registro-serie.tsx`
+  - `frontend/modules/entrenamientos/components/activo/series-sesion.tsx`
+  - `frontend/modules/entrenamientos/components/activo/shared.tsx`
+  - `frontend/app/app/entrenamientos/activo/page.tsx`
+  - nuevos componentes puramente visuales bajo
+    `frontend/modules/entrenamientos/components/activo/`
+- Fuera de alcance de este trabajo:
+  - hooks, API, tipos, schemas, mutations y persistencia offline;
+  - backend y migraciones;
+  - `entreno-fuerza-form.tsx`;
+  - `entrenamiento-activo-card.tsx` mientras tenga cambios ajenos sin confirmar.
+
+## Trabajo concurrente detectado — FE-OFF-004
+
+- Estado: `[x]` terminado y commiteado (2026-08-03, claude — FE-OFF-003 y FE-OFF-004).
+- Archivos que quedaron tocados:
+  - `frontend/modules/entrenamientos/hooks/useEntrenamientos.tsx`
+  - `frontend/modules/entrenamientos/offline/entrenamientos-offline.ts`
+  - `frontend/modules/entrenamientos/types/entrenamientos.ts`
+  - `frontend/modules/entrenamientos/components/entreno-fuerza-form.tsx`
+  - `frontend/modules/entrenamientos/components/entrenamiento-activo-card.tsx`
+  - `frontend/tests/entrenamientos-offline.test.ts`
+  - backend: modelos/rutas/schemas/migracion de idempotencia de entrenamiento-fuerza,
+    `backend/tests/test_entrenamiento_fuerza_idempotencia.py`.
+- `entrenamiento-activo-card.tsx` ya no tiene cambios ajenos sin confirmar: queda libre
+  para el rediseño UX-ACTIVO-001 si lo necesita. No se toco
+  `ejercicio-picker.tsx`/`registro-serie.tsx`/`series-sesion.tsx`.
+- Detalle en `docs/auditoria/PLAN_FRONTEND.md`, tarjetas `FE-OFF-003` y `FE-OFF-004`.
+
+## Protocolo al terminar
+
+1. El responsable valida sus archivos y cambia su reserva a `[x]`.
+2. Si necesita un archivo reservado por el otro trabajo, deja una nota aqui antes de
+   editarlo.
+3. No se mezclan cambios de contratos/offline con cambios visuales en un mismo commit.

@@ -2,7 +2,7 @@
 
 import { createContext, ReactNode, useCallback, useContext, useState } from "react"
 import { AxiosError } from "axios"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query"
 import { getFriendlyErrorMessage } from "@/lib/error-messages"
 import { runOnlineOnlyAction } from "@/lib/online-only"
 import { queryKeys } from "@/lib/query-keys"
@@ -15,6 +15,7 @@ import {
   EntrenoFuerzaCierre,
   EntrenoFuerzaCreate,
   EntrenoFuerzaResponse,
+  EntrenoFuerzaSerieResponse,
   EjerciciosParams,
   GimnasioCreate,
   GimnasioEdit,
@@ -34,7 +35,18 @@ type EntrenamientosContextValue = ReturnType<typeof useEntrenamientosState>
 
 const EntrenamientosContext = createContext<EntrenamientosContextValue | null>(null)
 
-const getEntrenoActivoOrNull = async () => {
+// Si una apertura offline quedo con sync_error (el backend ya tenia otro entreno activo,
+// tipicamente desde otro dispositivo), un refetch automatico no debe pisarla: el usuario
+// todavia no decidio que hacer con las series que pueda tener encoladas localmente.
+const getEntrenoActivoOrNull = async ({ client }: { client: QueryClient }) => {
+  const actual = client.getQueryData<EntrenoFuerzaSerieResponse | null>(
+    queryKeys.entrenamientos.fuerzaActivo,
+  )
+
+  if (actual?.sync_error) {
+    return actual
+  }
+
   try {
     return await EntrenamientosAPI.getEntrenoFuerzaActivo()
   } catch (err) {
@@ -71,6 +83,10 @@ const useEntrenamientosState = () => {
     queryFn: getEntrenoActivoOrNull,
     staleTime: THIRTY_SECONDS,
     refetchOnWindowFocus: false,
+    // Un entreno abierto offline se sincroniza via la mutation (onSuccess/onSettled
+    // invalidan esta key a proposito); un refetch automatico al reconectar podria pisar
+    // un sync_error todavia sin resolver antes de que el usuario lo vea.
+    refetchOnReconnect: false,
     meta: persistMeta,
   })
   const ejerciciosQuery = useQuery({
@@ -107,16 +123,14 @@ const useEntrenamientosState = () => {
     mutationFn: EntrenamientosAPI.deleteGimnasio,
     onSuccess: () => invalidate(queryKeys.entrenamientos.gimnasiosRoot),
   })
-  const entrenoCreateMutation = useMutation({
-    mutationFn: EntrenamientosAPI.createEntrenoFuerza,
-    onSuccess: () =>
-      invalidate(queryKeys.entrenamientos.fuerzaLista, queryKeys.entrenamientos.fuerzaActivo),
-  })
-  // Estas dos van sin mutationFn a proposito: la toman de los defaults registrados en
+  // Estas tres van sin mutationFn a proposito: la toman de los defaults registrados en
   // app/providers.tsx, que es lo que permite reconstruirlas al rehidratar la cola
   // offline. Ahi tambien viven su update optimista y la invalidacion.
   // Sin mutationFn inline TanStack no puede inferir el tipo de las variables, asi que se
   // declara explicito para no perder chequeo en los llamadores.
+  const entrenoCreateMutation = useMutation<EntrenoFuerzaResponse, Error, EntrenoFuerzaCreate>({
+    mutationKey: entrenamientosMutationKeys.entrenoCreate,
+  })
   const entrenoCloseMutation = useMutation<EntrenoFuerzaResponse, Error, EntrenoFuerzaCierre>({
     mutationKey: entrenamientosMutationKeys.entrenoClose,
   })
@@ -220,9 +234,9 @@ const useEntrenamientosState = () => {
       gimnasioCreateMutation.isPending ||
       gimnasioUpdateMutation.isPending ||
       gimnasioDeleteMutation.isPending ||
-      entrenoCreateMutation.isPending ||
       // Pausada offline: no cuenta como "enviando" o el formulario queda bloqueado hasta
       // reconectar aunque la operacion ya haya quedado confirmada en cola.
+      (entrenoCreateMutation.isPending && !entrenoCreateMutation.isPaused) ||
       (entrenoCloseMutation.isPending && !entrenoCloseMutation.isPaused) ||
       (serieCreateMutation.isPending && !serieCreateMutation.isPaused) ||
       serieUpdateMutation.isPending ||
@@ -242,7 +256,7 @@ const useEntrenamientosState = () => {
     eliminarGimnasio: (idGimnasio: number) =>
       runOnlineOnlyAction(() => gimnasioDeleteMutation.mutateAsync(idGimnasio)),
     iniciarEntrenoFuerza: (payload: EntrenoFuerzaCreate) =>
-      runOnlineOnlyAction(() => entrenoCreateMutation.mutateAsync(payload)),
+      runEntrenoActivoAction(entrenoCreateMutation, payload),
     // La clave se genera acá porque este es el único llamador y no arma un payload propio:
     // así el componente que confirma el cierre no cambia.
     cerrarEntrenoFuerzaActivo: () =>

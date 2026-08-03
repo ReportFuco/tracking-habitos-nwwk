@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 // Se sustituye la capa HTTP: los tests verifican la cola, no axios.
 vi.mock("@/modules/entrenamientos/api/entrenamientos.api", () => ({
   EntrenamientosAPI: {
+    createEntrenoFuerza: vi.fn(),
     createSerieFuerza: vi.fn(),
     closeEntrenoFuerzaActivo: vi.fn(),
   },
@@ -23,11 +24,13 @@ import { EntrenamientosAPI } from "@/modules/entrenamientos/api/entrenamientos.a
 import {
   ENTRENO_ACTIVO_SCOPE_ID,
   entrenamientosMutationKeys,
+  isEntrenoPendiente,
   isSeriePendiente,
   registerEntrenamientosMutationDefaults,
   runEntrenoActivoAction,
 } from "@/modules/entrenamientos/offline/entrenamientos-offline"
 import type {
+  EntrenoFuerzaCreate,
   EntrenoFuerzaSerieResponse,
   SerieFuerzaCreate,
 } from "@/modules/entrenamientos/types/entrenamientos"
@@ -73,6 +76,13 @@ const encolarSerie = (queryClient: QueryClient, variables: SerieFuerzaCreate) =>
     .execute(variables)
     .catch(() => undefined)
 
+const encolarEntreno = (queryClient: QueryClient, variables: EntrenoFuerzaCreate) =>
+  queryClient
+    .getMutationCache()
+    .build(queryClient, { mutationKey: entrenamientosMutationKeys.entrenoCreate })
+    .execute(variables)
+    .catch(() => undefined)
+
 const serie = (repeticiones: number): SerieFuerzaCreate => ({
   id_ejercicio: 1,
   es_calentamiento: false,
@@ -80,10 +90,33 @@ const serie = (repeticiones: number): SerieFuerzaCreate => ({
   repeticiones,
 })
 
+const entreno = (clientRequestId: string): EntrenoFuerzaCreate => ({
+  id_gimnasio: 1,
+  client_request_id: clientRequestId,
+})
+
+// El listado de gimnasios se persiste, asi que un entreno abierto offline puede resolver
+// el nombre/comuna del gimnasio elegido sin red.
+const sembrarGimnasio = (queryClient: QueryClient) =>
+  queryClient.setQueryData(queryKeys.entrenamientos.gimnasios(), [
+    {
+      id_gimnasio: 1,
+      nombre_gimnasio: "Sport Life",
+      nombre_cadena: null,
+      direccion: "Av. Siempre Viva 123",
+      comuna: "Providencia",
+      latitud: -33.4,
+      longitud: -70.6,
+      activo: true,
+      created_at: "2026-01-01T00:00:00",
+    },
+  ])
+
 const seriesDe = (queryClient: QueryClient) =>
   queryClient.getQueryData<EntrenoFuerzaSerieResponse>(ACTIVO_KEY)?.series ?? []
 
 beforeEach(() => {
+  vi.mocked(EntrenamientosAPI.createEntrenoFuerza).mockReset()
   vi.mocked(EntrenamientosAPI.createSerieFuerza).mockReset()
   vi.mocked(EntrenamientosAPI.closeEntrenoFuerzaActivo).mockReset()
   onlineManager.setOnline(true)
@@ -92,6 +125,175 @@ beforeEach(() => {
 afterEach(async () => {
   onlineManager.setOnline(true)
   await clearPersistedQueryCache()
+})
+
+describe("cola offline de abrir entrenamiento", () => {
+  it("abrir sin conexion muestra el gimnasio del cache al instante, sin llamar al backend", async () => {
+    const queryClient = crearClient()
+    sembrarGimnasio(queryClient)
+
+    onlineManager.setOnline(false)
+    void encolarEntreno(queryClient, entreno("11111111-1111-4111-8111-111111111111"))
+    await settle()
+
+    const activo = queryClient.getQueryData<EntrenoFuerzaSerieResponse>(ACTIVO_KEY)
+    expect(activo?.nombre_gimnasio).toBe("Sport Life")
+    expect(activo?.comuna).toBe("Providencia")
+    expect(activo?.estado).toBe("activo")
+    expect(activo?.series).toEqual([])
+    expect(activo && isEntrenoPendiente(activo)).toBe(true)
+    expect(EntrenamientosAPI.createEntrenoFuerza).not.toHaveBeenCalled()
+  })
+
+  it("abrir, agregar series y cerrar sin conexion se sincroniza en orden al reconectar", async () => {
+    const queryClient = crearClient()
+    sembrarGimnasio(queryClient)
+
+    const secuencia: string[] = []
+    vi.mocked(EntrenamientosAPI.createEntrenoFuerza).mockImplementation(async () => {
+      secuencia.push("abrir")
+      return {
+        id_entrenamiento: 1,
+        id_entrenamiento_fuerza: 9,
+        estado: "activo",
+        inicio_at: "2026-08-02T10:00:00",
+        fin_at: null,
+      }
+    })
+    vi.mocked(EntrenamientosAPI.createSerieFuerza).mockImplementation(async (payload) => {
+      secuencia.push(`serie:${payload.repeticiones}`)
+      return {
+        id_fuerza_detalle: payload.repeticiones,
+        es_calentamiento: payload.es_calentamiento,
+        cantidad_peso: payload.cantidad_peso,
+        repeticiones: payload.repeticiones,
+      }
+    })
+    vi.mocked(EntrenamientosAPI.closeEntrenoFuerzaActivo).mockImplementation(async () => {
+      secuencia.push("cerrar")
+      return {
+        id_entrenamiento: 1,
+        id_entrenamiento_fuerza: 9,
+        estado: "cerrado",
+        inicio_at: "2026-08-02T10:00:00",
+        fin_at: "2026-08-02T11:00:00",
+      }
+    })
+
+    onlineManager.setOnline(false)
+    void encolarEntreno(queryClient, entreno("22222222-2222-4222-8222-222222222222"))
+    await settle()
+    void encolarSerie(queryClient, serie(8))
+    void encolarSerie(queryClient, serie(10))
+    void queryClient
+      .getMutationCache()
+      .build(queryClient, { mutationKey: entrenamientosMutationKeys.entrenoClose })
+      .execute({ client_request_id: "33333333-3333-4333-8333-333333333333" })
+      .catch(() => undefined)
+    await settle()
+
+    onlineManager.setOnline(true)
+    await queryClient.resumePausedMutations()
+
+    expect(secuencia).toEqual(["abrir", "serie:8", "serie:10", "cerrar"])
+  })
+
+  it("sobrevive a recargar la app: el entreno abierto offline se reintenta al reconectar", async () => {
+    const persister = createQueryPersister()
+    const queryClient = crearClient()
+    // El hook real ya tiene entrenamientoActivoQuery montada (con meta.persist) antes de
+    // que el usuario pueda enviar el formulario; se simula ese estado previo.
+    await queryClient.fetchQuery({
+      queryKey: ACTIVO_KEY,
+      queryFn: async () => null,
+      meta: { persist: true },
+    })
+    sembrarGimnasio(queryClient)
+
+    const unsubscribe = persistQueryClientSubscribe({
+      queryClient,
+      persister,
+      buster: QUERY_CACHE_SCHEMA_VERSION,
+      dehydrateOptions: {
+        shouldDehydrateQuery: (query) => query.meta?.persist === true,
+        shouldDehydrateMutation: (mutation) =>
+          mutation.options.scope?.id === ENTRENO_ACTIVO_SCOPE_ID,
+      },
+    })
+
+    onlineManager.setOnline(false)
+    void encolarEntreno(queryClient, entreno("44444444-4444-4444-8444-444444444444"))
+    await esperarEscritura()
+    unsubscribe()
+
+    const recargado = crearClient()
+    await persistQueryClientRestore({
+      queryClient: recargado,
+      persister,
+      buster: QUERY_CACHE_SCHEMA_VERSION,
+      maxAge: ONE_WEEK,
+    })
+
+    const activoRestaurado = recargado.getQueryData<EntrenoFuerzaSerieResponse>(ACTIVO_KEY)
+    expect(activoRestaurado?.nombre_gimnasio).toBe("Sport Life")
+    expect(
+      recargado.getMutationCache().getAll().filter((mutation) => mutation.state.isPaused),
+    ).toHaveLength(1)
+
+    vi.mocked(EntrenamientosAPI.createEntrenoFuerza).mockResolvedValue({
+      id_entrenamiento: 2,
+      id_entrenamiento_fuerza: 11,
+      estado: "activo",
+      inicio_at: "2026-08-02T10:00:00",
+      fin_at: null,
+    })
+
+    onlineManager.setOnline(true)
+    await recargado.resumePausedMutations()
+
+    expect(EntrenamientosAPI.createEntrenoFuerza).toHaveBeenCalledTimes(1)
+    expect(recargado.getQueryData<EntrenoFuerzaSerieResponse>(ACTIVO_KEY)?.id_entrenamiento_fuerza).toBe(
+      11,
+    )
+  })
+
+  it("si el servidor rechaza abrir (conflicto), no borra el entreno ni las series locales", async () => {
+    const queryClient = crearClient()
+    sembrarGimnasio(queryClient)
+    await queryClient.fetchQuery({
+      queryKey: ACTIVO_KEY,
+      queryFn: async () => null,
+      meta: { persist: true },
+    })
+
+    vi.mocked(EntrenamientosAPI.createSerieFuerza).mockResolvedValue({
+      id_fuerza_detalle: 99,
+      es_calentamiento: false,
+      cantidad_peso: 20,
+      repeticiones: 8,
+    })
+
+    onlineManager.setOnline(false)
+    void encolarEntreno(queryClient, entreno("55555555-5555-4555-8555-555555555555"))
+    await settle()
+    void encolarSerie(queryClient, serie(8))
+    await settle()
+
+    expect(seriesDe(queryClient)).toHaveLength(1)
+
+    vi.mocked(EntrenamientosAPI.createEntrenoFuerza).mockRejectedValue(
+      new Error("Ya existe un entrenamiento de fuerza activo"),
+    )
+
+    onlineManager.setOnline(true)
+    await queryClient.resumePausedMutations()
+    await settle()
+
+    const activo = queryClient.getQueryData<EntrenoFuerzaSerieResponse>(ACTIVO_KEY)
+    expect(activo?.series).toHaveLength(1)
+    expect(activo?.sync_error).toBeTruthy()
+    expect(activo && isEntrenoPendiente(activo)).toBe(true)
+  })
 })
 
 describe("cola offline del entreno activo", () => {

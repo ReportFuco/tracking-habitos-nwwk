@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, TriangleAlert } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -324,6 +324,19 @@ export function EntrenamientoActivoCard() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {entrenamientoActivo.sync_error ? (
+        <div className="flex items-start gap-3 rounded-[1.25rem] bg-destructive/10 p-4 text-sm leading-6 text-destructive sm:rounded-[1.5rem] sm:p-5">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <div>
+            <p className="font-medium">No pudimos sincronizar este entrenamiento</p>
+            <p className="mt-1 text-destructive/80">
+              {entrenamientoActivo.sync_error} Tus series quedaron guardadas en este
+              dispositivo; revisa si abriste otra sesion desde otro lugar antes de seguir.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <header className="rounded-[1.5rem] bg-surface-low p-4 sm:rounded-[1.75rem] sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">

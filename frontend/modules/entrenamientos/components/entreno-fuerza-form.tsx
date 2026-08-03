@@ -70,8 +70,10 @@ export function EntrenoFuerzaFormCard() {
 
     if (result.ok) {
       setForm(initialForm)
-      toast.success("Entrenamiento activo", {
-        description: "La sesion ya quedo abierta para registrar series.",
+      toast.success(result.queued ? "Entrenamiento guardado sin conexion" : "Entrenamiento activo", {
+        description: result.queued
+          ? "Ya podes registrar series; se sincronizara solo al recuperar internet."
+          : "La sesion ya quedo abierta para registrar series.",
       })
       router.push("/app/entrenamientos/activo")
       return
