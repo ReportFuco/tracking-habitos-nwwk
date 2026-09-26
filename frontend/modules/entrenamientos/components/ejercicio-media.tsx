@@ -31,7 +31,7 @@ export function EjercicioMedia({
   return (
     <div
       className={cn(
-        "relative shrink-0 overflow-hidden rounded-[0.9rem] bg-surface-low",
+        "relative shrink-0 overflow-hidden rounded-lg bg-surface-low",
         className,
       )}
       style={{ width: size, height: size }}
@@ -92,7 +92,7 @@ export function EjercicioAnimacion({
     <div className="relative shrink-0">
       <div
         className={cn(
-          "relative size-[11.25rem] overflow-hidden rounded-[1.25rem] bg-surface-low",
+          "relative size-[11.25rem] overflow-hidden rounded-xl bg-surface-low",
           className,
         )}
       >
@@ -130,7 +130,7 @@ export function EjercicioAnimacion({
                 // tapar la demostracion. Queda siempre visible: en el telefono no hay
                 // hover que lo revele.
                 "absolute right-1.5 bottom-1.5 flex size-11 touch-manipulation items-center justify-center rounded-full bg-foreground/50 text-background transition hover:bg-foreground/70 focus-visible:ring-2 focus-visible:ring-background focus-visible:outline-none motion-reduce:transition-none"
-              : "absolute inset-0 flex touch-manipulation items-center justify-center rounded-[1.25rem] bg-foreground/35 text-background transition hover:bg-foreground/45 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-background focus-visible:outline-none motion-reduce:transition-none"
+              : "absolute inset-0 flex touch-manipulation items-center justify-center rounded-xl bg-foreground/35 text-background transition hover:bg-foreground/45 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-background focus-visible:outline-none motion-reduce:transition-none"
           }
         >
           {mostrandoAnimacion ? (

@@ -50,7 +50,7 @@ function MetricCard({
   icon: ComponentType<{ className?: string; style?: CSSProperties }>
 }) {
   return (
-    <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
+    <article className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
       <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground sm:text-xs">
         <Icon className="size-3.5" style={{ color: MODULE_COLOR }} />
         {label}
@@ -84,8 +84,8 @@ export function FinanzasKpiOverview() {
 
   if (!resumen || resumenQuery.isError) {
     return (
-      <section className="rounded-[1.75rem] bg-[color:var(--surface-low)] p-5 sm:p-6">
-        <div className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)] sm:p-6">
+      <section className="rounded-3xl bg-[color:var(--surface-low)] p-5 sm:p-6">
+        <div className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)] sm:p-6">
           <p className="font-label text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
             Finanzas
           </p>
@@ -100,7 +100,7 @@ export function FinanzasKpiOverview() {
           <Button
             type="button"
             onClick={() => void resumenQuery.refetch()}
-            className="mt-5 bg-[color:var(--module-finanzas)] text-[color:var(--primary-foreground)] hover:bg-[color:var(--module-finanzas)]/90"
+            className="mt-5 bg-[color:var(--module-finanzas)] text-[color:var(--module-finanzas-foreground)] hover:bg-[color:var(--module-finanzas)]/90"
           >
             <RefreshCw className="size-4" />
             Reintentar
@@ -125,14 +125,14 @@ export function FinanzasKpiOverview() {
 
   return (
     <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-      <article className="rounded-[1.75rem] bg-[color:var(--surface-low)] p-4 sm:p-6">
-        <div className="rounded-[1.5rem] bg-[linear-gradient(135deg,color-mix(in_oklch,var(--module-finanzas)_12%,white),transparent_72%)] p-5 shadow-[var(--shadow-airy-lg)] sm:p-6">
+      <article className="rounded-3xl bg-[color:var(--surface-low)] p-4 sm:p-6">
+        <div className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy-lg)] sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <p className="font-label text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
                 Finanzas del mes
               </p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-foreground sm:text-4xl">
+              <h2 className="mt-2 font-display text-3xl leading-none text-foreground sm:text-5xl">
                 {formatCurrency(resumen.balance_total)}
               </h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
@@ -140,7 +140,7 @@ export function FinanzasKpiOverview() {
               </p>
             </div>
 
-            <div className="inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] sm:text-xs"
+            <div className="inline-flex w-fit items-center gap-2 rounded-sm px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] sm:text-xs"
               style={{
                 background: "color-mix(in oklch, var(--module-finanzas) 12%, transparent)",
                 color: MODULE_COLOR,
@@ -152,19 +152,19 @@ export function FinanzasKpiOverview() {
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-[1.25rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)]">
+            <div className="rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)]">
               <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Gastos</p>
               <p className="mt-2 text-lg font-semibold tracking-tight text-foreground sm:text-2xl">
                 {formatCurrency(resumen.gasto_total)}
               </p>
             </div>
-            <div className="rounded-[1.25rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)]">
+            <div className="rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)]">
               <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Ingresos</p>
               <p className="mt-2 text-lg font-semibold tracking-tight text-foreground sm:text-2xl">
                 {formatCurrency(resumen.ingreso_total)}
               </p>
             </div>
-            <div className="rounded-[1.25rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)]">
+            <div className="rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)]">
               <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Movimientos</p>
               <p className="mt-2 text-lg font-semibold tracking-tight text-foreground sm:text-2xl">
                 {resumen.cantidad_movimientos}
@@ -176,14 +176,14 @@ export function FinanzasKpiOverview() {
             <p className="text-sm leading-6 text-muted-foreground">
               {isEmpty
                 ? "Todavia no registras movimientos este mes. En cuanto empieces a cargar gastos o ingresos, este bloque se alimenta solo."
-                : "Este bloque ya esta listo para crecer con tendencia mensual y distribuciones cuando conectemos los siguientes endpoints."}
+                : `${resumen.cantidad_movimientos} movimientos registrados en ${monthLabel}.`}
             </p>
             <Button
               asChild
-              className="w-full bg-[color:var(--module-finanzas)] text-[color:var(--primary-foreground)] hover:bg-[color:var(--module-finanzas)]/90 sm:w-auto"
+              className="w-full bg-[color:var(--module-finanzas)] text-[color:var(--module-finanzas-foreground)] hover:bg-[color:var(--module-finanzas)]/90 sm:w-auto"
             >
-              <Link href="/app/finanzas">
-                Ver finanzas
+              <Link href="/app/finanzas/movimientos">
+                Ver movimientos
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
@@ -192,7 +192,7 @@ export function FinanzasKpiOverview() {
       </article>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-        <article className="rounded-[1.75rem] bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)] sm:p-6">
+        <article className="rounded-3xl bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)] sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="font-label text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
@@ -223,14 +223,14 @@ export function FinanzasKpiOverview() {
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-[1.25rem] bg-[color:var(--surface-low)] p-4">
+            <div className="rounded-xl bg-[color:var(--surface-low)] p-4">
               <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Fijo</p>
               <p className="mt-2 text-base font-semibold tracking-tight text-foreground sm:text-lg">
                 {formatCurrency(resumen.gasto_fijo_total)}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">{formatPercent(split.fijoPct)}</p>
             </div>
-            <div className="rounded-[1.25rem] bg-[color:var(--surface-low)] p-4">
+            <div className="rounded-xl bg-[color:var(--surface-low)] p-4">
               <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Variable</p>
               <p className="mt-2 text-base font-semibold tracking-tight text-foreground sm:text-lg">
                 {formatCurrency(resumen.gasto_variable_total)}
@@ -240,7 +240,7 @@ export function FinanzasKpiOverview() {
           </div>
         </article>
 
-        <article className="rounded-[1.75rem] bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)] sm:p-6">
+        <article className="rounded-3xl bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)] sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="font-label text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
@@ -254,7 +254,7 @@ export function FinanzasKpiOverview() {
           </div>
 
           <div className="mt-4 space-y-3">
-            <div className="rounded-[1.25rem] bg-[color:var(--surface-low)] p-4">
+            <div className="rounded-xl bg-[color:var(--surface-low)] p-4">
               <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                 <ArrowUpRight className="size-3.5" style={{ color: MODULE_COLOR }} />
                 Tasa de ahorro
@@ -264,7 +264,7 @@ export function FinanzasKpiOverview() {
               </p>
             </div>
 
-            <div className="rounded-[1.25rem] bg-[color:var(--surface-low)] p-4">
+            <div className="rounded-xl bg-[color:var(--surface-low)] p-4">
               <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                 {resumen.variacion_gasto_vs_mes_anterior !== null &&
                 resumen.variacion_gasto_vs_mes_anterior <= 0 ? (
@@ -286,7 +286,7 @@ export function FinanzasKpiOverview() {
               </p>
             </div>
 
-            <div className="rounded-[1.25rem] bg-[color:var(--surface-low)] p-4">
+            <div className="rounded-xl bg-[color:var(--surface-low)] p-4">
               <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                 <CircleDollarSign className="size-3.5" style={{ color: MODULE_COLOR }} />
                 Proyeccion fin de mes

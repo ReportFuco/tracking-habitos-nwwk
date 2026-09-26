@@ -17,7 +17,7 @@ export default function EntrenoActivoPage() {
 
         <Link
           href="/app/entrenamientos"
-          className="inline-flex min-h-11 shrink-0 touch-manipulation items-center gap-2 rounded-full bg-surface-low px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-variant focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className="inline-flex min-h-11 shrink-0 touch-manipulation items-center gap-2 rounded-sm bg-surface-low px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-variant focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
           <ArrowLeft className="size-4" aria-hidden />
           <span className="hidden min-[390px]:inline">Resumen</span>

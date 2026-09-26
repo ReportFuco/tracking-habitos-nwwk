@@ -266,15 +266,15 @@ export function SearchableCombobox({
       className={cn(
         "overflow-hidden bg-surface-lowest shadow-(--shadow-airy-lg) ring-1 ring-black/5",
         dropdownPosition.placement === "sheet"
-          ? "rounded-[1.5rem]"
-          : "rounded-[1.25rem]",
+          ? "rounded-2xl"
+          : "rounded-xl",
       )}
       style={dropdownPosition.style}
       role="dialog"
     >
       {dropdownPosition.placement === "sheet" ? (
         <div className="flex justify-center pt-2">
-          <span className="h-1 w-10 rounded-full bg-muted-foreground/25" />
+          <span className="h-1 w-10 rounded-sm bg-muted-foreground/25" />
         </div>
       ) : null}
 
@@ -299,7 +299,7 @@ export function SearchableCombobox({
             <button
               type="button"
               onClick={() => setQuery("")}
-              className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-background/80 hover:text-foreground sm:size-6"
+              className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-background/80 hover:text-foreground sm:size-6"
               aria-label="Limpiar busqueda"
             >
               <X className="size-3.5" />
@@ -450,7 +450,7 @@ export function SearchableCombobox({
                 onChange("");
               }
             }}
-            className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-background/80 hover:text-foreground"
+            className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-background/80 hover:text-foreground"
           >
             <X className="size-3.5" />
           </span>

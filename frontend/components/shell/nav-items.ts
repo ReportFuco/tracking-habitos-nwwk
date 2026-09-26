@@ -21,6 +21,9 @@ export interface NavItem {
   href: string
   icon: LucideIcon
   moduleColor?: string
+  /** Bloque de color de la marca y su texto (item activo en la navegacion). */
+  moduleFill?: string
+  moduleOn?: string
   /** Prefijos de ruta que tambien marcan el item como activo (por defecto, su href). */
   activePrefix?: string | string[]
   exactMatch?: boolean
@@ -40,24 +43,32 @@ export const userNavSections: NavSection[] = [
         href: "/app/finanzas",
         icon: Wallet,
         moduleColor: "var(--module-finanzas)",
+        moduleFill: "var(--module-finanzas-fill)",
+        moduleOn: "var(--module-finanzas-on)",
       },
       {
         label: "Entrenamientos",
         href: "/app/entrenamientos",
         icon: Dumbbell,
         moduleColor: "var(--module-entrenamientos)",
+        moduleFill: "var(--module-entrenamientos-fill)",
+        moduleOn: "var(--module-entrenamientos-on)",
       },
       {
         label: "Compras",
         href: "/app/compras",
         icon: ShoppingBag,
         moduleColor: "var(--module-compras)",
+        moduleFill: "var(--module-compras-fill)",
+        moduleOn: "var(--module-compras-on)",
       },
       {
         label: "Nutricion",
         href: "/app/nutricion",
         icon: Apple,
         moduleColor: "var(--module-nutricion)",
+        moduleFill: "var(--module-nutricion-fill)",
+        moduleOn: "var(--module-nutricion-on)",
       },
     ],
   },

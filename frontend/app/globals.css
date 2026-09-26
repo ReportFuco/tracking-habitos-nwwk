@@ -6,9 +6,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-manrope), var(--font-geist-sans);
+  --font-sans: var(--font-archivo), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
-  --font-label: var(--font-inter), var(--font-geist-sans);
+  --font-label: var(--font-archivo), system-ui, sans-serif;
+  --font-display: var(--font-archivo), system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -41,6 +42,8 @@
   --color-tertiary: var(--tertiary);
   --color-tertiary-foreground: var(--tertiary-foreground);
   --color-tertiary-container: var(--tertiary-container);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
   --color-surface-low: var(--surface-low);
   --color-surface-lowest: var(--surface-lowest);
   --color-surface-variant: var(--surface-variant);
@@ -49,133 +52,237 @@
   --color-module-entrenamientos: var(--module-entrenamientos);
   --color-module-compras: var(--module-compras);
   --color-module-admin: var(--module-admin);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  /*
+   * Ritmo usa esquinas casi rectas. La escala se aplana para que todo lo que ya usa
+   * rounded-lg..4xl quede coherente sin reescribir cada componente.
+   */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
-  --shadow-airy: 0 8px 24px 0 oklch(0.19 0.01 130 / 0.04);
-  --shadow-airy-lg: 0 16px 40px 0 oklch(0.19 0.01 130 / 0.06);
+  --radius-xl: var(--radius);
+  --radius-2xl: 0.5rem;
+  --radius-3xl: 0.5rem;
+  --radius-4xl: 0.625rem;
 }
 
 /*
- * Design tokens: "The Digital Atelier"
- * Paleta editorial calida y tactil.
- *  - Surface base: #f9faf2 (papel calido)
- *  - Primary: #42512f (oliva profundo)
- *  - Secondary: #486730 (verde natural)
- *  - Tertiary: #84311f (ladrillo)
+ * Design tokens: "Ritmo"
+ * Bloques de color solidos al estilo cartel suizo, tipografia ancha y pesada.
+ *  - Base: negro #111111 sobre gris claro neutro #F4F4F2
+ *  - Acento: sol #F2B705
+ *  - Modulos: cobalto (finanzas), tomate (fuerza), pino (nutricion), sol (compras)
+ *
+ * Cada modulo tiene tres roles:
+ *  - --module-X            tinta: legible como texto/icono sobre las superficies, y como
+ *                          fondo de boton junto a --module-X-foreground.
+ *  - --module-X-fill / -on bloque de color solido de la marca y su texto.
  */
 :root {
-  --radius: 0.75rem;
+  --radius: 0.375rem;
 
-  --background: oklch(0.982 0.015 110);
-  --foreground: oklch(0.22 0.02 130);
+  --background: #f4f4f2;
+  --foreground: #111111;
 
-  --surface-low: oklch(0.96 0.012 110);
-  --surface-variant: oklch(0.9 0.008 120);
-  --surface-lowest: oklch(1 0 0);
+  --surface-low: #ebebe8;
+  --surface-variant: #e0e0dc;
+  --surface-lowest: #ffffff;
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.02 130);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.02 130);
+  --card: #ffffff;
+  --card-foreground: #111111;
+  --popover: #ffffff;
+  --popover-foreground: #111111;
 
-  --primary: oklch(0.38 0.05 130);
-  --primary-foreground: oklch(0.982 0.015 110);
+  --primary: #111111;
+  --primary-foreground: #ffffff;
 
-  --secondary: oklch(0.43 0.08 135);
-  --secondary-foreground: oklch(0.982 0.015 110);
+  --secondary: #0a7d56;
+  --secondary-foreground: #ffffff;
 
-  --tertiary: oklch(0.42 0.13 40);
-  --tertiary-foreground: oklch(0.982 0.015 110);
-  --tertiary-container: oklch(0.92 0.04 40);
+  --tertiary: #d63b24;
+  --tertiary-foreground: #ffffff;
+  --tertiary-container: #fbe4df;
 
-  --muted: oklch(0.93 0.01 120);
-  --muted-foreground: oklch(0.45 0.02 130);
+  --highlight: #f2b705;
+  --highlight-foreground: #111111;
 
-  --accent: oklch(0.9 0.02 120);
-  --accent-foreground: oklch(0.3 0.04 130);
+  --muted: #ebebe8;
+  --muted-foreground: #5a5a57;
 
-  --destructive: oklch(0.55 0.2 28);
+  --accent: #e7e7e3;
+  --accent-foreground: #111111;
 
-  --border: oklch(0.88 0.01 120);
-  --input: oklch(0.9 0.008 120);
-  --ring: oklch(0.55 0.06 135);
+  --destructive: #c81e3a;
 
-  --chart-1: oklch(0.43 0.08 135);
-  --chart-2: oklch(0.42 0.13 40);
-  --chart-3: oklch(0.6 0.04 130);
-  --chart-4: oklch(0.75 0.08 85);
-  --chart-5: oklch(0.38 0.05 130);
+  --border: #deded9;
+  --input: #d6d6d1;
+  --ring: #1f4ddb;
 
-  --module-finanzas: oklch(0.38 0.05 130);
-  --module-nutricion: oklch(0.43 0.08 135);
-  --module-entrenamientos: oklch(0.42 0.13 40);
-  --module-compras: oklch(0.68 0.1 60);
-  --module-admin: oklch(0.4 0.01 120);
+  --chart-1: #111111;
+  --chart-2: #1f4ddb;
+  --chart-3: #d63b24;
+  --chart-4: #f2b705;
+  --chart-5: #0a7d56;
 
-  --sidebar: oklch(0.96 0.012 110);
-  --sidebar-foreground: oklch(0.22 0.02 130);
-  --sidebar-primary: oklch(0.38 0.05 130);
-  --sidebar-primary-foreground: oklch(0.982 0.015 110);
-  --sidebar-accent: oklch(0.9 0.02 120);
-  --sidebar-accent-foreground: oklch(0.3 0.04 130);
-  --sidebar-border: oklch(0.88 0.01 120);
-  --sidebar-ring: oklch(0.55 0.06 135);
+  --module-finanzas: #1f4ddb;
+  --module-finanzas-foreground: #ffffff;
+  --module-finanzas-fill: #1f4ddb;
+  --module-finanzas-on: #ffffff;
+
+  --module-entrenamientos: #d63b24;
+  --module-entrenamientos-foreground: #ffffff;
+  --module-entrenamientos-fill: #d63b24;
+  --module-entrenamientos-on: #ffffff;
+
+  --module-nutricion: #0a7d56;
+  --module-nutricion-foreground: #ffffff;
+  --module-nutricion-fill: #0b8a5f;
+  --module-nutricion-on: #ffffff;
+
+  --module-compras: #8f6200;
+  --module-compras-foreground: #ffffff;
+  --module-compras-fill: #f2b705;
+  --module-compras-on: #111111;
+
+  --module-admin: #111111;
+  --module-admin-foreground: #ffffff;
+  --module-admin-fill: #111111;
+  --module-admin-on: #f2b705;
+
+  /* Bloque protagonista (hero): negro con cifra en sol; en oscuro se invierte a sol. */
+  --hero: #111111;
+  --hero-foreground: #f4f4f2;
+  --hero-muted: #a3a39e;
+  --hero-accent: #f2b705;
+  --hero-accent-foreground: #111111;
+  --hero-bar: #3a3a3a;
+  --hero-line: #2a2a2a;
+
+  /* Series de finanzas. Validadas con dataviz/validate_palette (CVD y contraste). */
+  --serie-ingreso: #1f4ddb;
+  --serie-gasto: #d63b24;
+  --chart-grid: #e6e6e2;
+
+  /* Sin sombras difusas: bordes nitidos de 1px y una sombra corta solo para flotantes. */
+  --shadow-airy: 0 0 0 1px oklch(0 0 0 / 0.07);
+  --shadow-airy-lg: 0 0 0 1px oklch(0 0 0 / 0.08), 0 14px 28px -16px oklch(0 0 0 / 0.28);
+
+  --sidebar: #111111;
+  --sidebar-foreground: #f4f4f2;
+  --sidebar-muted: #9a9a95;
+  --sidebar-primary: #f2b705;
+  --sidebar-primary-foreground: #111111;
+  --sidebar-accent: #242424;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #262626;
+  --sidebar-ring: #f2b705;
 }
 
 .dark {
-  --background: oklch(0.2 0.015 130);
-  --foreground: oklch(0.94 0.012 110);
+  color-scheme: dark;
 
-  --surface-low: oklch(0.24 0.015 130);
-  --surface-variant: oklch(0.3 0.02 130);
-  --surface-lowest: oklch(0.28 0.015 130);
+  --background: #0e0e0e;
+  --foreground: #f4f4f2;
 
-  --card: oklch(0.26 0.015 130);
-  --card-foreground: oklch(0.94 0.012 110);
-  --popover: oklch(0.26 0.015 130);
-  --popover-foreground: oklch(0.94 0.012 110);
+  --surface-low: #151515;
+  --surface-variant: #262626;
+  --surface-lowest: #1a1a1a;
 
-  --primary: oklch(0.75 0.08 135);
-  --primary-foreground: oklch(0.2 0.015 130);
+  --card: #1a1a1a;
+  --card-foreground: #f4f4f2;
+  --popover: #1f1f1f;
+  --popover-foreground: #f4f4f2;
 
-  --secondary: oklch(0.72 0.1 135);
-  --secondary-foreground: oklch(0.2 0.015 130);
+  --primary: #f2b705;
+  --primary-foreground: #111111;
 
-  --tertiary: oklch(0.7 0.15 40);
-  --tertiary-foreground: oklch(0.2 0.015 130);
-  --tertiary-container: oklch(0.35 0.08 40);
+  --secondary: #3ccb94;
+  --secondary-foreground: #111111;
 
-  --muted: oklch(0.3 0.02 130);
-  --muted-foreground: oklch(0.75 0.02 120);
+  --tertiary: #ff7a5f;
+  --tertiary-foreground: #111111;
+  --tertiary-container: #3a1d17;
 
-  --accent: oklch(0.3 0.02 130);
-  --accent-foreground: oklch(0.94 0.012 110);
+  --highlight: #f2b705;
+  --highlight-foreground: #111111;
 
-  --destructive: oklch(0.65 0.2 28);
+  --muted: #222222;
+  --muted-foreground: #a3a39e;
 
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.55 0.06 135);
+  --accent: #262626;
+  --accent-foreground: #f4f4f2;
 
-  --chart-1: oklch(0.72 0.1 135);
-  --chart-2: oklch(0.7 0.15 40);
-  --chart-3: oklch(0.65 0.04 130);
-  --chart-4: oklch(0.82 0.1 85);
-  --chart-5: oklch(0.78 0.06 130);
+  --destructive: #ff5c6e;
 
-  --sidebar: oklch(0.24 0.015 130);
-  --sidebar-foreground: oklch(0.94 0.012 110);
-  --sidebar-primary: oklch(0.75 0.08 135);
-  --sidebar-primary-foreground: oklch(0.2 0.015 130);
-  --sidebar-accent: oklch(0.3 0.02 130);
-  --sidebar-accent-foreground: oklch(0.94 0.012 110);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.55 0.06 135);
+  --border: #2a2a2a;
+  --input: #333333;
+  --ring: #7c9bff;
+
+  --chart-1: #f4f4f2;
+  --chart-2: #7c9bff;
+  --chart-3: #ff7a5f;
+  --chart-4: #f2b705;
+  --chart-5: #3ccb94;
+
+  --module-finanzas: #7c9bff;
+  --module-finanzas-foreground: #111111;
+  --module-finanzas-fill: #3d6bff;
+  --module-finanzas-on: #ffffff;
+
+  --module-entrenamientos: #ff7a5f;
+  --module-entrenamientos-foreground: #111111;
+  --module-entrenamientos-fill: #ff5a3d;
+  --module-entrenamientos-on: #111111;
+
+  --module-nutricion: #3ccb94;
+  --module-nutricion-foreground: #111111;
+  --module-nutricion-fill: #15a673;
+  --module-nutricion-on: #111111;
+
+  --module-compras: #f2b705;
+  --module-compras-foreground: #111111;
+  --module-compras-fill: #f2b705;
+  --module-compras-on: #111111;
+
+  --module-admin: #f4f4f2;
+  --module-admin-foreground: #111111;
+  --module-admin-fill: #f2b705;
+  --module-admin-on: #111111;
+
+  --hero: #f2b705;
+  --hero-foreground: #111111;
+  --hero-muted: #4a3a00;
+  --hero-accent: #111111;
+  --hero-accent-foreground: #f2b705;
+  --hero-bar: rgb(17 17 17 / 0.25);
+  --hero-line: rgb(17 17 17 / 0.18);
+
+  --serie-ingreso: #5b7dff;
+  --serie-gasto: #f2573a;
+  --chart-grid: #2a2a2a;
+
+  --shadow-airy: 0 0 0 1px oklch(1 0 0 / 0.07);
+  --shadow-airy-lg: 0 0 0 1px oklch(1 0 0 / 0.09), 0 14px 28px -16px oklch(0 0 0 / 0.7);
+
+  --sidebar: #000000;
+  --sidebar-foreground: #f4f4f2;
+  --sidebar-muted: #8e8e89;
+  --sidebar-primary: #f2b705;
+  --sidebar-primary-foreground: #111111;
+  --sidebar-accent: #1c1c1c;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1f1f1f;
+  --sidebar-ring: #f2b705;
+}
+
+/*
+ * Titulos y cifras protagonistas: Archivo ancho (wdth 125) y pesado. Se usa con
+ * mesura -- en h1, cifras KPI y la marca -- porque ocupa ~25% mas de ancho.
+ */
+@utility font-display {
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 @layer base {
@@ -184,7 +291,6 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "ss01", "cv11";
   }
   h1, h2, h3, h4 {
     @apply tracking-tight;
@@ -200,7 +306,7 @@
   }
 }
 
-/* ---------- Toaster: "Digital Atelier" ---------- */
+/* ---------- Toaster: "Ritmo" ---------- */
 
 [data-sonner-toaster] {
   --toast-accent: var(--primary);
@@ -219,7 +325,7 @@
   --info-bg: var(--surface-lowest);
   --info-text: var(--foreground);
   --info-border: transparent;
-  font-family: var(--font-manrope), system-ui, sans-serif;
+  font-family: var(--font-archivo), system-ui, sans-serif;
 }
 
 [data-sonner-toaster][data-mobile="true"] {
@@ -234,19 +340,19 @@
   align-items: flex-start;
   gap: 0.75rem;
   padding: 0.875rem 1rem 0.875rem 1.25rem;
-  border-radius: 1.25rem;
+  border-radius: var(--radius-2xl);
   background: var(--surface-lowest);
   color: var(--foreground);
-  box-shadow: var(--shadow-airy-lg), 0 0 0 1px oklch(0 0 0 / 0.04);
+  box-shadow: var(--shadow-airy-lg);
   overflow: hidden;
 }
 
 [data-sonner-toast].app-toast::before {
   content: "";
   position: absolute;
-  inset: 0.5rem auto 0.5rem 0.4rem;
-  width: 3px;
-  border-radius: 999px;
+  inset: 0 auto 0 0;
+  width: 4px;
+  border-radius: 0;
   background: var(--toast-accent);
 }
 
@@ -347,4 +453,10 @@
 [data-sonner-toast] .app-toast__close > svg {
   width: 0.75rem;
   height: 0.75rem;
+}
+
+/* Latido del loader: barras de modulo que suben y bajan en secuencia. */
+@keyframes ritmo-beat {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
 }

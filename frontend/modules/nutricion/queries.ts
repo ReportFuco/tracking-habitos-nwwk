@@ -20,3 +20,14 @@ export const tablasQueryOptions = () =>
     gcTime: ONE_WEEK,
     meta: { persist: true },
   })
+
+const FIVE_MINUTES = 1000 * 60 * 5
+
+/** Registros de peso: los usan `useNutricion` y el dashboard. */
+export const pesosQueryOptions = () =>
+  queryOptions({
+    queryKey: queryKeys.nutricion.pesos,
+    queryFn: NutricionAPI.getPesos,
+    staleTime: FIVE_MINUTES,
+    meta: { persist: true },
+  })

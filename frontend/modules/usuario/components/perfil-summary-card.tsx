@@ -23,7 +23,7 @@ const formatDate = (value: string) => {
 export function PerfilSummaryCard({ perfil, loading }: PerfilSummaryCardProps) {
   if (loading && !perfil) {
     return (
-      <section className="rounded-[1.5rem] bg-[color:var(--surface-low)] p-6 sm:rounded-[1.75rem] sm:p-8">
+      <section className="rounded-2xl bg-[color:var(--surface-low)] p-6 sm:rounded-3xl sm:p-8">
         <p className="text-sm text-muted-foreground">Cargando tu perfil...</p>
       </section>
     )
@@ -31,7 +31,7 @@ export function PerfilSummaryCard({ perfil, loading }: PerfilSummaryCardProps) {
 
   if (!perfil) {
     return (
-      <section className="rounded-[1.5rem] bg-[color:var(--surface-low)] p-6 sm:rounded-[1.75rem] sm:p-8">
+      <section className="rounded-2xl bg-[color:var(--surface-low)] p-6 sm:rounded-3xl sm:p-8">
         <p className="text-sm text-muted-foreground">
           No pudimos cargar tu perfil. Intenta recargar la pagina.
         </p>
@@ -43,29 +43,21 @@ export function PerfilSummaryCard({ perfil, loading }: PerfilSummaryCardProps) {
     `${perfil.nombre?.[0] ?? ""}${perfil.apellido?.[0] ?? ""}`.toUpperCase() || "?"
 
   return (
-    <section className="overflow-hidden rounded-[1.5rem] bg-[color:var(--surface-low)] p-4 shadow-[var(--shadow-airy)] sm:rounded-[1.75rem] sm:p-5">
+    <section className="overflow-hidden rounded-2xl bg-[color:var(--surface-low)] p-4 shadow-[var(--shadow-airy)] sm:rounded-3xl sm:p-5">
       <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
-        <div className="relative overflow-hidden rounded-[1.4rem] bg-[color:var(--surface-lowest)] p-6 shadow-[var(--shadow-airy)] sm:p-8">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -right-10 -top-10 size-36 rounded-full blur-3xl"
-            style={{
-              background:
-                "color-mix(in oklch, var(--primary) 16%, transparent)",
-            }}
-          />
+        <div className="relative overflow-hidden rounded-2xl bg-[color:var(--surface-lowest)] p-6 shadow-[var(--shadow-airy)] sm:p-8">
           <div className="relative flex flex-col gap-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-4 sm:gap-5">
                 <span
-                  className="flex size-16 shrink-0 items-center justify-center rounded-[1.2rem] bg-[color:var(--primary)] font-[family-name:var(--font-label)] text-lg font-medium text-[color:var(--primary-foreground)] shadow-[var(--shadow-airy)] sm:size-20 sm:text-xl"
+                  className="flex size-16 shrink-0 items-center justify-center rounded-xl bg-highlight font-display text-xl text-highlight-foreground sm:size-20 sm:text-2xl"
                   aria-hidden
                 >
                   {initials}
                 </span>
                 <div className="space-y-2">
                   <p className="font-label text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
-                    Cuaderno personal
+                    Tu perfil
                   </p>
                   <div className="space-y-1">
                     <h2 className="text-3xl font-semibold tracking-[-0.03em] text-foreground sm:text-4xl">
@@ -83,9 +75,9 @@ export function PerfilSummaryCard({ perfil, loading }: PerfilSummaryCardProps) {
 
               <div className="flex flex-wrap items-center gap-2">
                 <span
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-label text-[0.68rem] uppercase tracking-[0.16em] ${
+                  className={`inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 font-label text-[0.68rem] uppercase tracking-[0.16em] ${
                     perfil.is_active
-                      ? "bg-[color:var(--tertiary-container)] text-[color:var(--tertiary)]"
+                      ? "bg-[color-mix(in_oklch,var(--secondary)_14%,transparent)] text-secondary"
                       : "bg-[color:var(--surface-low)] text-muted-foreground"
                   }`}
                 >
@@ -100,7 +92,7 @@ export function PerfilSummaryCard({ perfil, loading }: PerfilSummaryCardProps) {
                   )}
                 </span>
                 {perfil.is_superuser ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--surface-low)] px-3 py-1.5 font-label text-[0.68rem] uppercase tracking-[0.16em] text-foreground">
+                  <span className="inline-flex items-center gap-1.5 rounded-sm bg-[color:var(--surface-low)] px-3 py-1.5 font-label text-[0.68rem] uppercase tracking-[0.16em] text-foreground">
                     <ShieldCheck className="size-3 text-[color:var(--primary)]" /> Superusuario
                   </span>
                 ) : null}
@@ -108,24 +100,24 @@ export function PerfilSummaryCard({ perfil, loading }: PerfilSummaryCardProps) {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[1.1rem] bg-[color:var(--surface-low)] p-4">
+              <div className="rounded-xl bg-[color:var(--surface-low)] p-4">
                 <p className="font-label text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground">
                   Contacto principal
                 </p>
                 <div className="mt-3 flex items-start gap-3">
-                  <span className="mt-0.5 flex size-8 items-center justify-center rounded-full bg-[color:var(--surface-lowest)] text-[color:var(--primary)]">
+                  <span className="mt-0.5 flex size-8 items-center justify-center rounded-md bg-[color:var(--surface-lowest)] text-[color:var(--primary)]">
                     <Mail className="size-4" />
                   </span>
                   <p className="min-w-0 text-sm leading-6 text-foreground">{perfil.email}</p>
                 </div>
               </div>
 
-              <div className="rounded-[1.1rem] bg-[color:var(--surface-low)] p-4">
+              <div className="rounded-xl bg-[color:var(--surface-low)] p-4">
                 <p className="font-label text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground">
                   Telefono
                 </p>
                 <div className="mt-3 flex items-start gap-3">
-                  <span className="mt-0.5 flex size-8 items-center justify-center rounded-full bg-[color:var(--surface-lowest)] text-[color:var(--primary)]">
+                  <span className="mt-0.5 flex size-8 items-center justify-center rounded-md bg-[color:var(--surface-lowest)] text-[color:var(--primary)]">
                     <Phone className="size-4" />
                   </span>
                   <p className="text-sm leading-6 text-foreground">
@@ -137,7 +129,7 @@ export function PerfilSummaryCard({ perfil, loading }: PerfilSummaryCardProps) {
           </div>
         </div>
 
-        <aside className="rounded-[1.4rem] bg-[color:var(--surface-lowest)] p-6 shadow-[var(--shadow-airy)] sm:p-7">
+        <aside className="rounded-2xl bg-[color:var(--surface-lowest)] p-6 shadow-[var(--shadow-airy)] sm:p-7">
           <p className="font-label text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground">
             Archivo
           </p>
@@ -149,19 +141,19 @@ export function PerfilSummaryCard({ perfil, loading }: PerfilSummaryCardProps) {
           </p>
 
           <div className="mt-6 space-y-3">
-            <div className="rounded-[1.1rem] bg-[color:var(--surface-low)] p-4">
+            <div className="rounded-xl bg-[color:var(--surface-low)] p-4">
               <p className="font-label text-[0.62rem] uppercase tracking-[0.18em] text-muted-foreground">
                 Miembro desde
               </p>
               <p className="mt-2 text-sm leading-6 text-foreground">{formatDate(perfil.created_at)}</p>
             </div>
-            <div className="rounded-[1.1rem] bg-[color:var(--surface-low)] p-4">
+            <div className="rounded-xl bg-[color:var(--surface-low)] p-4">
               <p className="font-label text-[0.62rem] uppercase tracking-[0.18em] text-muted-foreground">
                 Username publico
               </p>
               <p className="mt-2 text-sm font-medium text-foreground">@{perfil.username}</p>
             </div>
-            <div className="rounded-[1.1rem] bg-[color:var(--surface-low)] p-4">
+            <div className="rounded-xl bg-[color:var(--surface-low)] p-4">
               <p className="font-label text-[0.62rem] uppercase tracking-[0.18em] text-muted-foreground">
                 Rol
               </p>

@@ -296,8 +296,8 @@ export function EntrenamientoActivoCard() {
 
   if (!entrenamientoActivo) {
     return (
-      <section className="rounded-[1.5rem] bg-surface-low p-4 sm:rounded-[1.75rem] sm:p-6">
-        <div className="rounded-4xl p-5 shadow-(--shadow-airy) sm:rounded-[1.5rem] sm:p-6">
+      <section className="rounded-2xl bg-surface-low p-4 sm:rounded-3xl sm:p-6">
+        <div className="rounded-4xl p-5 shadow-(--shadow-airy) sm:rounded-2xl sm:p-6">
           <p className="font-label text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground sm:text-[0.72rem] sm:tracking-[0.24em]">
             Sin sesion activa
           </p>
@@ -310,7 +310,7 @@ export function EntrenamientoActivoCard() {
           </p>
           <Button
             asChild
-            className="mt-5 bg-[color:var(--module-entrenamientos)] text-[color:var(--tertiary-foreground)] hover:bg-[color:var(--module-entrenamientos)]/90"
+            className="mt-5 bg-[color:var(--module-entrenamientos)] text-[color:var(--module-entrenamientos-foreground)] hover:bg-[color:var(--module-entrenamientos)]/90"
           >
             <Link href="/app/entrenamientos/registrar">
               Registrar entrenamiento
@@ -329,7 +329,7 @@ export function EntrenamientoActivoCard() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {entrenamientoActivo.sync_error ? (
-        <div className="flex items-start gap-3 rounded-[1.25rem] bg-destructive/10 p-4 text-sm leading-6 text-destructive sm:rounded-[1.5rem] sm:p-5">
+        <div className="flex items-start gap-3 rounded-xl bg-destructive/10 p-4 text-sm leading-6 text-destructive sm:rounded-2xl sm:p-5">
           <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
           <div>
             <p className="font-medium">No pudimos sincronizar este entrenamiento</p>
@@ -341,7 +341,7 @@ export function EntrenamientoActivoCard() {
         </div>
       ) : null}
 
-      <header className="rounded-[1.5rem] bg-surface-lowest p-4 shadow-(--shadow-airy) sm:rounded-[1.75rem] sm:p-5">
+      <header className="rounded-2xl bg-surface-lowest p-4 shadow-(--shadow-airy) sm:rounded-3xl sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="flex items-center gap-2 font-label text-[0.68rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
@@ -358,7 +358,7 @@ export function EntrenamientoActivoCard() {
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <span
-              className="inline-flex min-h-8 items-center rounded-full px-3 text-xs font-medium"
+              className="inline-flex min-h-8 items-center rounded-sm px-3 text-xs font-medium"
               style={{
                 background:
                   "color-mix(in oklch, var(--module-entrenamientos) 10%, transparent)",
@@ -372,7 +372,7 @@ export function EntrenamientoActivoCard() {
               size="sm"
               onClick={() => setDialogoCierre(true)}
               disabled={submitting}
-              className="min-h-11 rounded-full px-4 text-foreground hover:text-primary"
+              className="min-h-11 rounded-sm px-4 text-foreground hover:text-primary"
             >
               Cerrar
             </Button>
@@ -416,14 +416,14 @@ export function EntrenamientoActivoCard() {
       <div
         role="group"
         aria-label="Mostrar en el entrenamiento activo"
-        className="grid grid-cols-2 gap-1 rounded-[1.2rem] bg-surface-low p-1 xl:hidden"
+        className="grid grid-cols-2 gap-1 rounded-xl bg-surface-low p-1 xl:hidden"
       >
         <button
           type="button"
           aria-pressed={vistaMovil === "registro"}
           onClick={() => setVistaMovil("registro")}
           className={cn(
-            "flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-[0.95rem] px-3 text-sm transition motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+            "flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-lg px-3 text-sm transition motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
             vistaMovil === "registro"
               ? "bg-surface-lowest font-medium text-foreground shadow-(--shadow-airy)"
               : "text-muted-foreground",
@@ -437,7 +437,7 @@ export function EntrenamientoActivoCard() {
           aria-pressed={vistaMovil === "resumen"}
           onClick={() => setVistaMovil("resumen")}
           className={cn(
-            "flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-[0.95rem] px-3 text-sm transition motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+            "flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-lg px-3 text-sm transition motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
             vistaMovil === "resumen"
               ? "bg-surface-lowest font-medium text-foreground shadow-(--shadow-airy)"
               : "text-muted-foreground",
@@ -446,7 +446,7 @@ export function EntrenamientoActivoCard() {
           <ListChecks className="size-4" aria-hidden />
           Resumen
           {total > 0 ? (
-            <span className="flex min-w-5 items-center justify-center rounded-full bg-foreground/8 px-1.5 text-[11px]">
+            <span className="flex min-w-5 items-center justify-center rounded-sm bg-foreground/8 px-1.5 text-[11px]">
               {total}
             </span>
           ) : null}
@@ -532,8 +532,8 @@ export function EntrenamientoActivoCard() {
       </div>
 
       <Dialog open={dialogoCierre} onOpenChange={setDialogoCierre}>
-        <DialogContent className="rounded-[1.5rem] border-0 bg-surface-lowest p-0 shadow-(--shadow-airy-lg) sm:max-w-xl sm:rounded-[1.75rem]">
-          <div className="bg-[linear-gradient(135deg,color-mix(in_oklch,var(--primary)_14%,white),transparent_70%)] px-5 py-5 sm:px-7 sm:py-6">
+        <DialogContent className="rounded-2xl border-0 bg-surface-lowest p-0 shadow-(--shadow-airy-lg) sm:max-w-xl sm:rounded-3xl">
+          <div className="bg-[color-mix(in_oklch,var(--primary)_8%,var(--surface-lowest))] px-5 py-5 sm:px-7 sm:py-6">
             <DialogHeader className="text-left">
               <p className="font-label text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground sm:text-[0.72rem] sm:tracking-[0.24em]">
                 Confirmacion
@@ -549,7 +549,7 @@ export function EntrenamientoActivoCard() {
           </div>
 
           <div className="px-5 pb-5 sm:px-7 sm:pb-6">
-            <div className="rounded-[1.25rem] bg-surface-low p-4 sm:rounded-[1.5rem] sm:p-5">
+            <div className="rounded-xl bg-surface-low p-4 sm:rounded-2xl sm:p-5">
               <p className="text-base font-semibold tracking-tight text-foreground sm:text-lg">
                 {entrenamientoActivo.nombre_gimnasio ?? "Entrenamiento actual"}
               </p>

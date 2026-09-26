@@ -7,7 +7,7 @@ import { getFriendlyErrorMessage } from "@/lib/error-messages"
 import { runOnlineOnlyAction } from "@/lib/online-only"
 import { queryKeys } from "@/lib/query-keys"
 import { NutricionAPI } from "@/modules/nutricion/api/nutricion.api"
-import { tablasQueryOptions } from "@/modules/nutricion/queries"
+import { pesosQueryOptions, tablasQueryOptions } from "@/modules/nutricion/queries"
 import {
   ConsumoCreate,
   ConsumoDetalleCreate,
@@ -41,12 +41,7 @@ const useNutricionState = () => {
     staleTime: FIVE_MINUTES,
     meta: persistMeta,
   })
-  const pesosQuery = useQuery({
-    queryKey: queryKeys.nutricion.pesos,
-    queryFn: NutricionAPI.getPesos,
-    staleTime: FIVE_MINUTES,
-    meta: persistMeta,
-  })
+  const pesosQuery = useQuery(pesosQueryOptions())
   const tablasQuery = useQuery(tablasQueryOptions())
 
   const invalidate = async (...keys: readonly (readonly unknown[])[]) => {

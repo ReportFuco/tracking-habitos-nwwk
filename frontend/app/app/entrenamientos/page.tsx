@@ -21,9 +21,9 @@ export default function EntrenamientosHomePage() {
 
       <EntrenamientosHomeOverview />
 
-      <aside className="flex items-start gap-3 rounded-[1.25rem] bg-[color:var(--surface-low)] p-4 sm:items-center sm:gap-4 sm:rounded-[1.5rem] sm:p-5">
+      <aside className="flex items-start gap-3 rounded-xl bg-[color:var(--surface-low)] p-4 sm:items-center sm:gap-4 sm:rounded-2xl sm:p-5">
         <span
-          className="flex size-10 shrink-0 items-center justify-center rounded-[0.9rem] sm:size-11"
+          className="flex size-10 shrink-0 items-center justify-center rounded-lg sm:size-11"
           style={{
             background: "color-mix(in oklch, var(--module-entrenamientos) 14%, transparent)",
             color: "var(--module-entrenamientos)",

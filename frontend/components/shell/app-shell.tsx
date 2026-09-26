@@ -5,6 +5,7 @@ import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useProfile } from "@/modules/auth/hooks/useProfile"
+import { BrandMark } from "@/components/brand/brand-mark"
 import { MobileBottomNav, userBottomNavOrder } from "./mobile-bottom-nav"
 import { SidebarNav } from "./sidebar-nav"
 import { Topbar } from "./topbar"
@@ -25,9 +26,9 @@ export function AppShell({ children, variant = "user", sections }: AppShellProps
   const isUser = variant === "user"
   const isAdmin = variant === "admin"
   const asideClassName = isUser
-    ? "hidden w-72 shrink-0 bg-[color:var(--sidebar)] lg:sticky lg:top-0 lg:z-10 lg:flex lg:h-screen lg:flex-col"
+    ? "hidden w-72 shrink-0 bg-[color:var(--sidebar)] text-[color:var(--sidebar-foreground)] lg:sticky lg:top-0 lg:z-10 lg:flex lg:h-screen lg:flex-col"
     : cn(
-        "fixed inset-y-0 left-0 z-40 w-72 shrink-0 bg-[color:var(--sidebar)] transition-transform duration-200 md:sticky md:top-0 md:z-10 md:flex md:h-screen md:flex-col md:translate-x-0",
+        "fixed inset-y-0 left-0 z-40 w-72 shrink-0 bg-[color:var(--sidebar)] text-[color:var(--sidebar-foreground)] transition-transform duration-200 md:sticky md:top-0 md:z-10 md:flex md:h-screen md:flex-col md:translate-x-0",
         open ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )
   const usesMobileBottomNav = isUser
@@ -37,12 +38,12 @@ export function AppShell({ children, variant = "user", sections }: AppShellProps
       <div className="mx-auto flex w-full max-w-[1400px]">
         <aside className={asideClassName} aria-label="Navegacion principal">
           <div className="flex h-16 items-center justify-between px-5">
-            <span className="font-semibold tracking-tight">Atelier</span>
+            <BrandMark size="md" tone="inverse" />
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="text-[color:var(--sidebar-foreground)] hover:bg-[color:var(--sidebar-accent)] hover:text-[color:var(--sidebar-foreground)] md:hidden"
               onClick={() => setOpen(false)}
               aria-label="Cerrar menu"
             >

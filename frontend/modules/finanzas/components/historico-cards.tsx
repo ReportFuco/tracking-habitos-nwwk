@@ -126,7 +126,7 @@ export function HistoricoCards() {
               type="button"
               onClick={() => void loadMoreMovimientos()}
               disabled={loadingMoreMovimientos}
-              className="mt-4 w-full rounded-[1.5rem] bg-surface-lowest py-3 text-sm font-medium text-primary shadow-(--shadow-airy) transition hover:bg-primary/5 disabled:opacity-50"
+              className="mt-4 w-full rounded-2xl bg-surface-lowest py-3 text-sm font-medium text-primary shadow-(--shadow-airy) transition hover:bg-primary/5 disabled:opacity-50"
             >
               {loadingMoreMovimientos ? "Cargando..." : "Cargar mas movimientos"}
             </button>

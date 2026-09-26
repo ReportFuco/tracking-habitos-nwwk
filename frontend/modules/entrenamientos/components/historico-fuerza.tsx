@@ -57,7 +57,7 @@ export function HistoricoFuerza() {
   return (
     <section className="grid gap-4 sm:gap-6 xl:grid-cols-[1.08fr_0.92fr]">
       <div className="space-y-4 sm:space-y-6">
-        <section className="rounded-[1.5rem] bg-[color:var(--surface-low)] p-4 sm:rounded-[1.75rem] sm:p-6">
+        <section className="rounded-2xl bg-[color:var(--surface-low)] p-4 sm:rounded-3xl sm:p-6">
           <div className="hidden sm:block">
             <p className="font-label text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
               Diario de sesiones
@@ -70,10 +70,10 @@ export function HistoricoFuerza() {
             </p>
           </div>
 
-          <div className="flex items-center gap-4 sm:mt-5 sm:justify-between sm:rounded-[1.25rem] sm:bg-[color:var(--surface-lowest)] sm:p-5 sm:shadow-[var(--shadow-airy)]">
+          <div className="flex items-center gap-4 sm:mt-5 sm:justify-between sm:rounded-xl sm:bg-[color:var(--surface-lowest)] sm:p-5 sm:shadow-[var(--shadow-airy)]">
             <div className="flex items-center gap-3">
               <span
-                className="flex size-10 items-center justify-center rounded-[0.9rem] sm:size-11"
+                className="flex size-10 items-center justify-center rounded-lg sm:size-11"
                 style={{
                   background: "color-mix(in oklch, var(--module-entrenamientos) 12%, transparent)",
                   color: "var(--module-entrenamientos)",
@@ -94,7 +94,7 @@ export function HistoricoFuerza() {
             {detail ? (
               <div className="flex items-center gap-3 border-l border-[color:var(--border)]/30 pl-4 sm:pl-6">
                 <span
-                  className="flex size-10 items-center justify-center rounded-[0.9rem] sm:size-11"
+                  className="flex size-10 items-center justify-center rounded-lg sm:size-11"
                   style={{
                     background: "color-mix(in oklch, var(--module-entrenamientos) 8%, transparent)",
                     color: "var(--module-entrenamientos)",
@@ -115,7 +115,7 @@ export function HistoricoFuerza() {
           </div>
         </section>
 
-        <section className="rounded-[1.5rem] bg-[color:var(--surface-low)] p-4 sm:rounded-[1.75rem] sm:p-6">
+        <section className="rounded-2xl bg-[color:var(--surface-low)] p-4 sm:rounded-3xl sm:p-6">
           <div className="flex flex-col gap-1.5 sm:flex-row sm:items-end sm:justify-between sm:gap-2">
             <div>
               <p className="font-label text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground sm:text-[0.7rem] sm:tracking-[0.22em]">
@@ -131,16 +131,16 @@ export function HistoricoFuerza() {
           </div>
 
           {loading && !detail && sesionesCerradas.length === 0 ? (
-            <div className="mt-4 rounded-[1.25rem] bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)] sm:mt-6 sm:rounded-[1.5rem] sm:p-6">
+            <div className="mt-4 rounded-xl bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)] sm:mt-6 sm:rounded-2xl sm:p-6">
               Cargando entrenamientos...
             </div>
           ) : sesionesCerradas.length === 0 ? (
-            <div className="mt-4 rounded-[1.25rem] bg-[color:var(--surface-lowest)] p-5 text-sm leading-6 text-muted-foreground shadow-[var(--shadow-airy)] sm:mt-6 sm:rounded-[1.5rem] sm:p-6">
+            <div className="mt-4 rounded-xl bg-[color:var(--surface-lowest)] p-5 text-sm leading-6 text-muted-foreground shadow-[var(--shadow-airy)] sm:mt-6 sm:rounded-2xl sm:p-6">
               Todavia no tienes entrenamientos anteriores. Cuando cierres una sesion activa, aparecera aqui.
             </div>
           ) : (
             <>
-              <div className="mt-6 hidden overflow-hidden rounded-[1.5rem] bg-[color:var(--surface-lowest)] lg:block">
+              <div className="mt-6 hidden overflow-hidden rounded-2xl bg-[color:var(--surface-lowest)] lg:block">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-0 bg-[color:var(--surface-low)] hover:bg-transparent">
@@ -198,7 +198,7 @@ export function HistoricoFuerza() {
                           </TableCell>
                           <TableCell className="px-6 py-5">
                             <span
-                              className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em]"
+                              className="inline-flex rounded-sm px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em]"
                               style={{
                                 background:
                                   "color-mix(in oklch, var(--module-entrenamientos) 10%, transparent)",
@@ -225,7 +225,7 @@ export function HistoricoFuerza() {
                     <article
                       key={entreno.id_entrenamiento_fuerza}
                       className={cn(
-                        "cursor-pointer rounded-[1.25rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] transition sm:rounded-[1.5rem] sm:p-5",
+                        "cursor-pointer rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] transition sm:rounded-2xl sm:p-5",
                         isSelected
                           ? "ring-2 ring-[color:var(--module-entrenamientos)]/40"
                           : "hover:-translate-y-0.5 hover:shadow-[var(--shadow-airy-lg)]"
@@ -255,7 +255,7 @@ export function HistoricoFuerza() {
 
                         <div className="flex items-center gap-2">
                           <span
-                            className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.16em] sm:px-2.5 sm:py-1 sm:text-[11px] sm:tracking-[0.18em]"
+                            className="inline-flex rounded-sm px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.16em] sm:px-2.5 sm:py-1 sm:text-[11px] sm:tracking-[0.18em]"
                             style={{
                               background:
                                 "color-mix(in oklch, var(--module-entrenamientos) 10%, transparent)",
@@ -278,7 +278,7 @@ export function HistoricoFuerza() {
         </section>
       </div>
 
-      <section className="rounded-[1.5rem] bg-[color:var(--surface-low)] p-4 sm:rounded-[1.75rem] sm:p-6">
+      <section className="rounded-2xl bg-[color:var(--surface-low)] p-4 sm:rounded-3xl sm:p-6">
         <div>
           <p className="font-label text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground sm:text-[0.7rem] sm:tracking-[0.22em]">
             Detalle
@@ -290,15 +290,15 @@ export function HistoricoFuerza() {
 
         <div className="mt-4 sm:mt-6">
           {loading && !detail ? (
-            <div className="rounded-[1.25rem] bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)] sm:rounded-[1.5rem] sm:p-6">
+            <div className="rounded-xl bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)] sm:rounded-2xl sm:p-6">
               Cargando detalle...
             </div>
           ) : detail ? (
             <div className="space-y-3 sm:space-y-4">
-              <article className="rounded-[1.25rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:rounded-[1.5rem] sm:p-5">
+              <article className="rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:rounded-2xl sm:p-5">
                 <div className="space-y-2">
                   <span
-                    className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em]"
+                    className="inline-flex rounded-sm px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em]"
                     style={{
                       background: "color-mix(in oklch, var(--module-entrenamientos) 10%, transparent)",
                       color: "var(--module-entrenamientos)",
@@ -315,13 +315,13 @@ export function HistoricoFuerza() {
                 </div>
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-[1rem] bg-[color:var(--surface-low)] p-3 sm:rounded-[1.25rem] sm:p-4">
+                  <div className="rounded-lg bg-[color:var(--surface-low)] p-3 sm:rounded-xl sm:p-4">
                     <p className="font-label text-[0.62rem] uppercase tracking-[0.18em] text-muted-foreground sm:text-[0.68rem] sm:tracking-[0.2em]">
                       Inicio
                     </p>
                     <p className="mt-1.5 text-sm text-foreground sm:mt-2">{formatDate(detail.inicio_at)}</p>
                   </div>
-                  <div className="rounded-[1rem] bg-[color:var(--surface-low)] p-3 sm:rounded-[1.25rem] sm:p-4">
+                  <div className="rounded-lg bg-[color:var(--surface-low)] p-3 sm:rounded-xl sm:p-4">
                     <p className="font-label text-[0.62rem] uppercase tracking-[0.18em] text-muted-foreground sm:text-[0.68rem] sm:tracking-[0.2em]">
                       Cierre
                     </p>
@@ -334,21 +334,21 @@ export function HistoricoFuerza() {
 
               <div className="space-y-2 sm:space-y-3">
                 {(detail.series ?? []).length === 0 ? (
-                  <div className="rounded-[1.25rem] bg-[color:var(--surface-lowest)] p-5 text-sm leading-6 text-muted-foreground shadow-[var(--shadow-airy)] sm:rounded-[1.5rem] sm:p-6">
+                  <div className="rounded-xl bg-[color:var(--surface-lowest)] p-5 text-sm leading-6 text-muted-foreground shadow-[var(--shadow-airy)] sm:rounded-2xl sm:p-6">
                     Esta sesion no tiene series registradas.
                   </div>
                 ) : (
                   (detail.series ?? []).map((serie) => (
                     <article
                       key={serie.id_fuerza_detalle}
-                      className="rounded-[1.25rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:rounded-[1.5rem] sm:p-5"
+                      className="rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:rounded-2xl sm:p-5"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 space-y-1.5">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span
                               className={cn(
-                                "inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.14em] sm:text-[11px] sm:tracking-[0.18em]"
+                                "inline-flex rounded-sm px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.14em] sm:text-[11px] sm:tracking-[0.18em]"
                               )}
                               style={
                                 serie.es_calentamiento
@@ -391,7 +391,7 @@ export function HistoricoFuerza() {
               </div>
             </div>
           ) : (
-            <div className="rounded-[1.25rem] bg-[color:var(--surface-lowest)] p-5 text-sm leading-6 text-muted-foreground shadow-[var(--shadow-airy)] sm:rounded-[1.5rem] sm:p-6">
+            <div className="rounded-xl bg-[color:var(--surface-lowest)] p-5 text-sm leading-6 text-muted-foreground shadow-[var(--shadow-airy)] sm:rounded-2xl sm:p-6">
               Selecciona una sesion del listado para revisar su detalle y las series asociadas.
             </div>
           )}

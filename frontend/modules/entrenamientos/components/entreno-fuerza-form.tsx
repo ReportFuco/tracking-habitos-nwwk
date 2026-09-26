@@ -18,7 +18,7 @@ const initialForm = {
 }
 
 const textareaClassName =
-  "min-h-28 w-full rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-b-2 focus:border-[color:var(--module-entrenamientos)] sm:min-h-32"
+  "min-h-28 w-full rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-b-2 focus:border-[color:var(--module-entrenamientos)] sm:min-h-32"
 
 const steps = [
   {
@@ -99,7 +99,7 @@ export function EntrenoFuerzaFormCard() {
       <FormPanel eyebrow="Registro" accent="tertiary">
         <div className="space-y-5 sm:space-y-6">
           {entrenamientoActivo ? (
-            <div className="rounded-[1.25rem] bg-[color:var(--surface-low)] p-4 sm:rounded-[1.5rem] sm:p-5">
+            <div className="rounded-xl bg-[color:var(--surface-low)] p-4 sm:rounded-2xl sm:p-5">
               <p className="font-label text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground sm:text-[0.72rem] sm:tracking-[0.24em]">
                 Sesion activa
               </p>
@@ -112,7 +112,7 @@ export function EntrenoFuerzaFormCard() {
               </p>
               <Button
                 asChild
-                className="mt-4 bg-[color:var(--module-entrenamientos)] text-[color:var(--tertiary-foreground)] hover:bg-[color:var(--module-entrenamientos)]/90 sm:mt-5"
+                className="mt-4 bg-[color:var(--module-entrenamientos)] text-[color:var(--module-entrenamientos-foreground)] hover:bg-[color:var(--module-entrenamientos)]/90 sm:mt-5"
               >
                 <Link href="/app/entrenamientos/activo">
                   Ir a entrenamiento activo
@@ -164,7 +164,7 @@ export function EntrenoFuerzaFormCard() {
                   <Button
                     type="submit"
                     disabled={submitting || availableGimnasios.length === 0}
-                    className="w-full bg-[color:var(--module-entrenamientos)] text-[color:var(--tertiary-foreground)] hover:bg-[color:var(--module-entrenamientos)]/90 sm:w-auto"
+                    className="w-full bg-[color:var(--module-entrenamientos)] text-[color:var(--module-entrenamientos-foreground)] hover:bg-[color:var(--module-entrenamientos)]/90 sm:w-auto"
                   >
                     {submitting ? "Abriendo sesion..." : "Registrar entrenamiento"}
                   </Button>
@@ -191,14 +191,14 @@ export function EntrenoFuerzaFormCard() {
       <section className="space-y-4">
         <TrainingNotificationSettings />
 
-        <article className="hidden rounded-[1.75rem] bg-[color:var(--surface-lowest)] p-6 shadow-[var(--shadow-airy)] xl:block">
+        <article className="hidden rounded-3xl bg-[color:var(--surface-lowest)] p-6 shadow-[var(--shadow-airy)] xl:block">
           <p className="flex items-center gap-2 text-sm font-medium text-foreground">
             <Flame className="size-4 text-[color:var(--module-entrenamientos)]" />
             Paso a paso
           </p>
           <div className="mt-4 space-y-3">
             {steps.map((step) => (
-              <div key={step.index} className="rounded-[1.25rem] bg-[color:var(--surface-low)] p-4">
+              <div key={step.index} className="rounded-xl bg-[color:var(--surface-low)] p-4">
                 <p className="font-label text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
                   {step.index[0] === "0" ? `${Number(step.index)}. ${step.title}` : step.title}
                 </p>
@@ -208,7 +208,7 @@ export function EntrenoFuerzaFormCard() {
           </div>
         </article>
 
-        <details className="group rounded-[1.25rem] bg-[color:var(--surface-low)] p-4 xl:hidden">
+        <details className="group rounded-xl bg-[color:var(--surface-low)] p-4 xl:hidden">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
             <span className="flex items-center gap-2 text-sm font-medium text-foreground">
               <Flame className="size-4 text-[color:var(--module-entrenamientos)]" />
@@ -222,10 +222,10 @@ export function EntrenoFuerzaFormCard() {
             {steps.map((step) => (
               <li
                 key={step.index}
-                className="flex items-start gap-3 rounded-[1rem] bg-[color:var(--surface-lowest)] p-3"
+                className="flex items-start gap-3 rounded-lg bg-[color:var(--surface-lowest)] p-3"
               >
                 <span
-                  className="flex size-7 shrink-0 items-center justify-center rounded-full font-label text-[0.65rem] font-semibold tracking-[0.1em]"
+                  className="flex size-7 shrink-0 items-center justify-center rounded-md font-label text-[0.65rem] font-semibold tracking-[0.1em]"
                   style={{
                     background: "color-mix(in oklch, var(--module-entrenamientos) 12%, transparent)",
                     color: "var(--module-entrenamientos)",

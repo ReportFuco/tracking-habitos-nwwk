@@ -2,6 +2,7 @@ import Link from "next/link"
 import { ArrowRight, Landmark, Wallet, Receipt, History } from "lucide-react"
 import { ContextNav } from "@/components/shell/context-nav"
 import { PageHeader } from "@/components/shell/page-header"
+import { FinanzasKpiOverview } from "@/modules/finanzas/components/finanzas-kpi-overview"
 
 const MODULE_COLOR = "var(--module-finanzas)"
 
@@ -59,11 +60,11 @@ export default function FinanzasHomePage() {
             <Link
               key={tile.href}
               href={tile.href}
-              className="group flex flex-col gap-3 rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] transition active:scale-[0.99] sm:p-5"
+              className="group flex flex-col gap-3 rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] transition active:scale-[0.99] sm:p-5"
             >
               <div className="flex items-center justify-between">
                 <span
-                  className="flex size-10 items-center justify-center rounded-full"
+                  className="flex size-10 items-center justify-center rounded-md"
                   style={{
                     background: `color-mix(in oklch, ${MODULE_COLOR} 14%, transparent)`,
                     color: MODULE_COLOR,
@@ -93,15 +94,7 @@ export default function FinanzasHomePage() {
         })}
       </div>
 
-      <div className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
-        <p className="font-label text-[0.7rem] uppercase tracking-[0.2em] text-muted-foreground">
-          Nota
-        </p>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          El historico y otras vistas quedan como apoyo secundario. El corazon del modulo son estos
-          dos flujos.
-        </p>
-      </div>
+      <FinanzasKpiOverview />
     </div>
   )
 }

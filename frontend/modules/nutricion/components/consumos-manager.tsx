@@ -109,7 +109,7 @@ export function ConsumosManager() {
   return (
     <section className="flex flex-col gap-4">
       <section className="grid gap-3 sm:grid-cols-2">
-        <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
+        <article className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
           <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <Apple className="size-3.5" style={{ color: MODULE_COLOR }} />
             Consumos hoy
@@ -118,7 +118,7 @@ export function ConsumosManager() {
           <p className="mt-1 text-xs text-muted-foreground sm:text-sm">Registros del dia actual</p>
         </article>
 
-        <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
+        <article className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
           <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <UtensilsCrossed className="size-3.5" style={{ color: MODULE_COLOR }} />
             Total registros
@@ -133,7 +133,7 @@ export function ConsumosManager() {
       {showForm ? (
         <form
           onSubmit={handleSubmit}
-          className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5"
+          className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5"
         >
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-foreground">Nuevo consumo</p>
@@ -154,7 +154,7 @@ export function ConsumosManager() {
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, fecha_consumo: event.target.value }))
                 }
-                className="h-12 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+                className="h-12 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
               />
             </LabeledField>
 
@@ -182,11 +182,11 @@ export function ConsumosManager() {
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, observacion: event.target.value }))
               }
-              className="h-12 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+              className="h-12 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
             />
           </LabeledField>
 
-          <Button type="submit" disabled={submitting} className="mt-4 h-12 w-full rounded-[1rem]">
+          <Button type="submit" disabled={submitting} className="mt-4 h-12 w-full rounded-lg">
             {submitting ? "Guardando..." : "Registrar consumo"}
           </Button>
         </form>
@@ -194,7 +194,7 @@ export function ConsumosManager() {
         <button
           type="button"
           onClick={() => setShowForm(true)}
-          className="flex items-center justify-center gap-2 rounded-[1.5rem] border-2 border-dashed border-[color:var(--border)] bg-transparent py-3 text-sm font-medium text-muted-foreground transition hover:border-[color:var(--module-nutricion)] hover:text-foreground"
+          className="flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[color:var(--border)] bg-transparent py-3 text-sm font-medium text-muted-foreground transition hover:border-[color:var(--module-nutricion)] hover:text-foreground"
         >
           <Plus className="size-4" />
           Nuevo consumo
@@ -203,11 +203,11 @@ export function ConsumosManager() {
 
       <section className="flex flex-col gap-3">
         {loading ? (
-          <div className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
+          <div className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
             Cargando consumos...
           </div>
         ) : grouped.length === 0 ? (
-          <div className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
+          <div className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
             Aun no tienes consumos registrados.
           </div>
         ) : (
@@ -220,12 +220,12 @@ export function ConsumosManager() {
                 {items.map((consumo) => (
                   <li
                     key={consumo.id_consumo}
-                    className="rounded-[1.25rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)]"
+                    className="rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3">
                         <span
-                          className="flex size-10 shrink-0 items-center justify-center rounded-full"
+                          className="flex size-10 shrink-0 items-center justify-center rounded-md"
                           style={{
                             background: `color-mix(in oklch, ${MODULE_COLOR} 14%, transparent)`,
                             color: MODULE_COLOR,
@@ -237,7 +237,7 @@ export function ConsumosManager() {
                           <div className="flex items-center gap-2">
                             <span
                               className={cn(
-                                "inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-[0.18em]"
+                                "inline-flex rounded-sm px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-[0.18em]"
                               )}
                               style={{
                                 background: `color-mix(in oklch, ${MODULE_COLOR} 14%, transparent)`,

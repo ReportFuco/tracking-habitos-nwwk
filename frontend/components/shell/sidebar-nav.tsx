@@ -18,7 +18,7 @@ export function SidebarNav({ sections, onNavigate }: SidebarNavProps) {
       {sections.map((section, idx) => (
         <div key={section.title ?? idx} className="flex flex-col gap-2">
           {section.title ? (
-            <p className="px-3 font-[family-name:var(--font-label)] text-[0.7rem] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            <p className="px-3 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-[color:var(--sidebar-muted)]">
               {section.title}
             </p>
           ) : null}
@@ -36,22 +36,20 @@ export function SidebarNav({ sections, onNavigate }: SidebarNavProps) {
                     onClick={onNavigate}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                      "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sidebar-ring)]",
                       isActive
-                        ? "bg-[color:var(--surface-lowest)] text-foreground shadow-[var(--shadow-airy)]"
-                        : "text-muted-foreground hover:bg-[color:var(--surface-lowest)]/60 hover:text-foreground"
+                        ? "bg-[color:var(--sidebar-primary)] text-[color:var(--sidebar-primary-foreground)]"
+                        : "text-[color:var(--sidebar-muted)] hover:bg-[color:var(--sidebar-accent)] hover:text-[color:var(--sidebar-accent-foreground)]"
                     )}
                   >
                     <span
                       className={cn(
                         "flex size-8 items-center justify-center rounded-md transition-colors",
-                        isActive
-                          ? "bg-[color:var(--accent)]"
-                          : "bg-transparent group-hover:bg-[color:var(--accent)]/40"
+                        isActive ? "bg-[color:var(--sidebar-primary-foreground)]" : "bg-transparent",
                       )}
                       style={
-                        item.moduleColor && isActive
-                          ? { color: item.moduleColor }
+                        isActive
+                          ? { color: item.moduleFill ?? "var(--sidebar-primary)" }
                           : undefined
                       }
                     >

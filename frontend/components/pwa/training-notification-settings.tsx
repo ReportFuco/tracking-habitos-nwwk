@@ -165,7 +165,7 @@ export function TrainingNotificationSettings() {
           className={
             subscribed
               ? ""
-              : "bg-[color:var(--module-entrenamientos)] text-[color:var(--tertiary-foreground)] hover:bg-[color:var(--module-entrenamientos)]/90"
+              : "bg-[color:var(--module-entrenamientos)] text-[color:var(--module-entrenamientos-foreground)] hover:bg-[color:var(--module-entrenamientos)]/90"
           }
         >
           {busy ? "Guardando..." : subscribed ? "Desactivar" : "Activar avisos"}
@@ -187,9 +187,9 @@ function NotificationCard({
   action?: React.ReactNode
 }) {
   return (
-    <article className="rounded-[1.25rem] bg-[color:var(--surface-low)] p-4">
+    <article className="rounded-xl bg-[color:var(--surface-low)] p-4">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-[color:var(--surface-lowest)] text-[color:var(--module-entrenamientos)]">
+        <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-[color:var(--surface-lowest)] text-[color:var(--module-entrenamientos)]">
           {icon}
         </span>
         <div className="min-w-0 flex-1">

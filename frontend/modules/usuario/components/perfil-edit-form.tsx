@@ -117,7 +117,7 @@ export function PerfilEditForm({ perfil, submitting, onSubmit }: PerfilEditFormP
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, username: event.target.value }))
               }
-              className="h-13 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+              className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
             />
           </FieldGroup>
 
@@ -129,7 +129,7 @@ export function PerfilEditForm({ perfil, submitting, onSubmit }: PerfilEditFormP
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, email: event.target.value }))
               }
-              className="h-13 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+              className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
             />
           </FieldGroup>
 
@@ -141,7 +141,7 @@ export function PerfilEditForm({ perfil, submitting, onSubmit }: PerfilEditFormP
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, nombre: event.target.value }))
               }
-              className="h-13 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+              className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
             />
           </FieldGroup>
 
@@ -153,7 +153,7 @@ export function PerfilEditForm({ perfil, submitting, onSubmit }: PerfilEditFormP
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, apellido: event.target.value }))
               }
-              className="h-13 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+              className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
             />
           </FieldGroup>
         </div>
@@ -167,7 +167,7 @@ export function PerfilEditForm({ perfil, submitting, onSubmit }: PerfilEditFormP
             onChange={(event) =>
               setForm((prev) => ({ ...prev, telefono: event.target.value }))
             }
-            className="h-13 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+            className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
           />
         </FieldGroup>
 

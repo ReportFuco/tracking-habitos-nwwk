@@ -57,8 +57,8 @@ export function RegisterView() {
   return (
     <AuthShell
       eyebrow="Registro"
-      title="Crea tu cuenta con una experiencia mas dedicada."
-      description="Completa tus datos y deja lista tu entrada a la app. Luego podras iniciar sesion desde tu acceso principal."
+      title="Empieza tu ritmo."
+      description="Una cuenta para llevar finanzas, fuerza, nutricion y compras en el mismo lugar."
       accent="brick"
       secondaryCta={{
         href: "/login",
@@ -79,11 +79,11 @@ export function RegisterView() {
             <p className="font-label text-[11px] uppercase tracking-[0.26em] text-muted-foreground sm:text-xs">
               Crear cuenta
             </p>
-            <h2 className="text-xl font-semibold tracking-[-0.02em] text-foreground sm:text-3xl sm:tracking-[-0.03em]">
-              Empieza con una base simple y personal.
+            <h2 className="font-display text-2xl text-foreground sm:text-3xl">
+              Crear cuenta
             </h2>
             <p className="hidden max-w-md text-sm leading-6 text-muted-foreground sm:block">
-              Este registro crea tu usuario para autenticacion y deja lista la entrada al panel protegido.
+              Despues de crearla entras con tu usuario y clave.
             </p>
           </div>
 
@@ -99,7 +99,7 @@ export function RegisterView() {
                     setRegisterForm((prev) => ({ ...prev, nombre: event.target.value }))
                   }
                   placeholder="Valentina"
-                  className="h-13 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-tertiary focus-visible:ring-0"
+                  className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-tertiary focus-visible:ring-0"
                 />
               </div>
               <div className="space-y-2">
@@ -112,7 +112,7 @@ export function RegisterView() {
                     setRegisterForm((prev) => ({ ...prev, apellido: event.target.value }))
                   }
                   placeholder="Morales"
-                  className="h-13 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-tertiary focus-visible:ring-0"
+                  className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-tertiary focus-visible:ring-0"
                 />
               </div>
             </div>
@@ -127,7 +127,7 @@ export function RegisterView() {
                   setRegisterForm((prev) => ({ ...prev, username: event.target.value }))
                 }
                 placeholder="tu nombre de usuario"
-                className="h-13 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-tertiary focus-visible:ring-0"
+                className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-tertiary focus-visible:ring-0"
               />
             </div>
 
@@ -142,7 +142,7 @@ export function RegisterView() {
                   setRegisterForm((prev) => ({ ...prev, email: event.target.value }))
                 }
                 placeholder="correo@dominio.com"
-                className="h-13 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-tertiary focus-visible:ring-0"
+                className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-tertiary focus-visible:ring-0"
               />
             </div>
 
@@ -157,7 +157,7 @@ export function RegisterView() {
                     setRegisterForm((prev) => ({ ...prev, telefono: event.target.value }))
                   }
                   placeholder="56912345678"
-                  className="h-13 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-tertiary focus-visible:ring-0"
+                  className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-tertiary focus-visible:ring-0"
                 />
               </div>
               <div className="space-y-2">
@@ -174,28 +174,23 @@ export function RegisterView() {
                     setRegisterForm((prev) => ({ ...prev, password: event.target.value }))
                   }
                   placeholder="••••••••"
-                  className="h-13 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-tertiary focus-visible:ring-0"
+                  className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-tertiary focus-visible:ring-0"
                 />
               </div>
             </div>
 
-            <div className="hidden rounded-[1.5rem] bg-[color:var(--surface-low)] p-4 sm:block">
-              <p className="text-sm leading-6 text-muted-foreground">
-                Una vez creado el usuario, te llevamos al login para entrar con tu nueva cuenta y continuar al panel.
-              </p>
-            </div>
 
             <Button type="submit" size="lg" className="h-12 w-full rounded-xl bg-tertiary text-tertiary-foreground hover:bg-tertiary/90" disabled={submitting}>
               {submitting ? "Registrando..." : "Crear cuenta"}
             </Button>
           </form>
 
-          <div className="hidden items-center justify-between rounded-[1.5rem] bg-[color:var(--surface-low)] px-4 py-4 sm:flex">
+          <div className="hidden items-center justify-between rounded-2xl bg-[color:var(--surface-low)] px-4 py-4 sm:flex">
             <div>
               <p className="text-sm font-medium text-foreground">Ya tienes acceso?</p>
-              <p className="text-sm text-muted-foreground">Puedes volver a la pantalla dedicada de ingreso.</p>
+              <p className="text-sm text-muted-foreground">Entra con tu usuario y clave.</p>
             </div>
-            <Button asChild variant="ghost" className="rounded-full px-3">
+            <Button asChild variant="ghost" className="rounded-sm px-3">
               <Link href="/login">
                 Iniciar sesion
                 <ArrowRight className="size-4" />

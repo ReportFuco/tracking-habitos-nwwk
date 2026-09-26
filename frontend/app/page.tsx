@@ -1,211 +1,140 @@
 import Link from "next/link"
-import {
-  ArrowRight,
-  Wallet,
-  Dumbbell,
-  Apple,
-  ShoppingBag,
-  Gauge,
-  Sparkles,
-} from "lucide-react"
+import { ArrowRight, Apple, Dumbbell, ShoppingBag, Wallet } from "lucide-react"
+import { BrandMark } from "@/components/brand/brand-mark"
+import { BRAND } from "@/lib/brand"
 
 const modules = [
   {
+    key: "finanzas",
     title: "Finanzas",
-    description: "Lleva tus cuentas, movimientos y gastos con claridad editorial.",
+    description: "Cuentas, gastos e ingresos. Sabes cuanto te queda antes de fin de mes.",
     icon: Wallet,
-    color: "var(--module-finanzas)",
+    sample: "$605.000",
+    sampleLabel: "balance del mes",
   },
   {
-    title: "Entrenamientos",
-    description: "Registra series y sesiones de fuerza como un diario de progreso.",
+    key: "entrenamientos",
+    title: "Fuerza",
+    description: "Cada serie con su carga y repeticiones, incluso sin senal en el gimnasio.",
     icon: Dumbbell,
-    color: "var(--module-entrenamientos)",
+    sample: "3 sesiones",
+    sampleLabel: "esta semana",
   },
   {
+    key: "nutricion",
     title: "Nutricion",
-    description: "Consumos, metas y peso en un unico espacio calmado.",
+    description: "Comidas, metas y peso para ver la tendencia, no solo el dia.",
     icon: Apple,
-    color: "var(--module-nutricion)",
+    sample: "78,4 kg",
+    sampleLabel: "ultimo registro",
   },
   {
+    key: "compras",
     title: "Compras",
-    description: "Cada compra con su detalle, tus locales y tus precios.",
+    description: "Tickets por local y cadena, con el total que se va al supermercado.",
     icon: ShoppingBag,
-    color: "var(--module-compras)",
+    sample: "$86.990",
+    sampleLabel: "compras del mes",
   },
-]
+] as const
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <header className="flex items-center justify-between gap-3 px-4 py-4 sm:px-10 sm:py-6">
-        <Link href="/" className="text-sm font-semibold tracking-tight sm:text-base">
-          The Curated Life
+      <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-10 sm:py-6">
+        <Link href="/" aria-label={`${BRAND.name}, inicio`}>
+          <BrandMark size="sm" />
         </Link>
-        <nav className="flex items-center gap-2 text-sm sm:gap-4">
+        <nav className="flex items-center gap-2 sm:gap-3">
           <Link
             href="/login"
-            className="font-[family-name:var(--font-label)] text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground sm:text-xs"
+            className="inline-flex h-9 items-center rounded-md px-3 text-sm font-semibold text-foreground transition-colors hover:bg-[color:var(--surface-low)]"
           >
-            Iniciar sesion
+            Entrar
           </Link>
           <Link
             href="/register"
-            className="inline-flex h-9 items-center rounded-lg bg-[color:var(--primary)] px-3 text-xs font-medium text-[color:var(--primary-foreground)] transition-colors hover:bg-[color:var(--primary)]/90 sm:px-4 sm:text-sm"
+            className="inline-flex h-9 items-center rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 sm:px-4"
           >
             Crear cuenta
           </Link>
         </nav>
       </header>
 
-      <section className="relative overflow-hidden px-4 pt-4 pb-10 sm:px-10 sm:pt-16 sm:pb-28">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-40 top-0 hidden h-[520px] w-[520px] rounded-full opacity-40 blur-3xl sm:block"
-          style={{ background: "radial-gradient(circle, var(--module-nutricion), transparent 70%)" }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -left-20 bottom-0 hidden h-[420px] w-[420px] rounded-full opacity-30 blur-3xl sm:block"
-          style={{ background: "radial-gradient(circle, var(--module-entrenamientos), transparent 70%)" }}
-        />
-
-        <div className="relative mx-auto grid w-full max-w-6xl gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-20">
-          <div className="flex flex-col gap-5 sm:gap-8">
-            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-[color:var(--surface-lowest)] px-3 py-1.5 font-[family-name:var(--font-label)] text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground shadow-[var(--shadow-airy)] sm:px-4 sm:text-[0.7rem]">
-              <Sparkles className="size-3" aria-hidden />
-              Mindful editorial
-            </span>
-
-            <h1 className="text-balance text-3xl font-semibold leading-[1.1] tracking-tight sm:text-6xl sm:leading-[1.05] lg:text-7xl">
-              Tu vida,{" "}
-              <span className="italic text-[color:var(--secondary)]">organizada</span>
-              <br />
-              con calma.
-            </h1>
-
-            <p className="max-w-xl text-sm text-muted-foreground sm:text-lg">
-              Un espacio personal para seguir finanzas, entrenamientos, compras y nutricion.
-              Sobrio, calido y sin ruido. Pensado como un diario premium, no como una hoja de
-              calculo.
-            </p>
-
-            <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:flex-wrap sm:items-center sm:pt-2">
-              <Link
-                href="/register"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[color:var(--primary)] px-6 text-sm font-medium text-[color:var(--primary-foreground)] shadow-[var(--shadow-airy)] transition-all hover:shadow-[var(--shadow-airy-lg)] sm:h-11"
-              >
-                Empezar a registrar
-                <ArrowRight className="size-4" />
-              </Link>
-              <Link
-                href="/login"
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-[color:var(--surface-lowest)] px-6 text-sm font-medium text-foreground shadow-[var(--shadow-airy)] transition-colors hover:bg-[color:var(--accent)] sm:h-11"
-              >
-                Ya tengo cuenta
-              </Link>
-            </div>
-          </div>
-
-          <div className="relative hidden flex-col gap-5 lg:flex lg:pt-6">
-            <div className="surface-card flex items-start gap-4">
-              <span className="flex size-11 items-center justify-center rounded-lg bg-[color:var(--module-finanzas)]/10 text-[color:var(--module-finanzas)]">
-                <Gauge className="size-5" />
-              </span>
-              <div className="flex-1">
-                <p className="font-[family-name:var(--font-label)] text-[0.7rem] uppercase tracking-wider text-muted-foreground">
-                  Resumen del mes
-                </p>
-                <p className="mt-1 text-2xl font-semibold tracking-tight">$ 1.284.900</p>
-                <p className="text-sm text-muted-foreground">
-                  Ingresos netos despues de gastos fijos.
-                </p>
-              </div>
-            </div>
-
-            <div
-              className="surface-card ml-8 flex items-start gap-4"
-              style={{ background: "var(--tertiary-container)" }}
+      <section className="mx-auto grid w-full max-w-6xl gap-8 px-4 pt-6 pb-12 sm:px-10 sm:pt-14 sm:pb-20 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:gap-14">
+        <div className="flex flex-col gap-6">
+          <span className="inline-flex w-fit items-center gap-2 rounded-sm bg-highlight px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-[0.16em] text-highlight-foreground">
+            Tracker personal
+          </span>
+          <h1 className="font-display text-[2.6rem] leading-[0.95] text-balance sm:text-7xl lg:text-8xl">
+            {BRAND.tagline}
+          </h1>
+          <p className="max-w-lg text-base text-muted-foreground sm:text-lg">
+            Finanzas, fuerza, nutricion y compras en una sola app. Registras en segundos desde el
+            telefono y ves como va tu mes de un vistazo.
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/register"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
             >
-              <span className="flex size-11 items-center justify-center rounded-lg bg-[color:var(--tertiary)]/15 text-[color:var(--tertiary)]">
-                <Dumbbell className="size-5" />
-              </span>
-              <div className="flex-1">
-                <p className="font-[family-name:var(--font-label)] text-[0.7rem] uppercase tracking-wider text-[color:var(--tertiary)]">
-                  Sesion activa
-                </p>
-                <p className="mt-1 text-lg font-semibold">Pecho y triceps</p>
-                <p className="text-sm text-[color:var(--tertiary)]/80">
-                  6 series registradas, Smart Fit Oeste.
-                </p>
-              </div>
-            </div>
-
-            <div className="surface-card flex items-start gap-4">
-              <span className="flex size-11 items-center justify-center rounded-lg bg-[color:var(--module-nutricion)]/10 text-[color:var(--module-nutricion)]">
-                <Apple className="size-5" />
-              </span>
-              <div className="flex-1">
-                <p className="font-[family-name:var(--font-label)] text-[0.7rem] uppercase tracking-wider text-muted-foreground">
-                  Meta nutricional
-                </p>
-                <p className="mt-1 text-lg font-semibold">2.200 kcal / dia</p>
-                <p className="text-sm text-muted-foreground">Proteina objetivo 160 g.</p>
-              </div>
-            </div>
+              Empezar a registrar
+              <ArrowRight className="size-4" />
+            </Link>
+            <Link
+              href="/login"
+              className="inline-flex h-12 items-center justify-center rounded-md border border-foreground px-6 text-sm font-semibold text-foreground transition-colors hover:bg-foreground hover:text-background"
+            >
+              Ya tengo cuenta
+            </Link>
           </div>
+        </div>
+
+        {/* Cartel: los cuatro bloques de color. Cifras de ejemplo, no datos reales. */}
+        <div className="grid grid-cols-2 gap-2" aria-label="Ejemplo de lo que ves en tu inicio">
+          {modules.map((item) => {
+            const Icon = item.icon
+            return (
+              <div
+                key={item.key}
+                className="flex aspect-square flex-col justify-between rounded-2xl p-4 sm:p-5"
+                style={{ background: `var(--module-${item.key}-fill)`, color: `var(--module-${item.key}-on)` }}
+              >
+                <span className="inline-flex size-9 items-center justify-center rounded-md bg-black/15">
+                  <Icon className="size-[1.1rem]" aria-hidden />
+                </span>
+                <div>
+                  <p className="font-display text-xl leading-none sm:text-2xl">{item.sample}</p>
+                  <p className="mt-1 text-xs opacity-85">{item.sampleLabel}</p>
+                </div>
+              </div>
+            )
+          })}
         </div>
       </section>
 
-      <section className="px-4 pb-14 sm:px-10 sm:pb-24">
+      <section className="bg-[color:var(--sidebar)] px-4 py-14 text-[color:var(--sidebar-foreground)] sm:px-10 sm:py-20">
         <div className="mx-auto w-full max-w-6xl">
-          <div className="mb-6 flex flex-col gap-2 sm:mb-10">
-            <span className="font-[family-name:var(--font-label)] text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground sm:text-[0.7rem]">
-              Modulos
-            </span>
-            <h2 className="max-w-2xl text-xl font-semibold tracking-tight sm:text-4xl">
-              Cada area de tu vida, con un color propio dentro de la misma familia.
-            </h2>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
-            {modules.map((item) => {
-              const Icon = item.icon
-              return (
-                <article
-                  key={item.title}
-                  className="surface-card flex h-full flex-col gap-4 transition-transform hover:-translate-y-1"
-                >
-                  <span
-                    className="flex size-11 items-center justify-center rounded-lg"
-                    style={{ background: `color-mix(in oklch, ${item.color} 14%, transparent)`, color: item.color }}
-                  >
-                    <Icon className="size-5" />
-                  </span>
-                  <div className="flex flex-col gap-1">
-                    <h3 className="text-lg font-semibold tracking-tight">{item.title}</h3>
-                    <p className="text-sm text-muted-foreground">{item.description}</p>
-                  </div>
-                </article>
-              )
-            })}
+          <h2 className="max-w-2xl font-display text-3xl leading-[1.02] text-balance sm:text-5xl">
+            Cuatro areas. Un color cada una.
+          </h2>
+          <div className="mt-10 grid gap-px bg-[color:var(--sidebar-border)] sm:grid-cols-2 lg:grid-cols-4">
+            {modules.map((item) => (
+              <article key={item.key} className="flex flex-col gap-3 bg-[color:var(--sidebar)] py-6 pr-6 sm:p-6">
+                <span className="h-2 w-10" style={{ background: `var(--module-${item.key}-fill)` }} aria-hidden />
+                <h3 className="font-display text-xl">{item.title}</h3>
+                <p className="text-sm leading-6 text-[color:var(--sidebar-muted)]">{item.description}</p>
+              </article>
+            ))}
           </div>
         </div>
       </section>
 
-      <footer className="border-t-0 bg-[color:var(--surface-low)] px-4 py-6 sm:px-10 sm:py-10">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-start justify-between gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:gap-4">
-          <p>The Curated Life. Un diario digital para tu vida diaria.</p>
-          <div className="flex items-center gap-5">
-            <Link href="/administrador" className="hover:text-foreground">
-              Panel admin
-            </Link>
-            <Link href="/login" className="hover:text-foreground">
-              Iniciar sesion
-            </Link>
-          </div>
-        </div>
+      <footer className="mx-auto flex w-full max-w-6xl flex-col items-start justify-between gap-3 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:px-10">
+        <BrandMark size="sm" />
+        <Link href="/login" className="font-semibold hover:text-foreground">
+          Iniciar sesion
+        </Link>
       </footer>
     </main>
   )

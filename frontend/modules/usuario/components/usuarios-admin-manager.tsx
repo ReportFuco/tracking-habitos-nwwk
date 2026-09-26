@@ -70,12 +70,12 @@ export function UsuariosAdminManager() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{usuario.nombre} {usuario.apellido}</span>
                       {usuario.is_superuser ? (
-                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                        <span className="rounded-sm bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
                           Admin
                         </span>
                       ) : null}
                       {!usuario.is_active ? (
-                        <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+                        <span className="rounded-sm bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
                           Inactivo
                         </span>
                       ) : null}

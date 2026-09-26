@@ -6,9 +6,12 @@ import { useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, LogOut, Menu, Shield } from "lucide-react"
 import { toast } from "sonner"
+import { BrandMark } from "@/components/brand/brand-mark"
 import { FullScreenLoader } from "@/components/feedback/loaders/full-screen-loader"
+import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { clearStoredSession } from "@/lib/auth-session"
+import { cn } from "@/lib/utils"
 import { clearPersistedQueryCache } from "@/lib/query-persistence"
 import { AuthAPI } from "@/modules/auth/api/auth.api"
 import { disableCurrentDeviceNotifications } from "@/modules/notifications/api/notifications.api"
@@ -75,24 +78,25 @@ export function Topbar({
         <div className="flex items-center gap-2">
           <Link
             href={variant === "admin" ? "/administrador" : "/app/dashboard"}
-            className="font-semibold tracking-tight"
+            className={cn("flex items-center gap-2", variant === "admin" ? "md:hidden" : "lg:hidden")}
           >
-            <span className="text-foreground">The Curated Life</span>
-            {variant === "admin" ? (
-              <span className="ml-2 rounded-md bg-[color:var(--tertiary-container)] px-2 py-0.5 font-[family-name:var(--font-label)] text-[0.65rem] uppercase tracking-wider text-[color:var(--tertiary)]">
-                admin
-              </span>
-            ) : null}
+            <BrandMark size="sm" />
           </Link>
+          {variant === "admin" ? (
+            <span className="rounded-sm bg-highlight px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-highlight-foreground">
+              admin
+            </span>
+          ) : null}
         </div>
 
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
+          <ThemeToggle compact className="hidden sm:inline-flex" />
           {variant === "admin" ? (
             <Link
               href="/app/dashboard"
               aria-label="Volver a la app"
               title="Volver a la app"
-              className="flex size-9 items-center justify-center rounded-full bg-[color:var(--surface-low)] text-foreground transition hover:bg-[color:var(--surface-variant)]"
+              className="flex size-9 items-center justify-center rounded-md bg-[color:var(--surface-low)] text-foreground transition hover:bg-[color:var(--surface-variant)]"
             >
               <ArrowLeft className="size-4" />
             </Link>
@@ -109,7 +113,7 @@ export function Topbar({
                 </p>
               </div>
               <span
-                className="flex size-9 items-center justify-center rounded-full bg-[color:var(--primary)] font-[family-name:var(--font-label)] text-xs font-medium text-[color:var(--primary-foreground)]"
+                className="flex size-9 items-center justify-center rounded-md bg-[color:var(--primary)] text-xs font-bold text-[color:var(--primary-foreground)]"
                 aria-hidden
               >
                 {initials}
@@ -122,7 +126,7 @@ export function Topbar({
               href="/administrador"
               aria-label="Panel de administracion"
               title="Panel de administracion"
-              className="flex size-9 items-center justify-center rounded-full bg-[color:var(--tertiary-container)] text-[color:var(--tertiary)] transition hover:opacity-80"
+              className="flex size-9 items-center justify-center rounded-md bg-highlight text-highlight-foreground transition hover:opacity-85"
             >
               <Shield className="size-4" />
             </Link>

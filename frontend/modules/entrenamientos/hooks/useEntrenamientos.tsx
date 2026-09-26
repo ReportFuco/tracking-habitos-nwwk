@@ -7,6 +7,7 @@ import { getFriendlyErrorMessage } from "@/lib/error-messages"
 import { runOnlineOnlyAction } from "@/lib/online-only"
 import { queryKeys } from "@/lib/query-keys"
 import { EntrenamientosAPI } from "@/modules/entrenamientos/api/entrenamientos.api"
+import { entrenosFuerzaQueryOptions } from "@/modules/entrenamientos/queries"
 import {
   entrenamientosMutationKeys,
   runEntrenoActivoAction,
@@ -69,13 +70,7 @@ const useEntrenamientosState = () => {
     gcTime: ONE_WEEK,
     meta: persistMeta,
   })
-  const entrenamientosQuery = useQuery({
-    queryKey: queryKeys.entrenamientos.fuerzaLista,
-    queryFn: EntrenamientosAPI.getEntrenosFuerza,
-    staleTime: ONE_MINUTE,
-    enabled: false,
-    meta: persistMeta,
-  })
+  const entrenamientosQuery = useQuery({ ...entrenosFuerzaQueryOptions(), enabled: false })
   // El entreno activo es el caso critico offline: se registra en el gimnasio, que es
   // justo donde suele no haber senal.
   const entrenamientoActivoQuery = useQuery({

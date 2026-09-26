@@ -15,7 +15,7 @@ import type { EjercicioResponse } from "@/modules/entrenamientos/types/entrenami
 
 function Etiqueta({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-full bg-surface-low px-3 py-1 text-xs text-muted-foreground">
+    <span className="rounded-sm bg-surface-low px-3 py-1 text-xs text-muted-foreground">
       {children}
     </span>
   )
@@ -47,7 +47,7 @@ export function EjercicioDetalleDialog({
     <Dialog open onOpenChange={(abierto) => (abierto ? null : onClose())}>
       <DialogContent
         showCloseButton={false}
-        className="top-auto bottom-0 left-0 max-h-[92dvh] max-w-full translate-x-0 translate-y-0 overflow-y-auto rounded-t-[1.75rem] rounded-b-none border-0 bg-surface-lowest p-0 shadow-(--shadow-airy-lg) sm:top-[50%] sm:left-[50%] sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-[1.75rem]"
+        className="top-auto bottom-0 left-0 max-h-[92dvh] max-w-full translate-x-0 translate-y-0 overflow-y-auto rounded-t-[1.75rem] rounded-b-none border-0 bg-surface-lowest p-0 shadow-(--shadow-airy-lg) sm:top-[50%] sm:left-[50%] sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-3xl"
       >
         {/* Asidero visual de la hoja: indica que se puede cerrar arrastrando o tocando fuera. */}
         <div
@@ -86,7 +86,7 @@ export function EjercicioDetalleDialog({
 
           <div className="flex flex-wrap gap-2">
             <span
-              className="rounded-full px-3 py-1 text-xs font-medium text-tertiary-foreground"
+              className="rounded-sm px-3 py-1 text-xs font-medium text-tertiary-foreground"
               style={{ background: "var(--module-entrenamientos)" }}
             >
               {describirGrupo(ejercicio)}
@@ -98,7 +98,7 @@ export function EjercicioDetalleDialog({
           </div>
 
           {ejercicio.instrucciones?.length ? (
-            <section className="space-y-3 rounded-[1.5rem] bg-surface-low p-4">
+            <section className="space-y-3 rounded-2xl bg-surface-low p-4">
               <h3 className="font-label text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground">
                 Ejecucion
               </h3>
@@ -107,7 +107,7 @@ export function EjercicioDetalleDialog({
                   <li key={paso} className="flex gap-3 text-sm leading-6 text-foreground">
                     <span
                       aria-hidden
-                      className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-lowest text-[0.7rem] font-medium text-muted-foreground"
+                      className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md bg-surface-lowest text-[0.7rem] font-medium text-muted-foreground"
                     >
                       {indice + 1}
                     </span>

@@ -19,7 +19,7 @@ export function TablaManager() {
 
   return (
     <section className="flex flex-col gap-4">
-      <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
+      <article className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
         <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
           <ClipboardList className="size-3.5" style={{ color: MODULE_COLOR }} />
           Tabla de referencia
@@ -38,16 +38,16 @@ export function TablaManager() {
           placeholder="Buscar producto..."
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          className="h-12 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] pl-11 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+          className="h-12 rounded-lg border-0 bg-[color:var(--surface-variant)] pl-11 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
         />
       </div>
 
       {loading ? (
-        <div className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
+        <div className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
           Cargando tablas...
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
+        <div className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
           {tablas.length === 0
             ? "Aun no hay tablas nutricionales cargadas."
             : "Sin resultados para tu busqueda."}
@@ -57,7 +57,7 @@ export function TablaManager() {
           {filtered.map((tabla) => (
             <li
               key={tabla.id_tabla}
-              className="rounded-[1.25rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)]"
+              className="rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)]"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -69,7 +69,7 @@ export function TablaManager() {
                   </p>
                 </div>
                 <span
-                  className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                  className="rounded-sm px-2.5 py-1 text-xs font-semibold"
                   style={{
                     background: `color-mix(in oklch, ${MODULE_COLOR} 14%, transparent)`,
                     color: MODULE_COLOR,
@@ -94,7 +94,7 @@ export function TablaManager() {
 
 function Macro({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[0.85rem] bg-[color:var(--surface-low)] px-3 py-2">
+    <div className="rounded-lg bg-[color:var(--surface-low)] px-3 py-2">
       <p className="font-label text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
         {label}
       </p>

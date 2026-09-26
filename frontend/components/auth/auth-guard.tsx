@@ -31,8 +31,8 @@ export function AuthGuard({ children, redirectTo = "/login" }: AuthGuardProps) {
   if (!profileQuery.data && profileQuery.fetchStatus === "paused") {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-background px-6 text-foreground">
-        <section className="w-full max-w-md rounded-[2rem] bg-[color:var(--surface-lowest)] p-8 text-center shadow-[var(--shadow-airy-lg)]">
-          <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <section className="w-full max-w-md rounded-4xl bg-[color:var(--surface-lowest)] p-8 text-center shadow-[var(--shadow-airy-lg)]">
+          <span className="mx-auto flex size-14 items-center justify-center rounded-md bg-primary/10 text-primary">
             <CloudOff className="size-6" aria-hidden />
           </span>
           <h1 className="mt-5 text-2xl font-semibold tracking-tight">

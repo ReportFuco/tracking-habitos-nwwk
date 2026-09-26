@@ -182,7 +182,7 @@ export function MovimientoFormCard() {
       aside={
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-full bg-primary/12 text-primary">
+            <span className="flex size-10 items-center justify-center rounded-md bg-primary/12 text-primary">
               <Wallet className="size-4" />
             </span>
             <p className="text-sm leading-6 text-foreground/80">
@@ -190,7 +190,7 @@ export function MovimientoFormCard() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-full bg-primary/12 text-primary">
+            <span className="flex size-10 items-center justify-center rounded-md bg-primary/12 text-primary">
               <ReceiptText className="size-4" />
             </span>
             <p className="text-sm leading-6 text-foreground/80">
@@ -202,11 +202,11 @@ export function MovimientoFormCard() {
     >
       <form onSubmit={handleCreateMovimiento} className="space-y-4 sm:space-y-5">
         <FieldGroup label="Tipo de movimiento">
-          <div className="relative grid grid-cols-2 gap-2 rounded-[1rem] bg-[color:var(--surface-variant)] p-1">
+          <div className="relative grid grid-cols-2 gap-2 rounded-lg bg-[color:var(--surface-variant)] p-1">
             <div
               aria-hidden
               className={cn(
-                "pointer-events-none absolute inset-y-1 w-[calc(50%-0.25rem)] rounded-[0.75rem] shadow-[var(--shadow-airy)] transition-all duration-300 ease-out",
+                "pointer-events-none absolute inset-y-1 w-[calc(50%-0.25rem)] rounded-lg shadow-[var(--shadow-airy)] transition-all duration-300 ease-out",
                 esIngreso
                   ? "translate-x-[calc(100%+0.5rem)] bg-[color:var(--secondary)]"
                   : "translate-x-0 bg-[color:var(--tertiary)]"
@@ -226,7 +226,7 @@ export function MovimientoFormCard() {
                   type="button"
                   onClick={() => selectTipoMovimiento(opt.value)}
                   className={cn(
-                    "relative z-10 flex h-11 items-center justify-center gap-2 rounded-[0.75rem] text-sm font-medium transition-all duration-300 ease-out",
+                    "relative z-10 flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-medium transition-all duration-300 ease-out",
                     active ? activeTextClass : "text-foreground/70 hover:text-foreground"
                   )}
                 >
@@ -250,7 +250,7 @@ export function MovimientoFormCard() {
               placeholder="0"
               value={form.monto}
               onChange={(event) => setForm((prev) => ({ ...prev, monto: event.target.value }))}
-              className="h-14 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] pl-9 pr-4 text-xl font-semibold shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0 sm:text-2xl"
+              className="h-14 rounded-lg border-0 bg-[color:var(--surface-variant)] pl-9 pr-4 text-xl font-semibold shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0 sm:text-2xl"
             />
           </div>
         </FieldGroup>
@@ -290,11 +290,11 @@ export function MovimientoFormCard() {
         {esIngreso ? null : (
           <>
             <FieldGroup label="Tipo de gasto" hint="Para clasificar">
-              <div className="relative grid grid-cols-2 gap-2 rounded-[1rem] bg-[color:var(--surface-variant)] p-1">
+              <div className="relative grid grid-cols-2 gap-2 rounded-lg bg-[color:var(--surface-variant)] p-1">
                 <div
                   aria-hidden
                   className={cn(
-                    "pointer-events-none absolute inset-y-1 w-[calc(50%-0.25rem)] rounded-[0.75rem] bg-[color:var(--surface-lowest)] shadow-[var(--shadow-airy)] transition-all duration-300 ease-out",
+                    "pointer-events-none absolute inset-y-1 w-[calc(50%-0.25rem)] rounded-lg bg-[color:var(--surface-lowest)] shadow-[var(--shadow-airy)] transition-all duration-300 ease-out",
                     form.tipo_gasto === "fijo" ? "translate-x-[calc(100%+0.5rem)]" : "translate-x-0"
                   )}
                 />
@@ -310,7 +310,7 @@ export function MovimientoFormCard() {
                         setForm((prev) => ({ ...prev, tipo_gasto: opt.value }))
                       }
                       className={cn(
-                        "relative z-10 flex h-10 items-center justify-center gap-2 rounded-[0.75rem] text-sm font-medium transition-all duration-300 ease-out",
+                        "relative z-10 flex h-10 items-center justify-center gap-2 rounded-lg text-sm font-medium transition-all duration-300 ease-out",
                         active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
                       )}
                     >
@@ -329,7 +329,7 @@ export function MovimientoFormCard() {
                 onClick={() => void toggleLugarCompra()}
                 disabled={capturandoUbicacion}
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-[1rem] px-4 py-3 text-left transition",
+                  "flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left transition",
                   form.en_lugar_compra
                     ? "bg-primary/12 text-foreground"
                     : "bg-[color:var(--surface-variant)] text-foreground/80",
@@ -338,7 +338,7 @@ export function MovimientoFormCard() {
               >
                 <span
                   className={cn(
-                    "flex size-9 shrink-0 items-center justify-center rounded-full",
+                    "flex size-9 shrink-0 items-center justify-center rounded-md",
                     form.en_lugar_compra
                       ? "bg-primary text-primary-foreground"
                       : "bg-[color:var(--surface-lowest)] text-muted-foreground",
@@ -374,7 +374,7 @@ export function MovimientoFormCard() {
             placeholder="Ej: Farmacia del barrio"
             value={form.descripcion}
             onChange={(event) => setForm((prev) => ({ ...prev, descripcion: event.target.value }))}
-            className="h-13 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+            className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
           />
         </FieldGroup>
 
@@ -384,7 +384,7 @@ export function MovimientoFormCard() {
               type="datetime-local"
               value={form.created_at}
               onChange={(event) => setForm((prev) => ({ ...prev, created_at: event.target.value }))}
-              className="h-13 appearance-none rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 pr-11 text-sm leading-none shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0 sm:text-base [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-4 [&::-webkit-calendar-picker-indicator]:h-4 [&::-webkit-calendar-picker-indicator]:w-4 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-date-and-time-value]:text-left [&::-webkit-datetime-edit]:leading-none"
+              className="h-13 appearance-none rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 pr-11 text-sm leading-none shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0 sm:text-base [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-4 [&::-webkit-calendar-picker-indicator]:h-4 [&::-webkit-calendar-picker-indicator]:w-4 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-date-and-time-value]:text-left [&::-webkit-datetime-edit]:leading-none"
             />
             <CalendarClock className="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-muted-foreground" />
           </div>

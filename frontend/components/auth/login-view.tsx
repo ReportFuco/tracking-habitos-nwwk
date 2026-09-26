@@ -67,8 +67,8 @@ export function LoginView() {
 
       <AuthShell
         eyebrow="Acceso"
-        title="Vuelve a tu espacio con una entrada mas clara."
-        description="Entra a tu panel personal, recupera tu contexto y continua desde donde quedaste."
+        title="Vuelve a tu ritmo."
+        description="Tus cuentas, entrenos, comidas y compras te esperan donde los dejaste."
         accent="olive"
         secondaryCta={{
           href: "/register",
@@ -89,11 +89,11 @@ export function LoginView() {
             <p className="font-label text-[11px] uppercase tracking-[0.26em] text-muted-foreground sm:text-xs">
               Iniciar sesion
             </p>
-            <h2 className="text-xl font-semibold tracking-[-0.02em] text-foreground sm:text-3xl sm:tracking-[-0.03em]">
-              Accede a tu espacio de trabajo.
+            <h2 className="font-display text-2xl text-foreground sm:text-3xl">
+              Entrar
             </h2>
             <p className="max-w-md text-sm leading-6 text-muted-foreground">
-              Usa tu usuario o correo y tu clave para cargar el perfil y entrar a tu app personal.
+              Con tu usuario o correo y tu clave.
             </p>
           </div>
 
@@ -108,7 +108,7 @@ export function LoginView() {
                   setLoginForm((prev) => ({ ...prev, username: event.target.value }))
                 }
                 placeholder="usuario o correo"
-                className="h-13 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+                className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
               />
             </div>
 
@@ -126,18 +126,12 @@ export function LoginView() {
                   setLoginForm((prev) => ({ ...prev, password: event.target.value }))
                 }
                 placeholder="••••••••"
-                className="h-13 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+                className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
               />
             </div>
 
-            <div className="hidden rounded-[1.5rem] bg-[color:var(--surface-low)] p-4 sm:block">
-              <p className="text-sm leading-6 text-muted-foreground">
-                Si intentas entrar a una ruta protegida, el sistema conservara el destino usando el parametro <code className="rounded bg-white/70 px-1.5 py-0.5 text-xs text-foreground">next</code>.
-              </p>
-            </div>
-
             <Button type="submit" size="lg" className="h-12 w-full rounded-xl text-sm" disabled={submitting}>
-              {submitting ? "Ingresando..." : "Entrar al panel"}
+              {submitting ? "Entrando..." : "Entrar"}
             </Button>
           </form>
           </div>

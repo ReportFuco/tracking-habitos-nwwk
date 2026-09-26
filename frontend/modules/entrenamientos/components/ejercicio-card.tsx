@@ -35,7 +35,7 @@ export function EjercicioCard({
     <button
       type="button"
       onClick={() => onSelect(ejercicio)}
-      className="group flex min-h-20 w-full touch-manipulation items-center gap-3 rounded-[1.25rem] bg-surface-lowest p-3 text-left shadow-(--shadow-airy) transition duration-200 hover:shadow-(--shadow-airy-lg) focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-[0.99] sm:gap-4 sm:p-3.5"
+      className="group flex min-h-20 w-full touch-manipulation items-center gap-3 rounded-xl bg-surface-lowest p-3 text-left shadow-(--shadow-airy) transition duration-200 hover:shadow-(--shadow-airy-lg) focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-[0.99] sm:gap-4 sm:p-3.5"
     >
       <EjercicioMedia src={ejercicio.url_imagen} alt="" size={64} priority={priority} />
 
@@ -56,7 +56,7 @@ export function EjercicioCard({
             {describirGrupo(ejercicio)}
           </span>
           {ejercicio.equipamiento ? (
-            <span className="rounded-full bg-surface-low px-2 py-0.5 text-[0.7rem] text-muted-foreground">
+            <span className="rounded-sm bg-surface-low px-2 py-0.5 text-[0.7rem] text-muted-foreground">
               {ejercicio.equipamiento}
             </span>
           ) : null}

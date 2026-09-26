@@ -71,7 +71,7 @@ export function PesoManager() {
   return (
     <section className="flex flex-col gap-4">
       <section className="grid gap-3 sm:grid-cols-3">
-        <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
+        <article className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
           <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <Scale className="size-3.5" style={{ color: MODULE_COLOR }} />
             Ultimo peso
@@ -84,7 +84,7 @@ export function PesoManager() {
           </p>
         </article>
 
-        <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
+        <article className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
           <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             {delta >= 0 ? (
               <TrendingUp className="size-3.5" style={{ color: MODULE_COLOR }} />
@@ -99,7 +99,7 @@ export function PesoManager() {
           <p className="mt-1 text-xs text-muted-foreground sm:text-sm">Desde el primer registro</p>
         </article>
 
-        <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
+        <article className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Total registros
           </p>
@@ -111,7 +111,7 @@ export function PesoManager() {
       {showForm ? (
         <form
           onSubmit={handleSubmit}
-          className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5"
+          className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5"
         >
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-semibold text-foreground">Nuevo registro</p>
@@ -130,7 +130,7 @@ export function PesoManager() {
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, fecha_registro: event.target.value }))
               }
-              className="h-12 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+              className="h-12 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
             />
             <Input
               type="number"
@@ -139,9 +139,9 @@ export function PesoManager() {
               placeholder="Peso en kg"
               value={form.peso_kg}
               onChange={(event) => setForm((prev) => ({ ...prev, peso_kg: event.target.value }))}
-              className="h-12 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+              className="h-12 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
             />
-            <Button type="submit" disabled={submitting} className="h-12 rounded-[1rem] px-5">
+            <Button type="submit" disabled={submitting} className="h-12 rounded-lg px-5">
               {submitting ? "..." : "Guardar"}
             </Button>
           </div>
@@ -150,7 +150,7 @@ export function PesoManager() {
         <button
           type="button"
           onClick={() => setShowForm(true)}
-          className="flex items-center justify-center gap-2 rounded-[1.5rem] border-2 border-dashed border-[color:var(--border)] bg-transparent py-3 text-sm font-medium text-muted-foreground transition hover:border-[color:var(--module-nutricion)] hover:text-foreground"
+          className="flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[color:var(--border)] bg-transparent py-3 text-sm font-medium text-muted-foreground transition hover:border-[color:var(--module-nutricion)] hover:text-foreground"
         >
           <Plus className="size-4" />
           Nuevo registro de peso
@@ -163,11 +163,11 @@ export function PesoManager() {
         </p>
 
         {loading ? (
-          <div className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
+          <div className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
             Cargando registros...
           </div>
         ) : sortedPesos.length === 0 ? (
-          <div className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
+          <div className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
             Aun no tienes registros. Agrega el primero usando el formulario.
           </div>
         ) : (
@@ -178,11 +178,11 @@ export function PesoManager() {
               return (
                 <li
                   key={peso.id_peso}
-                  className="flex items-center justify-between gap-3 rounded-[1.25rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)]"
+                  className="flex items-center justify-between gap-3 rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)]"
                 >
                   <div className="flex items-center gap-3">
                     <span
-                      className="flex size-10 items-center justify-center rounded-full"
+                      className="flex size-10 items-center justify-center rounded-md"
                       style={{
                         background: `color-mix(in oklch, ${MODULE_COLOR} 14%, transparent)`,
                         color: MODULE_COLOR,
@@ -201,7 +201,7 @@ export function PesoManager() {
                     {prev ? (
                       <span
                         className={cn(
-                          "rounded-full px-2.5 py-1 text-[11px] font-medium",
+                          "rounded-sm px-2.5 py-1 text-[11px] font-medium",
                           diff > 0
                             ? "bg-tertiary/12 text-tertiary"
                             : diff < 0

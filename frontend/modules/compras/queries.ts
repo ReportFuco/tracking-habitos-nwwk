@@ -20,3 +20,14 @@ export const cadenasQueryOptions = () =>
     gcTime: ONE_WEEK,
     meta: { persist: true },
   })
+
+const FIVE_MINUTES = 1000 * 60 * 5
+
+/** Compras del usuario: la usan `useCompras` y el dashboard. */
+export const comprasQueryOptions = () =>
+  queryOptions({
+    queryKey: queryKeys.compras.compras,
+    queryFn: ComprasAPI.getCompras,
+    staleTime: FIVE_MINUTES,
+    meta: { persist: true },
+  })

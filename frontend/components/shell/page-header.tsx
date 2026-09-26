@@ -24,11 +24,12 @@ export function PageHeader({
     >
       <div className="flex flex-col gap-2">
         {eyebrow ? (
-          <span className="font-[family-name:var(--font-label)] text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground">
+          <span className="inline-flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <span aria-hidden className="size-2 bg-foreground" />
             {eyebrow}
           </span>
         ) : null}
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h1>
+        <h1 className="font-display text-[1.75rem] leading-[1.05] text-balance break-words sm:text-4xl">{title}</h1>
         {description ? (
           <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">{description}</p>
         ) : null}

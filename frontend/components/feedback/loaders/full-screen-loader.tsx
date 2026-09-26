@@ -1,57 +1,50 @@
-import { cn } from "@/lib/utils"
+import { BrandGlyph } from "@/components/brand/brand-mark"
+import { BRAND } from "@/lib/brand"
 
 type LoaderAccent = "olive" | "brick" | "secondary"
 
 interface FullScreenLoaderProps {
+  /** Se conserva por compatibilidad con los consumidores; Ritmo usa siempre el sol. */
   accent?: LoaderAccent
   label?: string
   mode?: "boot" | "session"
 }
 
-const accentVar: Record<LoaderAccent, string> = {
-  olive: "var(--primary)",
-  brick: "var(--tertiary)",
-  secondary: "var(--secondary)",
-}
+// Cuatro barras con los colores de los modulos que "laten" en secuencia.
+const BARS = [
+  "var(--module-finanzas-fill)",
+  "var(--module-entrenamientos-fill)",
+  "var(--module-nutricion-fill)",
+  "var(--module-compras-fill)",
+]
 
 export function FullScreenLoader({
-  accent = "olive",
   label = "Cargando tu espacio...",
   mode = "boot",
 }: FullScreenLoaderProps) {
-  const color = accentVar[accent]
-
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-6 text-foreground">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(66,81,47,0.12),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(132,49,31,0.08),transparent_28%)]" />
-
-      <section className="relative flex w-full max-w-sm flex-col items-center text-center">
-        <div
-          className={cn(
-            "flex items-center justify-center rounded-[1.5rem] bg-[color:var(--surface-lowest)] shadow-[var(--shadow-airy-lg)]",
-            mode === "session" ? "size-20" : "h-20 w-44"
-          )}
-        >
-          {mode === "session" ? (
-            <div
-              className="flex size-12 items-center justify-center rounded-full font-[family-name:var(--font-label)] text-sm font-semibold uppercase tracking-[0.18em] text-[color:var(--primary-foreground)]"
-              style={{ background: color }}
-            >
-              AT
-            </div>
-          ) : (
-            <span className="text-xl font-semibold tracking-tight">Atelier</span>
-          )}
+    <main className="flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
+      <section className="flex w-full max-w-xs flex-col items-center gap-6 text-center">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex size-14 items-center justify-center rounded-lg bg-primary text-primary-foreground dark:bg-highlight dark:text-highlight-foreground">
+            <BrandGlyph className="size-8" />
+          </span>
+          {mode === "boot" ? <span className="font-display text-3xl">{BRAND.name}</span> : null}
         </div>
 
-        <div className="mt-6 h-3 w-full overflow-hidden rounded-full bg-[color:var(--surface-low)]">
-          <div
-            className="h-full w-1/2 animate-pulse rounded-full [animation-duration:1.6s]"
-            style={{ background: color }}
-          />
+        <div className="flex h-10 items-end gap-1.5" aria-hidden>
+          {BARS.map((color, index) => (
+            <span
+              key={color}
+              className="block w-3 origin-bottom rounded-sm motion-safe:animate-[ritmo-beat_1.1s_ease-in-out_infinite]"
+              style={{ background: color, height: "100%", animationDelay: `${index * 0.12}s` }}
+            />
+          ))}
         </div>
 
-        <p className="mt-4 text-sm text-muted-foreground">{label}</p>
+        <p className="text-sm text-muted-foreground" role="status">
+          {label}
+        </p>
       </section>
     </main>
   )

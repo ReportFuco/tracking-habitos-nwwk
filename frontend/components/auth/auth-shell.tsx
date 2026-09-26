@@ -3,12 +3,14 @@
 import Link from "next/link"
 import { ReactNode } from "react"
 import { ArrowLeft, ArrowRight } from "lucide-react"
+import { BrandMark } from "@/components/brand/brand-mark"
 import { cn } from "@/lib/utils"
 
 interface AuthShellProps {
   eyebrow: string
   title: string
   description: string
+  /** olive = acceso (sol), brick = registro (tomate). Se mantienen los nombres por compatibilidad. */
   accent?: "olive" | "brick"
   secondaryCta?: {
     href: string
@@ -18,18 +20,18 @@ interface AuthShellProps {
   children: ReactNode
 }
 
-const accentStyles = {
-  olive: {
-    wash: "from-primary/14 via-primary/8 to-transparent",
-    chip: "bg-primary/10 text-primary",
-    orb: "bg-primary/12",
-  },
-  brick: {
-    wash: "from-tertiary/14 via-tertiary/8 to-transparent",
-    chip: "bg-tertiary/10 text-tertiary",
-    orb: "bg-tertiary/12",
-  },
+const accentChip = {
+  olive: "bg-highlight text-highlight-foreground",
+  brick: "bg-[color:var(--module-entrenamientos-fill)] text-[color:var(--module-entrenamientos-on)]",
 }
+
+// Los cuatro modulos como bloques de color: el "cartel" de la marca.
+const MODULE_BLOCKS = [
+  { label: "Finanzas", detail: "Cuentas y gastos", fill: "--module-finanzas-fill", on: "--module-finanzas-on" },
+  { label: "Fuerza", detail: "Series y cargas", fill: "--module-entrenamientos-fill", on: "--module-entrenamientos-on" },
+  { label: "Nutricion", detail: "Comidas y peso", fill: "--module-nutricion-fill", on: "--module-nutricion-on" },
+  { label: "Compras", detail: "Tickets y locales", fill: "--module-compras-fill", on: "--module-compras-on" },
+]
 
 export function AuthShell({
   eyebrow,
@@ -39,105 +41,79 @@ export function AuthShell({
   secondaryCta,
   children,
 }: AuthShellProps) {
-  const tone = accentStyles[accent]
-
   return (
-    <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(66,81,47,0.12),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(132,49,31,0.08),transparent_28%)]" />
-      <div className="absolute left-[-8rem] top-20 h-72 w-72 rounded-full bg-primary/8 blur-3xl" />
-      <div className="absolute bottom-[-7rem] right-[-3rem] h-64 w-64 rounded-full bg-tertiary/10 blur-3xl" />
-
-      <div className="relative lg:hidden">
+    <main className="min-h-screen bg-background text-foreground">
+      <div className="lg:hidden">
         <div className="flex items-center justify-between px-4 pt-5 pb-3 sm:px-6">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1.5 text-xs font-medium text-foreground/80 backdrop-blur-sm transition hover:bg-white"
-          >
-            <ArrowLeft className="size-3.5" />
-            Inicio
+          <Link href="/" aria-label="Volver al inicio">
+            <BrandMark size="sm" />
           </Link>
           <span
             className={cn(
-              "inline-flex rounded-full px-3 py-1 text-[10px] font-medium uppercase tracking-[0.22em]",
-              tone.chip
+              "inline-flex rounded-sm px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
+              accentChip[accent],
             )}
           >
             {eyebrow}
           </span>
         </div>
-        <div className="px-4 pb-4 sm:px-6">
-          <p className="font-label text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
-            The Curated Life
-          </p>
-          <h1 className="mt-2 text-2xl font-semibold leading-tight tracking-[-0.02em] text-foreground sm:text-3xl">
-            {title}
-          </h1>
+        <div className="px-4 pb-5 sm:px-6">
+          <h1 className="font-display text-[1.7rem] leading-[1.05] sm:text-4xl">{title}</h1>
         </div>
       </div>
 
-      <div className="relative mx-auto grid min-h-screen w-full max-w-7xl items-stretch gap-6 px-4 pb-6 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8 lg:py-6">
-        <section className="relative hidden min-h-[320px] flex-col justify-between overflow-hidden rounded-[2rem] bg-[color:var(--surface-low)] px-6 py-8 shadow-[var(--shadow-airy)] sm:px-8 sm:py-10 lg:flex lg:px-12 lg:py-12">
-          <div className={cn("absolute inset-0 bg-gradient-to-br", tone.wash)} />
-          <div className="absolute right-[-2rem] top-[-1rem] h-44 w-44 rounded-full border border-white/20 bg-white/20 blur-2xl" />
-          <div className={cn("absolute bottom-10 right-10 h-20 w-20 rounded-full blur-2xl", tone.orb)} />
-
-          <div className="relative flex items-start justify-between gap-4">
-            <div className={cn("inline-flex rounded-full px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em]", tone.chip)}>
-              {eyebrow}
-            </div>
+      <div className="mx-auto grid min-h-screen w-full max-w-7xl items-stretch gap-6 px-4 pb-6 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8 lg:py-6">
+        <section className="hidden min-h-[320px] flex-col justify-between gap-10 rounded-4xl bg-[color:var(--sidebar)] p-12 text-[color:var(--sidebar-foreground)] lg:flex">
+          <div className="flex items-start justify-between gap-4">
+            <BrandMark size="md" tone="inverse" />
             <Link
               href="/"
-              className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-2 text-xs font-medium text-foreground/80 backdrop-blur-sm transition hover:bg-white"
+              className="inline-flex items-center gap-2 rounded-md border border-[color:var(--sidebar-border)] px-3 py-2 text-xs font-medium text-[color:var(--sidebar-muted)] transition hover:border-[color:var(--sidebar-foreground)] hover:text-[color:var(--sidebar-foreground)]"
             >
               <ArrowLeft className="size-3.5" />
               Inicio
             </Link>
           </div>
 
-          <div className="relative max-w-xl space-y-5 pt-10 lg:pt-20">
-            <p className="font-label text-xs uppercase tracking-[0.3em] text-muted-foreground">
-              The Curated Life
-            </p>
-            <h1 className="max-w-lg text-4xl leading-none font-semibold tracking-[-0.04em] text-foreground sm:text-5xl lg:text-6xl">
-              {title}
-            </h1>
-            <p className="max-w-md text-base leading-7 text-muted-foreground sm:text-lg">
-              {description}
-            </p>
+          <div className="max-w-xl space-y-5">
+            <span
+              className={cn(
+                "inline-flex rounded-sm px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]",
+                accentChip[accent],
+              )}
+            >
+              {eyebrow}
+            </span>
+            <h1 className="font-display text-5xl leading-[0.98] text-balance xl:text-6xl">{title}</h1>
+            <p className="max-w-md text-lg leading-7 text-[color:var(--sidebar-muted)]">{description}</p>
           </div>
 
-          <div className="relative grid gap-4 pt-10 sm:grid-cols-2">
-            <div className="rounded-[1.5rem] bg-white/72 p-5 backdrop-blur-sm">
-              <p className="font-label text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                Experiencia
-              </p>
-              <p className="mt-3 text-sm leading-6 text-foreground/80">
-                Una entrada más calmada y editorial, con foco en claridad, tono cálido y menos fricción.
-              </p>
-            </div>
-            <div className="rounded-[1.5rem] bg-white/56 p-5 backdrop-blur-sm">
-              <p className="font-label text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                Estado actual
-              </p>
-              <p className="mt-3 text-sm leading-6 text-foreground/80">
-                Auth ya funciona con JWT y redirección protegida al panel. Esta capa ahora acompaña mejor ese flujo.
-              </p>
-            </div>
-          </div>
+          <ul className="grid grid-cols-4 gap-2" aria-label="Modulos de la app">
+            {MODULE_BLOCKS.map((block) => (
+              <li
+                key={block.label}
+                className="flex aspect-[3/4] flex-col justify-end gap-1 rounded-lg p-3"
+                style={{ background: `var(${block.fill})`, color: `var(${block.on})` }}
+              >
+                <span className="font-display text-sm leading-none">{block.label}</span>
+                <span className="text-xs opacity-80">{block.detail}</span>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <section className="flex items-start justify-center lg:items-center lg:justify-end">
-          <div className="w-full max-w-xl rounded-[1.75rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy-lg)] sm:rounded-[2rem] sm:p-6 lg:p-8">
+          <div className="w-full max-w-xl rounded-3xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:rounded-4xl sm:p-6 lg:p-8">
             {children}
 
             {secondaryCta ? (
-              <div className="mt-6 flex flex-col gap-3 rounded-[1.25rem] bg-[color:var(--surface-low)] px-4 py-4 sm:mt-8 sm:flex-row sm:items-center sm:justify-between sm:rounded-[1.5rem]">
+              <div className="mt-6 flex flex-col gap-3 rounded-xl bg-[color:var(--surface-low)] px-4 py-4 sm:mt-8 sm:flex-row sm:items-center sm:justify-between sm:rounded-2xl">
                 <p className="text-sm text-muted-foreground">
                   {secondaryCta.description ?? "Continuar con otra opcion de acceso"}
                 </p>
                 <Link
                   href={secondaryCta.href}
-                  className="inline-flex items-center gap-2 text-sm font-medium text-foreground transition hover:text-primary"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-foreground underline-offset-4 transition hover:underline"
                 >
                   {secondaryCta.label}
                   <ArrowRight className="size-4" />

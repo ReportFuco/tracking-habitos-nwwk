@@ -164,9 +164,9 @@ export function SeriesSesion({
 
   if (grupos.length === 0) {
     return (
-      <div className="rounded-[1.25rem] bg-surface-lowest p-5 text-center shadow-(--shadow-airy) sm:rounded-[1.5rem] sm:p-6">
+      <div className="rounded-xl bg-surface-lowest p-5 text-center shadow-(--shadow-airy) sm:rounded-2xl sm:p-6">
         <span
-          className="mx-auto flex size-12 items-center justify-center rounded-[1rem] text-[color:var(--module-entrenamientos)]"
+          className="mx-auto flex size-12 items-center justify-center rounded-lg text-[color:var(--module-entrenamientos)]"
           style={{
             background: "color-mix(in oklch, var(--module-entrenamientos) 10%, transparent)",
           }}
@@ -209,7 +209,7 @@ export function SeriesSesion({
             return (
               <article
                 key={item.clave}
-                className="overflow-hidden rounded-[1.25rem] border border-(--border)/15 bg-surface-lowest shadow-(--shadow-airy) sm:rounded-[1.5rem]"
+                className="overflow-hidden rounded-xl border border-(--border)/15 bg-surface-lowest shadow-(--shadow-airy) sm:rounded-2xl"
               >
                 <div className="flex items-center gap-2 pr-3">
                   <button
@@ -272,7 +272,7 @@ export function SeriesSesion({
                         editandoId === serie.id_fuerza_detalle ? (
                           <div
                             key={serie.id_fuerza_detalle}
-                            className="space-y-4 rounded-[1rem] bg-surface-low p-3 sm:p-4"
+                            className="space-y-4 rounded-lg bg-surface-low p-3 sm:p-4"
                           >
                             <div className="grid gap-3 sm:grid-cols-2">
                               <CampoNumerico
@@ -334,7 +334,7 @@ export function SeriesSesion({
                         ) : (
                           <div
                             key={serie.id_fuerza_detalle}
-                            className="flex min-h-12 min-w-0 flex-wrap items-center gap-2 rounded-[0.95rem] bg-surface-low px-3 py-2"
+                            className="flex min-h-12 min-w-0 flex-wrap items-center gap-2 rounded-lg bg-surface-low px-3 py-2"
                           >
                             <span className="w-4 shrink-0 font-label text-[10px] text-muted-foreground">
                               {indice + 1}
@@ -366,7 +366,7 @@ export function SeriesSesion({
                               // inexistente. Se muestra el estado y nada mas.
                               <span
                                 title="Se enviara al recuperar la conexion"
-                                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-foreground/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
+                                className="inline-flex shrink-0 items-center gap-1 rounded-sm bg-foreground/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
                               >
                                 <CloudOff className="size-3" aria-hidden />
                                 Pendiente
@@ -377,7 +377,7 @@ export function SeriesSesion({
                                   variant="ghost"
                                   size="sm"
                                   autoFocus
-                                  className="min-h-11 rounded-full px-3"
+                                  className="min-h-11 rounded-sm px-3"
                                   onClick={() => setConfirmandoEliminarId(null)}
                                 >
                                   Cancelar
@@ -385,7 +385,7 @@ export function SeriesSesion({
                                 <Button
                                   variant="destructive"
                                   size="sm"
-                                  className="min-h-11 rounded-full px-3"
+                                  className="min-h-11 rounded-sm px-3"
                                   onClick={() => {
                                     onEliminar(serie.id_fuerza_detalle)
                                     setConfirmandoEliminarId(null)

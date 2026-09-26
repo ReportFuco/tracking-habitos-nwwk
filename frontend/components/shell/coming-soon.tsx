@@ -21,7 +21,7 @@ export function ComingSoon({
 
       <section className="surface-section flex flex-col gap-4">
         <span
-          className="inline-flex w-fit items-center gap-2 rounded-full px-3 py-1 font-[family-name:var(--font-label)] text-[0.7rem] uppercase tracking-[0.18em]"
+          className="inline-flex w-fit items-center gap-2 rounded-sm px-3 py-1 font-[family-name:var(--font-label)] text-[0.7rem] uppercase tracking-[0.18em]"
           style={{
             background: `color-mix(in oklch, ${accentColor} 14%, transparent)`,
             color: accentColor,

@@ -48,6 +48,26 @@ export function useAnaliticaResumen(params?: { year?: number; month?: number }) 
   })
 }
 
+export function useAnaliticaTendencia(months = 6) {
+  return useQuery({
+    queryKey: queryKeys.finanzas.analiticaTendencia(months),
+    queryFn: () => FinanzasAPI.getAnaliticaTendenciaMensual({ months }),
+    staleTime: FIVE_MINUTES,
+  })
+}
+
+export function useAnaliticaDistribucionCategorias(params?: {
+  year?: number
+  month?: number
+  tipo_movimiento?: "gasto" | "ingreso"
+}) {
+  return useQuery({
+    queryKey: queryKeys.finanzas.analiticaDistribucionCategorias(params),
+    queryFn: () => FinanzasAPI.getAnaliticaDistribucionCategorias(params),
+    staleTime: FIVE_MINUTES,
+  })
+}
+
 const useFinanzasState = () => {
   const queryClient = useQueryClient()
 

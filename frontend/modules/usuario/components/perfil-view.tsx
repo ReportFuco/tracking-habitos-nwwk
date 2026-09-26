@@ -2,6 +2,7 @@
 
 import { ContextNav } from "@/components/shell/context-nav"
 import { PageHeader } from "@/components/shell/page-header"
+import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { usePerfil } from "@/modules/usuario/hooks/usePerfil"
 import { PerfilEditForm } from "./perfil-edit-form"
 import { PerfilSummaryCard } from "./perfil-summary-card"
@@ -25,7 +26,7 @@ export function PerfilView() {
       />
 
       {error ? (
-        <div className="rounded-[1.25rem] bg-[color:var(--surface-lowest)] px-4 py-4 shadow-[var(--shadow-airy)] sm:px-5">
+        <div className="rounded-xl bg-[color:var(--surface-lowest)] px-4 py-4 shadow-[var(--shadow-airy)] sm:px-5">
           <p className="font-label text-[0.65rem] uppercase tracking-[0.2em] text-[color:var(--destructive)]">
             Aviso
           </p>
@@ -34,6 +35,21 @@ export function PerfilView() {
       ) : null}
 
       <PerfilSummaryCard perfil={perfil} loading={loading} />
+
+      <section
+        aria-labelledby="apariencia-titulo"
+        className="flex flex-col gap-3 rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:flex-row sm:items-center sm:justify-between sm:p-5"
+      >
+        <div>
+          <h2 id="apariencia-titulo" className="text-base font-semibold">
+            Apariencia
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Modo claro, oscuro o el que use tu telefono.
+          </p>
+        </div>
+        <ThemeToggle />
+      </section>
 
       {perfil ? (
         <>

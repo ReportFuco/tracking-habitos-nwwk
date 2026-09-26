@@ -1,4 +1,4 @@
-const CACHE_VERSION = "tcl-shell-v4"
+const CACHE_VERSION = "tcl-shell-v5"
 const OFFLINE_URL = "/offline"
 const APP_ICON = "/icons/app-icon-192.png"
 const PRECACHE_URLS = [OFFLINE_URL, "/app/dashboard", APP_ICON]
@@ -122,7 +122,7 @@ self.addEventListener("push", (event) => {
   }
 
   const notification = payload.notification ?? payload
-  const title = notification.title || "The Curated Life"
+  const title = notification.title || "Ritmo"
   const navigate = notification.navigate || "/app/entrenamientos/activo"
 
   event.waitUntil(

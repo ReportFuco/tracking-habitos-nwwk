@@ -126,7 +126,7 @@ export function CuentaFormCard() {
       aside={
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-full bg-primary/12 text-primary">
+            <span className="flex size-10 items-center justify-center rounded-md bg-primary/12 text-primary">
               <Landmark className="size-4" />
             </span>
             <p className="text-sm leading-6 text-foreground/80">
@@ -134,7 +134,7 @@ export function CuentaFormCard() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-full bg-primary/12 text-primary">
+            <span className="flex size-10 items-center justify-center rounded-md bg-primary/12 text-primary">
               <Building2 className="size-4" />
             </span>
             <p className="text-sm leading-6 text-foreground/80">
@@ -189,7 +189,7 @@ export function CuentaFormCard() {
             placeholder="Ej: Cuenta principal"
             value={form.nombre_cuenta}
             onChange={(event) => setForm((prev) => ({ ...prev, nombre_cuenta: event.target.value }))}
-            className="h-13 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+            className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
           />
         </FieldGroup>
 

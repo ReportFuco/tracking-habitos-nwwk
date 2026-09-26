@@ -33,7 +33,7 @@ function TarjetaEjercicio({
       type="button"
       onClick={() => onSeleccionar(ejercicio)}
       aria-label={`Elegir ${ejercicio.nombre}`}
-      className="group flex min-h-20 w-full touch-manipulation items-center gap-3 rounded-[1.2rem] bg-surface-lowest p-3 text-left shadow-(--shadow-airy) transition duration-200 hover:shadow-(--shadow-airy-lg) focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100"
+      className="group flex min-h-20 w-full touch-manipulation items-center gap-3 rounded-xl bg-surface-lowest p-3 text-left shadow-(--shadow-airy) transition duration-200 hover:shadow-(--shadow-airy-lg) focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100"
     >
       <EjercicioMedia src={ejercicio.url_imagen} alt="" size={56} priority={priority} />
       <div className="min-w-0 flex-1 space-y-0.5">
@@ -45,7 +45,7 @@ function TarjetaEjercicio({
         </p>
       </div>
       <span
-        className="flex size-10 shrink-0 items-center justify-center rounded-full text-[color:var(--module-entrenamientos)] transition-colors group-hover:bg-surface-low"
+        className="flex size-10 shrink-0 items-center justify-center rounded-md text-[color:var(--module-entrenamientos)] transition-colors group-hover:bg-surface-low"
         aria-hidden
       >
         <ArrowRight className="size-4" />
@@ -161,13 +161,13 @@ export function EjercicioPicker({
   const hayFiltro = idMusculo !== null || termino !== ""
 
   return (
-    <section className="overflow-hidden rounded-[1.5rem] bg-surface-lowest shadow-(--shadow-airy-lg) sm:rounded-[1.75rem]">
+    <section className="overflow-hidden rounded-2xl bg-surface-lowest shadow-(--shadow-airy-lg) sm:rounded-3xl">
       <div className="space-y-5 p-4 sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span
-                className="flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-tertiary-foreground"
+                className="flex size-6 shrink-0 items-center justify-center rounded-md text-xs font-semibold text-tertiary-foreground"
                 style={{ background: "var(--module-entrenamientos)" }}
                 aria-hidden
               >
@@ -187,7 +187,7 @@ export function EjercicioPicker({
               variant="ghost"
               size="sm"
               onClick={onCancelar}
-              className="min-h-11 shrink-0 rounded-full px-4"
+              className="min-h-11 shrink-0 rounded-sm px-4"
             >
               Cancelar
             </Button>
@@ -195,7 +195,7 @@ export function EjercicioPicker({
         </div>
 
         {recientes.length > 0 ? (
-          <div className="space-y-2.5 rounded-[1.25rem] bg-surface-low p-3 sm:p-4">
+          <div className="space-y-2.5 rounded-xl bg-surface-low p-3 sm:p-4">
             <p className="flex items-center gap-2 text-sm font-medium text-foreground">
               <History className="size-4 text-[color:var(--module-entrenamientos)]" aria-hidden />
               Repetir un ejercicio de esta sesion
@@ -208,7 +208,7 @@ export function EjercicioPicker({
                   type="button"
                   onClick={() => onSeleccionar(ejercicio)}
                   aria-label={`Volver a registrar ${ejercicio.nombre}`}
-                  className="flex w-44 shrink-0 touch-manipulation items-center gap-2.5 rounded-[1rem] bg-surface-lowest p-2 text-left shadow-(--shadow-airy) transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+                  className="flex w-44 shrink-0 touch-manipulation items-center gap-2.5 rounded-lg bg-surface-lowest p-2 text-left shadow-(--shadow-airy) transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
                 >
                   <EjercicioMedia src={ejercicio.url_imagen} alt="" size={44} />
                   <span className="line-clamp-2 text-xs leading-snug font-medium text-foreground">
@@ -236,7 +236,7 @@ export function EjercicioPicker({
             value={busqueda}
             onChange={(evento) => setBusqueda(evento.target.value)}
             placeholder="Buscar ejercicio o equipo..."
-            className="h-13 w-full rounded-[1rem] border-0 bg-surface-low pr-11 pl-11 text-base text-foreground outline-none transition motion-reduce:transition-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring sm:text-sm"
+            className="h-13 w-full rounded-lg border-0 bg-surface-low pr-11 pl-11 text-base text-foreground outline-none transition motion-reduce:transition-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring sm:text-sm"
           />
           {busqueda ? (
             <button
@@ -294,9 +294,9 @@ export function EjercicioPicker({
             {Array.from({ length: 6 }, (_, indice) => (
               <div
                 key={indice}
-                className="flex min-h-18 items-center gap-3 rounded-[1.15rem] bg-surface-lowest p-2.5 shadow-(--shadow-airy)"
+                className="flex min-h-18 items-center gap-3 rounded-xl bg-surface-lowest p-2.5 shadow-(--shadow-airy)"
               >
-                <Skeleton className="size-13 shrink-0 rounded-[0.9rem]" />
+                <Skeleton className="size-13 shrink-0 rounded-lg" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-3.5 w-3/4" />
                   <Skeleton className="h-3 w-1/2" />
@@ -305,7 +305,7 @@ export function EjercicioPicker({
             ))}
           </div>
         ) : filtrados.length === 0 ? (
-          <div className="rounded-[1.25rem] bg-surface-low p-6 text-center">
+          <div className="rounded-xl bg-surface-low p-6 text-center">
             <p className="text-sm text-muted-foreground">
               Ningun ejercicio coincide con la busqueda.
             </p>

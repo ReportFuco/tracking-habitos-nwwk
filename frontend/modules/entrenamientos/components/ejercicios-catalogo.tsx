@@ -44,7 +44,7 @@ function Chip({
       onClick={onClick}
       aria-pressed={activo}
       className={cn(
-        "inline-flex min-h-11 shrink-0 touch-manipulation items-center rounded-full px-4 text-sm whitespace-nowrap transition duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        "inline-flex min-h-11 shrink-0 touch-manipulation items-center rounded-sm px-4 text-sm whitespace-nowrap transition duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         activo
           ? "font-medium text-tertiary-foreground shadow-(--shadow-airy)"
           : "bg-surface-lowest text-muted-foreground hover:text-foreground",
@@ -58,8 +58,8 @@ function Chip({
 
 function TarjetaEsqueleto() {
   return (
-    <div className="flex min-h-20 items-center gap-3 rounded-[1.25rem] bg-surface-lowest p-3 shadow-(--shadow-airy)">
-      <Skeleton className="size-16 shrink-0 rounded-[0.9rem]" />
+    <div className="flex min-h-20 items-center gap-3 rounded-xl bg-surface-lowest p-3 shadow-(--shadow-airy)">
+      <Skeleton className="size-16 shrink-0 rounded-lg" />
       <div className="flex-1 space-y-2">
         <Skeleton className="h-4 w-3/4" />
         <Skeleton className="h-3 w-1/2" />
@@ -339,7 +339,7 @@ export function EjerciciosCatalogo() {
           ))}
         </div>
       ) : ejercicios.length === 0 ? (
-        <div className="rounded-[1.5rem] bg-surface-lowest p-8 text-center shadow-(--shadow-airy)">
+        <div className="rounded-2xl bg-surface-lowest p-8 text-center shadow-(--shadow-airy)">
           <p className="text-sm text-muted-foreground">
             No hay ejercicios que coincidan con la busqueda.
           </p>

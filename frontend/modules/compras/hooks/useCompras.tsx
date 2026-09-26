@@ -7,10 +7,9 @@ import { getFriendlyErrorMessage } from "@/lib/error-messages"
 import { runOnlineOnlyAction } from "@/lib/online-only"
 import { queryKeys } from "@/lib/query-keys"
 import { ComprasAPI } from "@/modules/compras/api/compras.api"
-import { cadenasQueryOptions } from "@/modules/compras/queries"
+import { cadenasQueryOptions, comprasQueryOptions } from "@/modules/compras/queries"
 import { CompraCreate, CompraPatch } from "@/modules/compras/types/compras"
 
-const FIVE_MINUTES = 1000 * 60 * 5
 const ONE_DAY = 1000 * 60 * 60 * 24
 const ONE_WEEK = ONE_DAY * 7
 const persistMeta = { persist: true }
@@ -30,12 +29,7 @@ const useComprasState = () => {
     gcTime: ONE_WEEK,
     meta: persistMeta,
   })
-  const comprasQuery = useQuery({
-    queryKey: queryKeys.compras.compras,
-    queryFn: ComprasAPI.getCompras,
-    staleTime: FIVE_MINUTES,
-    meta: persistMeta,
-  })
+  const comprasQuery = useQuery(comprasQueryOptions())
 
   const invalidate = async (...keys: readonly (readonly unknown[])[]) => {
     await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })))

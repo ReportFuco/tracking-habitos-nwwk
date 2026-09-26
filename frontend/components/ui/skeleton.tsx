@@ -17,7 +17,7 @@ export function Skeleton({ className, tone = "variant", ...props }: SkeletonProp
     <div
       aria-hidden
       className={cn(
-        "animate-pulse rounded-[1rem] [animation-duration:1.6s]",
+        "animate-pulse rounded-lg [animation-duration:1.6s]",
         toneClassName[tone],
         className
       )}
@@ -39,7 +39,7 @@ export function SkeletonCard({
   return (
     <div
       className={cn(
-        "rounded-[1.5rem] p-4 shadow-[var(--shadow-airy)] sm:p-5",
+        "rounded-2xl p-4 shadow-[var(--shadow-airy)] sm:p-5",
         toneClassName[tone],
         className
       )}

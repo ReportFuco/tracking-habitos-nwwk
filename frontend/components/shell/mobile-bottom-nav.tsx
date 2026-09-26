@@ -49,7 +49,7 @@ export function MobileBottomNav({ items, preferredOrder, className }: MobileBott
     <nav
       aria-label="Navegacion principal"
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t border-(--border)/30 bg-background/96 px-2 pb-[calc(env(safe-area-inset-bottom)+0.55rem)] pt-2 sm:bg-background/88 sm:backdrop-blur-xl lg:hidden",
+        "fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/96 px-2 pb-[calc(env(safe-area-inset-bottom)+0.55rem)] pt-2 sm:bg-background/88 sm:backdrop-blur-xl lg:hidden",
         className,
       )}
     >
@@ -57,7 +57,7 @@ export function MobileBottomNav({ items, preferredOrder, className }: MobileBott
         {activeIndex >= 0 ? (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-y-0 left-0 rounded-3xl bg-surface-lowest shadow-(--shadow-airy) transition-transform duration-300 ease-out"
+            className="pointer-events-none absolute -top-2 left-0 h-[3px] bg-foreground transition-transform duration-300 ease-out motion-reduce:transition-none"
             style={{
               width: indicatorWidth,
               transform: `translateX(${activeIndex * 100}%)`,
@@ -80,18 +80,18 @@ export function MobileBottomNav({ items, preferredOrder, className }: MobileBott
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "relative z-10 flex flex-col items-center justify-center gap-0.5 rounded-3xl px-1.5 py-1.5 text-[9px] font-medium tracking-[0.01em] transition-colors duration-300 ease-out",
+                    "relative z-10 flex flex-col items-center justify-center gap-1 rounded-lg px-1 py-1.5 text-[10px] font-semibold tracking-[0.01em] transition-colors duration-300 ease-out focus-visible:outline-2 focus-visible:outline-ring",
                     isActive ? "text-foreground" : "text-muted-foreground",
                   )}
                 >
                   <span
                     className={cn(
-                      "flex size-8 items-center justify-center rounded-full transition-colors duration-300 ease-out",
-                      isActive ? "bg-accent" : "bg-transparent",
+                      "flex h-8 w-11 items-center justify-center rounded-md transition-colors duration-300 ease-out",
+                      isActive ? "bg-primary text-primary-foreground" : "bg-transparent",
                     )}
                     style={
-                      item.moduleColor && isActive
-                        ? { color: item.moduleColor }
+                      isActive && item.moduleFill
+                        ? { background: item.moduleFill, color: item.moduleOn }
                         : undefined
                     }
                   >

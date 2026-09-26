@@ -64,7 +64,7 @@ export function NutricionHomeOverview() {
     <section className="flex flex-col gap-5">
       <section className="grid gap-3 sm:grid-cols-3">
         <article
-          className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5"
+          className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5"
           style={{ boxShadow: `inset 0 0 0 1px color-mix(in oklch, ${MODULE_COLOR} 8%, transparent)` }}
         >
           <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
@@ -77,7 +77,7 @@ export function NutricionHomeOverview() {
           <p className="mt-1 text-xs text-muted-foreground sm:text-sm">Registros del dia</p>
         </article>
 
-        <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
+        <article className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
           <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <Scale className="size-3.5" style={{ color: MODULE_COLOR }} />
             Ultimo peso
@@ -90,7 +90,7 @@ export function NutricionHomeOverview() {
           </p>
         </article>
 
-        <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
+        <article className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
           <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <Target className="size-3.5" style={{ color: MODULE_COLOR }} />
             Meta kcal
@@ -112,12 +112,12 @@ export function NutricionHomeOverview() {
               key={tile.href}
               href={tile.href}
               className={cn(
-                "group flex flex-col gap-3 rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] transition active:scale-[0.99] sm:p-5"
+                "group flex flex-col gap-3 rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] transition active:scale-[0.99] sm:p-5"
               )}
             >
               <div className="flex items-center justify-between">
                 <span
-                  className="flex size-10 items-center justify-center rounded-full"
+                  className="flex size-10 items-center justify-center rounded-md"
                   style={{
                     background: `color-mix(in oklch, ${MODULE_COLOR} 14%, transparent)`,
                     color: MODULE_COLOR,

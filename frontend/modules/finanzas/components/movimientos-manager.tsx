@@ -65,7 +65,7 @@ export function MovimientosManager() {
   return (
     <section className="flex flex-col gap-4 sm:gap-6">
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.1fr_0.9fr_0.9fr]">
-        <article className="hidden rounded-[1.5rem] bg-surface-low p-4 sm:block sm:p-6 lg:col-span-1 sm:col-span-2">
+        <article className="hidden rounded-2xl bg-surface-low p-4 sm:block sm:p-6 lg:col-span-1 sm:col-span-2">
           <p className="font-label text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
             Diario financiero
           </p>
@@ -77,7 +77,7 @@ export function MovimientosManager() {
           </p>
         </article>
 
-        <article className="rounded-[1.5rem] bg-surface-lowest p-4 shadow-(--shadow-airy) sm:p-5">
+        <article className="rounded-2xl bg-surface-lowest p-4 shadow-(--shadow-airy) sm:p-5">
           <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground sm:text-sm sm:normal-case sm:tracking-normal">
             <ArrowUpRight className="size-3.5 text-module-finanzas sm:size-4" />
             Ingresos
@@ -90,7 +90,7 @@ export function MovimientosManager() {
           </p>
         </article>
 
-        <article className="rounded-[1.5rem] bg-surface-lowest p-4 shadow-(--shadow-airy) sm:p-5">
+        <article className="rounded-2xl bg-surface-lowest p-4 shadow-(--shadow-airy) sm:p-5">
           <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground sm:text-sm sm:normal-case sm:tracking-normal">
             <Wallet className="size-3.5 text-module-finanzas sm:size-4" />
             Gastos del mes
@@ -104,7 +104,7 @@ export function MovimientosManager() {
         </article>
       </section>
 
-      <section className="rounded-[1.75rem] bg-surface-low p-6">
+      <section className="rounded-3xl bg-surface-low p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="font-label text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
@@ -120,14 +120,14 @@ export function MovimientosManager() {
         </div>
 
         {movimientos.length === 0 ? (
-          <div className="mt-6 rounded-[1.5rem] bg-surface-lowest p-6 text-sm leading-6 text-muted-foreground shadow-(--shadow-airy)">
+          <div className="mt-6 rounded-2xl bg-surface-lowest p-6 text-sm leading-6 text-muted-foreground shadow-(--shadow-airy)">
             Aun no tienes movimientos registrados. Usa el flujo de{" "}
             <span className="font-medium text-foreground">Registrar movimientos</span> para comenzar a construir tu diario financiero.
           </div>
         ) : (
           <>
             {/* Desktop table */}
-            <div className="mt-6 hidden overflow-hidden rounded-[1.5rem] bg-surface-low shadow-[0_8px_48px_-12px_rgba(0,0,0,0.05)] lg:block">
+            <div className="mt-6 hidden overflow-hidden rounded-2xl bg-surface-low shadow-[0_8px_48px_-12px_rgba(0,0,0,0.05)] lg:block">
               <Table>
                 <TableHeader className="bg-primary text-primary-foreground">
                   <TableRow className="border-0 hover:bg-transparent">
@@ -173,7 +173,7 @@ export function MovimientosManager() {
                           <div className="flex items-center gap-2">
                             <span
                               className={cn(
-                                "inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em]",
+                                "inline-flex rounded-sm px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em]",
                                 movimiento.tipo_movimiento === "ingreso"
                                   ? "bg-secondary/12 text-secondary"
                                   : "bg-primary/12 text-primary"
@@ -204,7 +204,7 @@ export function MovimientosManager() {
                       </TableCell>
                       <TableCell className="px-6 py-6">
                         <div className="flex items-center gap-2">
-                          <span className={cn("h-2 w-2 rounded-full", getCategoryTone(movimiento.tipo_movimiento))} />
+                          <span className={cn("h-2 w-2 rounded-sm", getCategoryTone(movimiento.tipo_movimiento))} />
                           <span>{movimiento.categoria ?? "-"}</span>
                         </div>
                       </TableCell>
@@ -249,7 +249,7 @@ export function MovimientosManager() {
               {movimientos.map((movimiento) => (
                 <article
                   key={movimiento.id_transaccion}
-                  className="rounded-[1.5rem] bg-surface-lowest p-5 shadow-(--shadow-airy)"
+                  className="rounded-2xl bg-surface-lowest p-5 shadow-(--shadow-airy)"
                   role={isMovimientoPendiente(movimiento) ? undefined : "link"}
                   tabIndex={isMovimientoPendiente(movimiento) ? -1 : 0}
                   onClick={() => navigate(movimiento.id_transaccion)}
@@ -266,7 +266,7 @@ export function MovimientosManager() {
                         <div className="flex flex-wrap items-center gap-2">
                           <span
                             className={cn(
-                              "inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em]",
+                              "inline-flex rounded-sm px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em]",
                               movimiento.tipo_movimiento === "ingreso"
                                 ? "bg-secondary/12 text-secondary"
                                 : "bg-primary/12 text-primary"
@@ -302,13 +302,13 @@ export function MovimientosManager() {
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-[1.25rem] bg-surface-low p-4">
+                      <div className="rounded-xl bg-surface-low p-4">
                         <p className="font-label text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
                           Categoria
                         </p>
                         <p className="mt-2 text-sm text-foreground">{movimiento.categoria ?? "-"}</p>
                       </div>
-                      <div className="rounded-[1.25rem] bg-surface-low p-4">
+                      <div className="rounded-xl bg-surface-low p-4">
                         <p className="font-label text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
                           Cuenta
                         </p>
@@ -330,7 +330,7 @@ export function MovimientosManager() {
                 <button
                   onClick={() => void loadMoreMovimientos()}
                   disabled={loadingMoreMovimientos}
-                  className="rounded-[1.5rem] bg-surface-lowest py-4 text-sm font-medium text-primary shadow-(--shadow-airy) transition hover:bg-primary/5 disabled:opacity-50"
+                  className="rounded-2xl bg-surface-lowest py-4 text-sm font-medium text-primary shadow-(--shadow-airy) transition hover:bg-primary/5 disabled:opacity-50"
                 >
                   {loadingMoreMovimientos ? "Cargando..." : "Cargar más movimientos"}
                 </button>

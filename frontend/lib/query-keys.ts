@@ -12,6 +12,13 @@ export const queryKeys = {
     analitica: ["finanzas", "analitica"] as const,
     analiticaResumen: (params?: { year?: number; month?: number }) =>
       ["finanzas", "analitica", "resumen", params ?? {}] as const,
+    analiticaTendencia: (months: number) =>
+      ["finanzas", "analitica", "tendencia", { months }] as const,
+    analiticaDistribucionCategorias: (params?: {
+      year?: number
+      month?: number
+      tipo_movimiento?: "gasto" | "ingreso"
+    }) => ["finanzas", "analitica", "distribucion-categorias", params ?? {}] as const,
     productosRoot: ["finanzas", "productos"] as const,
     productos: (idBanco: number) => ["finanzas", "productos", { idBanco }] as const,
   },

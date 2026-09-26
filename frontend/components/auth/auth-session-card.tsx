@@ -27,8 +27,8 @@ export function AuthSessionCard({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-[1.75rem] bg-[color:var(--surface-low)] p-6">
-        <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+      <div className="rounded-3xl bg-[color:var(--surface-low)] p-6">
+        <div className="inline-flex items-center gap-2 rounded-sm bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
           <ShieldCheck className="size-4" />
           Sesion activa
         </div>
@@ -38,9 +38,9 @@ export function AuthSessionCard({
         </p>
       </div>
 
-      <div className="rounded-[1.75rem] bg-[color:var(--surface-low)] p-6">
+      <div className="rounded-3xl bg-[color:var(--surface-low)] p-6">
         <div className="flex items-center gap-3">
-          <div className="flex size-11 items-center justify-center rounded-full bg-primary/12 text-primary">
+          <div className="flex size-11 items-center justify-center rounded-md bg-primary/12 text-primary">
             <UserRound className="size-5" />
           </div>
           <div>
@@ -55,7 +55,7 @@ export function AuthSessionCard({
           <p className="mt-5 text-sm text-muted-foreground">Cargando perfil...</p>
         ) : profile ? (
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-[1.25rem] bg-white/75 p-4">
+            <div className="rounded-xl bg-[color:var(--surface-lowest)] p-4">
               <p className="font-label text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
                 Nombre
               </p>
@@ -63,19 +63,19 @@ export function AuthSessionCard({
                 {profile.nombre} {profile.apellido}
               </p>
             </div>
-            <div className="rounded-[1.25rem] bg-white/75 p-4">
+            <div className="rounded-xl bg-[color:var(--surface-lowest)] p-4">
               <p className="font-label text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
                 Username
               </p>
               <p className="mt-2 text-base font-medium text-foreground">@{profile.username}</p>
             </div>
-            <div className="rounded-[1.25rem] bg-white/75 p-4">
+            <div className="rounded-xl bg-[color:var(--surface-lowest)] p-4">
               <p className="font-label text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
                 Correo
               </p>
               <p className="mt-2 text-sm leading-6 text-foreground/80">{profile.email}</p>
             </div>
-            <div className="rounded-[1.25rem] bg-white/75 p-4">
+            <div className="rounded-xl bg-[color:var(--surface-lowest)] p-4">
               <p className="font-label text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
                 Telefono
               </p>
@@ -89,7 +89,7 @@ export function AuthSessionCard({
 
       {profile ? (
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-[1.5rem] bg-[color:var(--surface-low)] p-5">
+          <div className="rounded-2xl bg-[color:var(--surface-low)] p-5">
             <p className="flex items-center gap-2 text-sm font-medium text-foreground">
               <CalendarDays className="size-4 text-primary" />
               Cuenta autenticada
@@ -100,7 +100,7 @@ export function AuthSessionCard({
                 : "Tu perfil ya quedo listo para seguir navegando."}
             </p>
           </div>
-          <div className="rounded-[1.5rem] bg-[color:var(--surface-low)] p-5">
+          <div className="rounded-2xl bg-[color:var(--surface-low)] p-5">
             <p className="font-label text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
               Siguiente capa
             </p>

@@ -56,7 +56,7 @@ export function MovimientoDetailView({ idMovimiento }: { idMovimiento: number })
 
   if (error || !movimiento) {
     return (
-      <section className="rounded-[1.75rem] bg-[color:var(--surface-low)] p-6">
+      <section className="rounded-3xl bg-[color:var(--surface-low)] p-6">
         <p className="text-sm text-muted-foreground">
           {error ?? "No pudimos cargar este movimiento."}
         </p>
@@ -75,7 +75,7 @@ export function MovimientoDetailView({ idMovimiento }: { idMovimiento: number })
   return (
     <section className="flex flex-col gap-6">
       <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <article className="rounded-[1.75rem] bg-[color:var(--surface-low)] p-6">
+        <article className="rounded-3xl bg-[color:var(--surface-low)] p-6">
           <p className="font-label text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
             Movimiento
           </p>
@@ -87,9 +87,9 @@ export function MovimientoDetailView({ idMovimiento }: { idMovimiento: number })
           </p>
         </article>
 
-        <article className="rounded-[1.75rem] bg-[color:var(--surface-lowest)] p-6 shadow-[var(--shadow-airy)]">
+        <article className="rounded-3xl bg-[color:var(--surface-lowest)] p-6 shadow-[var(--shadow-airy)]">
           <div className="flex items-center justify-between gap-3">
-            <span className="inline-flex rounded-full bg-primary/12 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-primary">
+            <span className="inline-flex rounded-sm bg-primary/12 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-primary">
               {movimiento.tipo_movimiento}
             </span>
             <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
@@ -103,7 +103,7 @@ export function MovimientoDetailView({ idMovimiento }: { idMovimiento: number })
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)]">
+        <article className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)]">
           <p className="font-label text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
             Categoria
           </p>
@@ -112,7 +112,7 @@ export function MovimientoDetailView({ idMovimiento }: { idMovimiento: number })
             {movimiento.categoria ?? "-"}
           </p>
         </article>
-        <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)]">
+        <article className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)]">
           <p className="font-label text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
             Cuenta bancaria
           </p>
@@ -121,13 +121,13 @@ export function MovimientoDetailView({ idMovimiento }: { idMovimiento: number })
             {movimiento.nombre_cuenta ?? "-"}
           </p>
         </article>
-        <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)]">
+        <article className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)]">
           <p className="font-label text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
             Fecha
           </p>
           <p className="mt-3 text-sm text-foreground">{formatDate(movimiento.created_at)}</p>
         </article>
-        <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)]">
+        <article className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)]">
           <p className="font-label text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
             Registro
           </p>
@@ -136,7 +136,7 @@ export function MovimientoDetailView({ idMovimiento }: { idMovimiento: number })
             ID #{movimiento.id_transaccion}
           </p>
         </article>
-        <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)]">
+        <article className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)]">
           <p className="font-label text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
             Lugar de compra
           </p>
@@ -149,18 +149,18 @@ export function MovimientoDetailView({ idMovimiento }: { idMovimiento: number })
         </article>
       </section>
 
-      <section className="rounded-[1.75rem] bg-[color:var(--surface-low)] p-6">
+      <section className="rounded-3xl bg-[color:var(--surface-low)] p-6">
         <div className="flex flex-wrap gap-3">
           <Link
             href="/app/finanzas/movimientos"
-            className="inline-flex items-center gap-2 rounded-full bg-[color:var(--surface-lowest)] px-4 py-2 text-sm font-medium text-foreground shadow-[var(--shadow-airy)] transition hover:bg-[color:var(--surface-variant)]"
+            className="inline-flex items-center gap-2 rounded-sm bg-[color:var(--surface-lowest)] px-4 py-2 text-sm font-medium text-foreground shadow-[var(--shadow-airy)] transition hover:bg-[color:var(--surface-variant)]"
           >
             <ArrowLeft className="size-4" />
             Volver a movimientos
           </Link>
           <Link
             href="/app/finanzas/registrar-movimiento"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+            className="inline-flex items-center gap-2 rounded-sm bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
           >
             <Wallet className="size-4" />
             Registrar otro movimiento

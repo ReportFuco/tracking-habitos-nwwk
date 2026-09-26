@@ -63,7 +63,7 @@ export function GimnasiosDirectory() {
   return (
     <section className="flex flex-col gap-6">
       <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr_0.9fr]">
-        <article className="rounded-[1.75rem] bg-[color:var(--surface-low)] p-6">
+        <article className="rounded-3xl bg-[color:var(--surface-low)] p-6">
           <p className="font-label text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
             Antes de empezar
           </p>
@@ -75,7 +75,7 @@ export function GimnasiosDirectory() {
           </p>
         </article>
 
-        <article className="rounded-[1.75rem] bg-[color:var(--surface-lowest)] p-6 shadow-[var(--shadow-airy)]">
+        <article className="rounded-3xl bg-[color:var(--surface-lowest)] p-6 shadow-[var(--shadow-airy)]">
           <p className="text-sm font-medium text-foreground">Opciones para hoy</p>
           <p className="mt-4 text-3xl font-semibold tracking-tight text-foreground">
             {filteredGimnasios.length}
@@ -85,7 +85,7 @@ export function GimnasiosDirectory() {
           </p>
         </article>
 
-        <article className="rounded-[1.75rem] bg-[color:var(--surface-lowest)] p-6 shadow-[var(--shadow-airy)]">
+        <article className="rounded-3xl bg-[color:var(--surface-lowest)] p-6 shadow-[var(--shadow-airy)]">
           <p className="text-sm font-medium text-foreground">Tu siguiente paso</p>
           <p className="mt-4 text-3xl font-semibold tracking-tight text-foreground">{gimnasiosActivos}</p>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -94,7 +94,7 @@ export function GimnasiosDirectory() {
         </article>
       </section>
 
-      <section className="rounded-[1.75rem] bg-[color:var(--surface-low)] p-6">
+      <section className="rounded-3xl bg-[color:var(--surface-low)] p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <p className="font-label text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
@@ -104,7 +104,7 @@ export function GimnasiosDirectory() {
               Gimnasios disponibles
             </h3>
           </div>
-          <div className="flex w-full max-w-md items-center gap-3 rounded-[1.25rem] bg-[color:var(--surface-lowest)] px-4 py-3 shadow-[var(--shadow-airy)]">
+          <div className="flex w-full max-w-md items-center gap-3 rounded-xl bg-[color:var(--surface-lowest)] px-4 py-3 shadow-[var(--shadow-airy)]">
             <Search className="size-4 shrink-0 text-[color:var(--module-entrenamientos)]" />
             <Input
               value={search}
@@ -119,23 +119,23 @@ export function GimnasiosDirectory() {
         </p>
 
         {loading ? (
-          <div className="mt-6 rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-6 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
+          <div className="mt-6 rounded-2xl bg-[color:var(--surface-lowest)] p-6 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
             Estamos preparando tus opciones de entrenamiento...
           </div>
         ) : gimnasios.length === 0 ? (
-          <div className="mt-6 rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-6 text-sm leading-6 text-muted-foreground shadow-[var(--shadow-airy)]">
+          <div className="mt-6 rounded-2xl bg-[color:var(--surface-lowest)] p-6 text-sm leading-6 text-muted-foreground shadow-[var(--shadow-airy)]">
             Aun no hay gimnasios disponibles para explorar. Vuelve mas tarde y retomamos desde aqui.
           </div>
         ) : filteredGimnasios.length === 0 ? (
-          <div className="mt-6 rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-6 text-sm leading-6 text-muted-foreground shadow-[var(--shadow-airy)]">
+          <div className="mt-6 rounded-2xl bg-[color:var(--surface-lowest)] p-6 text-sm leading-6 text-muted-foreground shadow-[var(--shadow-airy)]">
             No encontramos un gimnasio para <span className="font-medium text-foreground">{search}</span>.
             Prueba con otra comuna, una cadena o una parte de la direccion para seguir buscando tu proximo lugar de entrenamiento.
           </div>
         ) : (
           <>
-            <div className="mt-6 hidden overflow-hidden rounded-[1.5rem] bg-[color:var(--surface-low)] shadow-[0_8px_48px_-12px_rgba(0,0,0,0.05)] lg:block">
+            <div className="mt-6 hidden overflow-hidden rounded-2xl bg-[color:var(--surface-low)] shadow-[0_8px_48px_-12px_rgba(0,0,0,0.05)] lg:block">
               <Table>
-                <TableHeader className="bg-[color:var(--module-entrenamientos)] text-[color:var(--tertiary-foreground)]">
+                <TableHeader className="bg-[color:var(--module-entrenamientos)] text-[color:var(--module-entrenamientos-foreground)]">
                   <TableRow className="border-0 hover:bg-transparent">
                     <TableHead className="px-8 py-5 font-label text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--tertiary-foreground)]">
                       Gimnasio
@@ -187,7 +187,7 @@ export function GimnasiosDirectory() {
               {filteredGimnasios.map((gimnasio) => (
                 <article
                   key={gimnasio.id_gimnasio}
-                  className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)]"
+                  className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)]"
                   role="button"
                   tabIndex={0}
                   onClick={() => setSelectedGymId(gimnasio.id_gimnasio)}
@@ -211,7 +211,7 @@ export function GimnasiosDirectory() {
                       <ArrowRight className="mt-1 size-4 text-[color:var(--module-entrenamientos)]" />
                     </div>
 
-                    <div className="rounded-[1.25rem] bg-[color:var(--surface-low)] p-4">
+                    <div className="rounded-xl bg-[color:var(--surface-low)] p-4">
                       <p className="font-label text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
                         Ubicacion
                       </p>
@@ -230,8 +230,8 @@ export function GimnasiosDirectory() {
       </section>
 
       <Dialog open={selectedGym !== null} onOpenChange={(open) => (open ? undefined : setSelectedGymId(null))}>
-        <DialogContent className="max-w-xl rounded-[1.75rem] border-0 bg-[color:var(--surface-lowest)] p-0 shadow-[var(--shadow-airy-lg)]">
-          <div className="bg-[linear-gradient(135deg,color-mix(in_oklch,var(--module-entrenamientos)_14%,white),transparent_70%)] px-6 py-6 sm:px-7">
+        <DialogContent className="max-w-xl rounded-3xl border-0 bg-[color:var(--surface-lowest)] p-0 shadow-[var(--shadow-airy-lg)]">
+          <div className="bg-[color-mix(in_oklch,var(--module-entrenamientos)_8%,var(--surface-lowest))] px-6 py-6 sm:px-7">
             <DialogHeader className="text-left">
               <p className="font-label text-[0.72rem] uppercase tracking-[0.24em] text-muted-foreground">
                 Tu proxima sesion
@@ -249,7 +249,7 @@ export function GimnasiosDirectory() {
 
           {selectedGym ? (
             <div className="px-6 pb-6 sm:px-7">
-              <div className="rounded-[1.5rem] bg-[color:var(--surface-low)] p-5">
+              <div className="rounded-2xl bg-[color:var(--surface-low)] p-5">
                 <p className="text-lg font-semibold tracking-tight text-foreground">
                   {selectedGym.nombre_gimnasio}
                 </p>
@@ -268,7 +268,7 @@ export function GimnasiosDirectory() {
                 </Button>
                 <Button
                   asChild
-                  className="bg-[color:var(--module-entrenamientos)] text-[color:var(--tertiary-foreground)] hover:bg-[color:var(--module-entrenamientos)]/90"
+                  className="bg-[color:var(--module-entrenamientos)] text-[color:var(--module-entrenamientos-foreground)] hover:bg-[color:var(--module-entrenamientos)]/90"
                 >
                   <Link href={`/app/entrenamientos/registrar?id_gimnasio=${selectedGym.id_gimnasio}`}>
                     Elegir este gimnasio

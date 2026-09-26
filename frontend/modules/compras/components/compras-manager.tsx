@@ -94,7 +94,7 @@ export function ComprasManager() {
   return (
     <section className="flex flex-col gap-4">
       <section className="grid gap-3 sm:grid-cols-3">
-        <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
+        <article className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
           <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <ShoppingBag className="size-3.5" style={{ color: MODULE_COLOR }} />
             Compras
@@ -105,7 +105,7 @@ export function ComprasManager() {
           <p className="mt-1 text-xs text-muted-foreground sm:text-sm">Registros totales</p>
         </article>
 
-        <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
+        <article className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
           <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <Receipt className="size-3.5" style={{ color: MODULE_COLOR }} />
             Total
@@ -116,7 +116,7 @@ export function ComprasManager() {
           <p className="mt-1 text-xs text-muted-foreground sm:text-sm">Acumulado conocido</p>
         </article>
 
-        <article className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
+        <article className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
           <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             <Store className="size-3.5" style={{ color: MODULE_COLOR }} />
             Locales
@@ -129,7 +129,7 @@ export function ComprasManager() {
       {showForm ? (
         <form
           onSubmit={handleSubmit}
-          className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5"
+          className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5"
         >
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-foreground">Nueva compra</p>
@@ -167,12 +167,12 @@ export function ComprasManager() {
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, fecha_compra: event.target.value }))
                 }
-                className="h-12 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+                className="h-12 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
               />
             </LabeledField>
           </div>
 
-          <Button type="submit" disabled={submitting} className="mt-4 h-12 w-full rounded-[1rem]">
+          <Button type="submit" disabled={submitting} className="mt-4 h-12 w-full rounded-lg">
             {submitting ? "Guardando..." : "Registrar compra"}
           </Button>
         </form>
@@ -180,7 +180,7 @@ export function ComprasManager() {
         <button
           type="button"
           onClick={() => setShowForm(true)}
-          className="flex items-center justify-center gap-2 rounded-[1.5rem] border-2 border-dashed border-[color:var(--border)] bg-transparent py-3 text-sm font-medium text-muted-foreground transition hover:border-[color:var(--module-compras)] hover:text-foreground"
+          className="flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[color:var(--border)] bg-transparent py-3 text-sm font-medium text-muted-foreground transition hover:border-[color:var(--module-compras)] hover:text-foreground"
         >
           <Plus className="size-4" />
           Nueva compra
@@ -193,11 +193,11 @@ export function ComprasManager() {
         </p>
 
         {loading ? (
-          <div className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
+          <div className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
             Cargando compras...
           </div>
         ) : sortedCompras.length === 0 ? (
-          <div className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
+          <div className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
             Aun no tienes compras registradas. Agrega tu primera compra para empezar tu historial.
           </div>
         ) : (
@@ -205,12 +205,12 @@ export function ComprasManager() {
             {sortedCompras.map((compra) => (
               <li
                 key={compra.id_compra}
-                className="rounded-[1.25rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)]"
+                className="rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-3">
                     <span
-                      className="flex size-10 shrink-0 items-center justify-center rounded-full"
+                      className="flex size-10 shrink-0 items-center justify-center rounded-md"
                       style={{
                         background: `color-mix(in oklch, ${MODULE_COLOR} 14%, transparent)`,
                         color: MODULE_COLOR,
@@ -236,7 +236,7 @@ export function ComprasManager() {
                   <div className="flex items-center gap-2">
                     <span
                       className={cn(
-                        "rounded-full px-2.5 py-1 text-xs font-semibold"
+                        "rounded-sm px-2.5 py-1 text-xs font-semibold"
                       )}
                       style={{
                         background: `color-mix(in oklch, ${MODULE_COLOR} 14%, transparent)`,

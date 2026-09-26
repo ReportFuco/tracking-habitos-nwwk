@@ -6,8 +6,8 @@ export function MovimientoDetailSkeleton({ includeChrome = true }: { includeChro
   const content = (
     <>
       <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <SkeletonCard tone="low" className="h-44 rounded-[1.75rem]" />
-        <SkeletonCard className="h-44 rounded-[1.75rem]" />
+        <SkeletonCard tone="low" className="h-44 rounded-3xl" />
+        <SkeletonCard className="h-44 rounded-3xl" />
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[1, 2, 3, 4].map((item) => (

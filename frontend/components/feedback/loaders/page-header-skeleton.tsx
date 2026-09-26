@@ -35,16 +35,16 @@ export function PageHeaderSkeleton({
     >
       <div className="flex min-w-0 flex-col gap-2">
         <div
-          className="h-5 w-24 rounded-full"
+          className="h-5 w-24 rounded-sm"
           style={
             {
               background: `color-mix(in oklch, ${accent} 14%, transparent)`,
             } as CSSProperties
           }
         />
-        <Skeleton className="h-9 w-48 max-w-full rounded-[1rem] sm:h-11 sm:w-64" />
-        <Skeleton className="h-4 w-full max-w-xl rounded-full" />
-        <Skeleton className="h-4 w-3/4 max-w-md rounded-full" />
+        <Skeleton className="h-9 w-48 max-w-full rounded-lg sm:h-11 sm:w-64" />
+        <Skeleton className="h-4 w-full max-w-xl rounded-sm" />
+        <Skeleton className="h-4 w-3/4 max-w-md rounded-sm" />
       </div>
       {hasActions ? <Skeleton tone="lowest" className="h-11 w-36 rounded-xl shadow-[var(--shadow-airy)]" /> : null}
     </div>

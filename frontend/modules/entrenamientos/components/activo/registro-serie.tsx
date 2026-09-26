@@ -76,21 +76,21 @@ export function RegistroSerie({
   const puedeGuardar = peso !== "" && repeticiones !== "" && Number(repeticiones) > 0
 
   return (
-    <section className="overflow-hidden rounded-[1.5rem] bg-surface-lowest shadow-(--shadow-airy-lg) sm:rounded-[1.75rem]">
+    <section className="overflow-hidden rounded-2xl bg-surface-lowest shadow-(--shadow-airy-lg) sm:rounded-3xl">
       <form onSubmit={enviar} className="space-y-4 p-4 sm:space-y-5 sm:p-6">
         <div className="flex items-start gap-3 sm:gap-4">
           <EjercicioAnimacion
             imagen={ejercicio.url_imagen}
             animacion={ejercicio.url_animacion}
             alt={ejercicio.nombre}
-            className="size-24 shrink-0 rounded-[1.25rem] sm:size-32"
+            className="size-24 shrink-0 rounded-xl sm:size-32"
             priority
           />
 
           <div className="min-w-0 flex-1 sm:pt-1">
             <div className="flex items-center gap-2">
               <span
-                className="flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-tertiary-foreground"
+                className="flex size-6 shrink-0 items-center justify-center rounded-md text-xs font-semibold text-tertiary-foreground"
                 style={{ background: "var(--module-entrenamientos)" }}
                 aria-hidden
               >
@@ -110,14 +110,14 @@ export function RegistroSerie({
             <div className="mt-2 flex flex-wrap gap-1.5">
               {grupo ? (
                 <span
-                  className="rounded-full px-2.5 py-1 text-[11px] font-medium text-tertiary-foreground"
+                  className="rounded-sm px-2.5 py-1 text-[11px] font-medium text-tertiary-foreground"
                   style={{ background: "var(--module-entrenamientos)" }}
                 >
                   {grupo}
                 </span>
               ) : null}
               {ejercicio.equipamiento ? (
-                <span className="rounded-full bg-surface-low px-2.5 py-1 text-[11px] text-muted-foreground">
+                <span className="rounded-sm bg-surface-low px-2.5 py-1 text-[11px] text-muted-foreground">
                   {ejercicio.equipamiento}
                 </span>
               ) : null}
@@ -161,11 +161,11 @@ export function RegistroSerie({
           disabled={submitting}
         />
 
-        <div className="rounded-[1.25rem] bg-surface-low p-2">
+        <div className="rounded-xl bg-surface-low p-2">
           <Button
             type="submit"
             disabled={submitting || !puedeGuardar}
-            className="min-h-14 w-full rounded-[1rem] bg-[color:var(--module-entrenamientos)] text-base text-[color:var(--tertiary-foreground)] shadow-(--shadow-airy) transition hover:bg-[color:var(--module-entrenamientos)]/90 motion-reduce:transition-none"
+            className="min-h-14 w-full rounded-lg bg-[color:var(--module-entrenamientos)] text-base text-[color:var(--module-entrenamientos-foreground)] shadow-(--shadow-airy) transition hover:bg-[color:var(--module-entrenamientos)]/90 motion-reduce:transition-none"
           >
             {submitting ? (
               <LoaderCircle className="size-5 animate-spin motion-reduce:animate-none" aria-hidden />
@@ -190,13 +190,13 @@ export function RegistroSerie({
               {series.map((serie, indice) => (
                 <span
                   key={serie.id_fuerza_detalle}
-                  className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-[0.9rem] px-3 py-1.5 text-xs ${
+                  className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs ${
                     serie.es_calentamiento
                       ? "bg-surface-low text-muted-foreground"
                       : "bg-foreground/5 text-foreground"
                   }`}
                 >
-                  <span className="flex size-5 items-center justify-center rounded-full bg-surface-lowest font-label text-[10px] text-muted-foreground">
+                  <span className="flex size-5 items-center justify-center rounded-md bg-surface-lowest font-label text-[10px] text-muted-foreground">
                     {indice + 1}
                   </span>
                   {formatearPeso(serie.cantidad_peso)} kg × {serie.repeticiones}

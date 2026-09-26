@@ -29,7 +29,7 @@ export function FormPanel({
   const showCompactEyebrow = !hasFullHeader && Boolean(eyebrow);
 
   return (
-    <section className="rounded-[1.5rem] bg-surface-lowest shadow-(--shadow-airy-lg) sm:rounded-[1.75rem]">
+    <section className="rounded-2xl bg-surface-lowest shadow-(--shadow-airy-lg) sm:rounded-3xl">
       {hasFullHeader ? (
         <div
           className={cn(
@@ -56,7 +56,7 @@ export function FormPanel({
               ) : null}
             </div>
             {aside ? (
-              <div className="hidden rounded-[1.5rem] bg-white/70 p-5 backdrop-blur-sm lg:block">
+              <div className="hidden rounded-2xl bg-[color:var(--surface-lowest)] p-5 lg:block">
                 {aside}
               </div>
             ) : null}
@@ -152,7 +152,7 @@ export function EditorialSelect({
 
 export function FormNote({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-[1.5rem] bg-surface-low p-4">
+    <div className="rounded-2xl bg-surface-low p-4">
       <p className="text-sm leading-6 text-muted-foreground">{children}</p>
     </div>
   );

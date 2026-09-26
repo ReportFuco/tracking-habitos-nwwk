@@ -96,7 +96,7 @@ export function MetasManager() {
     <section className="flex flex-col gap-4">
       {metaActiva ? (
         <article
-          className="rounded-[1.5rem] p-4 shadow-[var(--shadow-airy)] sm:p-5"
+          className="rounded-2xl p-4 shadow-[var(--shadow-airy)] sm:p-5"
           style={{
             background: `color-mix(in oklch, ${MODULE_COLOR} 10%, var(--surface-lowest))`,
           }}
@@ -121,7 +121,7 @@ export function MetasManager() {
           </div>
         </article>
       ) : (
-        <div className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
+        <div className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
           No tienes una meta activa para hoy. Crea una para empezar a trackear objetivos.
         </div>
       )}
@@ -129,7 +129,7 @@ export function MetasManager() {
       {showForm ? (
         <form
           onSubmit={handleSubmit}
-          className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5"
+          className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5"
         >
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-foreground">Nueva meta</p>
@@ -189,7 +189,7 @@ export function MetasManager() {
             />
           </div>
 
-          <Button type="submit" disabled={submitting} className="mt-4 h-12 w-full rounded-[1rem]">
+          <Button type="submit" disabled={submitting} className="mt-4 h-12 w-full rounded-lg">
             {submitting ? "Guardando..." : "Crear meta"}
           </Button>
         </form>
@@ -197,7 +197,7 @@ export function MetasManager() {
         <button
           type="button"
           onClick={() => setShowForm(true)}
-          className="flex items-center justify-center gap-2 rounded-[1.5rem] border-2 border-dashed border-[color:var(--border)] bg-transparent py-3 text-sm font-medium text-muted-foreground transition hover:border-[color:var(--module-nutricion)] hover:text-foreground"
+          className="flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[color:var(--border)] bg-transparent py-3 text-sm font-medium text-muted-foreground transition hover:border-[color:var(--module-nutricion)] hover:text-foreground"
         >
           <Plus className="size-4" />
           Nueva meta nutricional
@@ -210,11 +210,11 @@ export function MetasManager() {
         </p>
 
         {loading ? (
-          <div className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
+          <div className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
             Cargando metas...
           </div>
         ) : sortedMetas.length === 0 ? (
-          <div className="rounded-[1.5rem] bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
+          <div className="rounded-2xl bg-[color:var(--surface-lowest)] p-5 text-sm text-muted-foreground shadow-[var(--shadow-airy)]">
             Aun no tienes metas registradas.
           </div>
         ) : (
@@ -225,7 +225,7 @@ export function MetasManager() {
               return (
                 <li
                   key={meta.id_meta}
-                  className="rounded-[1.25rem] bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)]"
+                  className="rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)]"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -235,7 +235,7 @@ export function MetasManager() {
                         </p>
                         {activa ? (
                           <span
-                            className="rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em]"
+                            className="rounded-sm px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em]"
                             style={{
                               background: `color-mix(in oklch, ${MODULE_COLOR} 14%, transparent)`,
                               color: MODULE_COLOR,
@@ -284,7 +284,7 @@ function MacroTile({
   value: number | null
 }) {
   return (
-    <div className={cn("rounded-[1rem] bg-[color:var(--surface-lowest)] p-3")}>
+    <div className={cn("rounded-lg bg-[color:var(--surface-lowest)] p-3")}>
       <p className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
         <Icon className="size-3" style={{ color: MODULE_COLOR }} />
         {label}
@@ -313,7 +313,7 @@ function LabeledInput({
         {...props}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-12 rounded-[1rem] border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+        className="h-12 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
       />
     </div>
   )

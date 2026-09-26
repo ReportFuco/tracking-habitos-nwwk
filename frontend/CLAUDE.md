@@ -30,7 +30,7 @@ comprobar a mano y fácil de romper sin darse cuenta:
 
 ## Architecture
 
-**Stack:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS 4, Zod + react-hook-form, Axios, Radix UI, Sonner (toasts).
+**Stack:** Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Zod + react-hook-form, Axios, Radix UI, Sonner (toasts).
 
 **Environment:** `NEXT_PUBLIC_API_URL` is the only required env var (see `.env.example`).
 
@@ -70,7 +70,24 @@ Page-level layout uses `PageHeader` and `ContextNav` (breadcrumbs) from `compone
 
 ### Styling conventions
 
-CSS variables drive per-module theming (e.g., `--module-finanzas`, `--surface-lowest`). Design tokens follow the "Digital Atelier" system: olive/brick palette, border-radius 1.25–1.75rem, airy shadows. Tailwind classes use `sm:` breakpoints for desktop overrides (mobile-first). Use `p-4 sm:p-5`, avoid `text-3xl` on mobile — prefer `text-xl` scaling up.
+Marca **Ritmo** (nombre, textos y colores de sistema en `lib/brand.ts`; logo en
+`components/brand/brand-mark.tsx`). Estilo de cartel suizo: bloques de color solidos,
+esquinas casi rectas, sin sombras difusas, tipografia Archivo (ancha y pesada en titulos).
+
+- Tokens en `app/globals.css` (Tailwind 4 CSS-first, sin `tailwind.config.ts`). `:root` es
+  el tema claro y `.dark` el oscuro; se activa con `lib/theme.ts` (script en `<head>` que
+  evita el destello, selector en Perfil y en la topbar).
+- Cada modulo tiene tres roles de color: `--module-X` (tinta legible sobre superficies y
+  fondo de boton junto a `--module-X-foreground`) y `--module-X-fill` / `--module-X-on`
+  (bloque solido de la marca y su texto). No usar `--module-X` como fondo con otro color
+  de texto.
+- Radios: usar la escala `rounded-sm..4xl` (aplanada en `@theme`), nunca `rounded-[..rem]`.
+  `rounded-full` solo para avatares, puntos y controles circulares.
+- `font-display` (utilidad propia) para h1, cifras protagonistas y la marca; ocupa ~25%
+  mas de ancho, usarla con mesura en movil.
+- Nada de colores literales ni `white`/`black` fijos: todo sale de tokens para que el
+  modo oscuro funcione. Graficos en `components/charts/`; series con `--serie-*`.
+- Mobile-first con overrides `sm:`. Usa `p-4 sm:p-5`, evita `text-3xl` en movil.
 
 ### Forms
 
