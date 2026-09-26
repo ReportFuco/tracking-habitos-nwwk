@@ -148,7 +148,18 @@ class MovimientoPatch(BaseModel):
     tipo_gasto: Optional[EnumTipoGasto] = None
     id_categoria: Optional[int] = None
     id_cuenta: Optional[int] = None
-    monto: Optional[int] = None
+    monto: Optional[int] = Field(None, gt=0)
+
+    @model_validator(mode="after")
+    def validate_no_nulls(self):
+        # Todos los campos son opcionales para permitir PATCH parcial, pero las columnas
+        # son NOT NULL: un null explícito no significa "borrar", es un payload inválido.
+        nulos = sorted(
+            campo for campo in self.model_fields_set if getattr(self, campo) is None
+        )
+        if nulos:
+            raise ValueError(f"Estos campos no pueden ser nulos: {', '.join(nulos)}.")
+        return self
 
     model_config = ConfigDict(
         title="Modificar Movimiento"

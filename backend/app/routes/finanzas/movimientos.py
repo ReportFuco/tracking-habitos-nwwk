@@ -322,8 +322,7 @@ async def editar_movimiento(
                 detail="Cuenta no encontrada."
             )
 
-    for field, value in update_data.items():
-        setattr(movimiento, field, value)
+    aplicar_patch_movimiento(movimiento, update_data)
 
     await db.commit()
 
@@ -350,6 +349,24 @@ async def editar_movimiento(
     )
 
     return movimiento
+
+
+def aplicar_patch_movimiento(movimiento: Movimiento, update_data: dict) -> None:
+    """Aplica un PATCH validado manteniendo las invariantes del modelo.
+
+    La ubicación del lugar de compra solo existe en gastos
+    (``ck_movimiento_ubicacion_solo_gasto``). Si un gasto presencial pasa a ser
+    ingreso, la ubicación deja de tener sentido y se descarta; como el PATCH no permite
+    editar la ubicación, rechazarlo impediría corregir el tipo del movimiento.
+    """
+    for field, value in update_data.items():
+        setattr(movimiento, field, value)
+
+    if movimiento.tipo_movimiento != EnumTipoMovimiento.GASTO and movimiento.en_lugar_compra:
+        movimiento.en_lugar_compra = False
+        movimiento.latitud = None
+        movimiento.longitud = None
+        movimiento.precision_ubicacion = None
 
 
 def _get_current_chile_month_range() -> tuple[datetime, datetime]:

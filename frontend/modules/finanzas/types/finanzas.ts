@@ -87,12 +87,13 @@ export interface MovimientoCreate {
   created_at?: string
 }
 
+// El backend rechaza null explicito en estos campos (columnas NOT NULL): omitir = no cambiar.
 export interface MovimientoPatch {
-  id_categoria?: number | null
-  id_cuenta?: number | null
-  tipo_movimiento?: TipoMovimiento | null
-  tipo_gasto?: TipoGasto | null
-  monto?: number | null
+  id_categoria?: number
+  id_cuenta?: number
+  tipo_movimiento?: TipoMovimiento
+  tipo_gasto?: TipoGasto
+  monto?: number
 }
 
 export interface AnaliticaResumenResponse {
