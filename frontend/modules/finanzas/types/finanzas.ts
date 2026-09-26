@@ -10,6 +10,14 @@ import type {
 } from "@/modules/finanzas/schemas/finanzas.schema"
 
 export type {
+  AnaliticaDistribucionCategoriasResponse,
+  AnaliticaDistribucionCuentasResponse,
+  AnaliticaResumenResponse,
+  AnaliticaTendenciaMensualItem,
+  AnaliticaTendenciaMensualResponse,
+} from "@/modules/finanzas/schemas/finanzas.schema"
+
+export type {
   CuentaResponse,
   MovimientoResponse,
   MovimientosPageResponse,
@@ -96,35 +104,3 @@ export interface MovimientoPatch {
   monto?: number
 }
 
-export interface AnaliticaResumenResponse {
-  year: number
-  month: number
-  period_start: string
-  period_end: string
-  gasto_total: number
-  ingreso_total: number
-  balance_total: number
-  gasto_fijo_total: number
-  gasto_variable_total: number
-  cantidad_movimientos: number
-  ticket_promedio_gasto: number
-  gasto_mayor: number
-  tasa_ahorro_pct: number | null
-  variacion_gasto_vs_mes_anterior: number | null
-  variacion_gasto_vs_mes_anterior_pct: number | null
-  proyeccion_gasto_fin_mes: number | null
-}
-
-export interface AnaliticaTendenciaMensualItem {
-  year: number
-  month: number
-  gasto_total: number
-  ingreso_total: number
-  balance_total: number
-}
-
-export interface AnaliticaDistribucionItem {
-  label: string
-  total: number
-  porcentaje: number
-}

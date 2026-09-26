@@ -1,15 +1,20 @@
 import { api } from "@/lib/api"
 import { parseApiResponse } from "@/lib/api-schema"
 import {
+  analiticaDistribucionCategoriasResponseSchema,
+  analiticaDistribucionCuentasResponseSchema,
+  analiticaResumenResponseSchema,
+  analiticaTendenciaMensualResponseSchema,
   cuentaResponseSchema,
   cuentasListResponseSchema,
   movimientoResponseSchema,
   movimientosPageResponseSchema,
 } from "@/modules/finanzas/schemas/finanzas.schema"
 import {
-  AnaliticaDistribucionItem,
+  AnaliticaDistribucionCategoriasResponse,
+  AnaliticaDistribucionCuentasResponse,
   AnaliticaResumenResponse,
-  AnaliticaTendenciaMensualItem,
+  AnaliticaTendenciaMensualResponse,
   BancoCreate,
   BancoResponse,
   CategoriaCreate,
@@ -163,31 +168,43 @@ export const FinanzasAPI = {
     month?: number
   }): Promise<AnaliticaResumenResponse> => {
     const { data } = await api.get("/api/finanzas/analitica/resumen", { params })
-    return data
+    return parseApiResponse(analiticaResumenResponseSchema, data, "GET /api/finanzas/analitica/resumen")
   },
 
   getAnaliticaTendenciaMensual: async (params?: {
     months?: number
-  }): Promise<AnaliticaTendenciaMensualItem[]> => {
+  }): Promise<AnaliticaTendenciaMensualResponse> => {
     const { data } = await api.get("/api/finanzas/analitica/tendencia-mensual", { params })
-    return data
+    return parseApiResponse(
+      analiticaTendenciaMensualResponseSchema,
+      data,
+      "GET /api/finanzas/analitica/tendencia-mensual",
+    )
   },
 
   getAnaliticaDistribucionCategorias: async (params?: {
     year?: number
     month?: number
     tipo_movimiento?: "gasto" | "ingreso"
-  }): Promise<AnaliticaDistribucionItem[]> => {
+  }): Promise<AnaliticaDistribucionCategoriasResponse> => {
     const { data } = await api.get("/api/finanzas/analitica/distribucion-categorias", { params })
-    return data
+    return parseApiResponse(
+      analiticaDistribucionCategoriasResponseSchema,
+      data,
+      "GET /api/finanzas/analitica/distribucion-categorias",
+    )
   },
 
   getAnaliticaDistribucionCuentas: async (params?: {
     year?: number
     month?: number
     tipo_movimiento?: "gasto" | "ingreso"
-  }): Promise<AnaliticaDistribucionItem[]> => {
+  }): Promise<AnaliticaDistribucionCuentasResponse> => {
     const { data } = await api.get("/api/finanzas/analitica/distribucion-cuentas", { params })
-    return data
+    return parseApiResponse(
+      analiticaDistribucionCuentasResponseSchema,
+      data,
+      "GET /api/finanzas/analitica/distribucion-cuentas",
+    )
   },
 }

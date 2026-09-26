@@ -9,10 +9,17 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatCLP } from "@/lib/format"
 import { useFinanzas } from "@/modules/finanzas/hooks/useFinanzas"
 
 export function HistoricoCards() {
-  const { cuentas, movimientos } = useFinanzas()
+  const {
+    cuentas,
+    movimientos,
+    hasMoreMovimientos,
+    loadingMoreMovimientos,
+    loadMoreMovimientos,
+  } = useFinanzas()
   const sortedMovimientos = [...movimientos].sort((a, b) =>
     getMovimientoTimestamp(b.created_at) - getMovimientoTimestamp(a.created_at)
   )
@@ -64,7 +71,11 @@ export function HistoricoCards() {
       <Card>
         <CardHeader>
           <CardTitle>Historico de Movimientos</CardTitle>
-          <CardDescription>Todos los movimientos registrados del usuario.</CardDescription>
+          <CardDescription>
+            {hasMoreMovimientos
+              ? `Mostrando los ${sortedMovimientos.length} movimientos mas recientes.`
+              : "Todos los movimientos registrados del usuario."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1 md:hidden">
@@ -75,7 +86,7 @@ export function HistoricoCards() {
               <div key={movimiento.id_transaccion} className="rounded-lg border p-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-medium capitalize">{movimiento.tipo_movimiento}</p>
-                  <p className="text-sm font-semibold">${movimiento.monto}</p>
+                  <p className="text-sm font-semibold tabular-nums">{formatCLP(movimiento.monto)}</p>
                 </div>
                 <p className="text-sm text-muted-foreground">{movimiento.categoria ?? "-"}</p>
                 <p className="text-xs text-muted-foreground">{formatDateOnly(movimiento.created_at)}</p>
@@ -92,7 +103,7 @@ export function HistoricoCards() {
                     <TableHead>Tipo</TableHead>
                     <TableHead>Categoria</TableHead>
                     <TableHead>Cuenta</TableHead>
-                    <TableHead>Monto</TableHead>
+                    <TableHead className="text-right">Monto</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -102,13 +113,24 @@ export function HistoricoCards() {
                       <TableCell>{movimiento.tipo_movimiento}</TableCell>
                       <TableCell>{movimiento.categoria ?? "-"}</TableCell>
                       <TableCell>{movimiento.nombre_cuenta ?? "-"}</TableCell>
-                      <TableCell>{movimiento.monto}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatCLP(movimiento.monto)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
           </div>
+
+          {hasMoreMovimientos ? (
+            <button
+              type="button"
+              onClick={() => void loadMoreMovimientos()}
+              disabled={loadingMoreMovimientos}
+              className="mt-4 w-full rounded-[1.5rem] bg-surface-lowest py-3 text-sm font-medium text-primary shadow-(--shadow-airy) transition hover:bg-primary/5 disabled:opacity-50"
+            >
+              {loadingMoreMovimientos ? "Cargando..." : "Cargar mas movimientos"}
+            </button>
+          ) : null}
         </CardContent>
       </Card>
     </section>

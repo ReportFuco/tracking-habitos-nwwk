@@ -120,3 +120,78 @@ export const movimientosPageResponseSchema = z.object({
 export type CuentaResponse = z.infer<typeof cuentaResponseSchema>
 export type MovimientoResponse = z.infer<typeof movimientoResponseSchema>
 export type MovimientosPageResponse = z.infer<typeof movimientosPageResponseSchema>
+
+// Analitica: tendencia y distribuciones devuelven un objeto con `items` y metadatos del
+// periodo, no un array plano. Espejo de backend/app/schemas/finanzas/analitica.py.
+export const analiticaResumenResponseSchema = z.object({
+  year: z.number().int(),
+  month: z.number().int(),
+  period_start: z.string(),
+  period_end: z.string(),
+  gasto_total: z.number(),
+  ingreso_total: z.number(),
+  balance_total: z.number(),
+  gasto_fijo_total: z.number(),
+  gasto_variable_total: z.number(),
+  cantidad_movimientos: z.number().int(),
+  ticket_promedio_gasto: z.number(),
+  gasto_mayor: z.number(),
+  tasa_ahorro_pct: z.number().nullable(),
+  variacion_gasto_vs_mes_anterior: z.number(),
+  variacion_gasto_vs_mes_anterior_pct: z.number().nullable(),
+  proyeccion_gasto_fin_mes: z.number().nullable(),
+})
+
+export const analiticaTendenciaMensualItemSchema = z.object({
+  year: z.number().int(),
+  month: z.number().int(),
+  label: z.string(),
+  gasto_total: z.number(),
+  ingreso_total: z.number(),
+  balance_total: z.number(),
+  cantidad_movimientos: z.number().int(),
+})
+
+export const analiticaTendenciaMensualResponseSchema = z.object({
+  months: z.number().int(),
+  items: z.array(analiticaTendenciaMensualItemSchema),
+})
+
+const distribucionItemBase = {
+  total: z.number(),
+  cantidad_movimientos: z.number().int(),
+  porcentaje_del_total: z.number(),
+}
+
+const distribucionPeriodo = {
+  year: z.number().int(),
+  month: z.number().int(),
+  tipo_movimiento: tipoMovimientoSchema,
+  total_periodo: z.number(),
+}
+
+export const analiticaDistribucionCategoriasResponseSchema = z.object({
+  ...distribucionPeriodo,
+  items: z.array(
+    z.object({ id_categoria: z.number().int(), categoria: z.string(), ...distribucionItemBase }),
+  ),
+})
+
+export const analiticaDistribucionCuentasResponseSchema = z.object({
+  ...distribucionPeriodo,
+  items: z.array(
+    z.object({ id_cuenta: z.number().int(), nombre_cuenta: z.string(), ...distribucionItemBase }),
+  ),
+})
+
+export type AnaliticaResumenResponse = z.infer<typeof analiticaResumenResponseSchema>
+export type AnaliticaTendenciaMensualItem = z.infer<typeof analiticaTendenciaMensualItemSchema>
+export type AnaliticaTendenciaMensualResponse = z.infer<
+  typeof analiticaTendenciaMensualResponseSchema
+>
+export type AnaliticaDistribucionCategoriasResponse = z.infer<
+  typeof analiticaDistribucionCategoriasResponseSchema
+>
+export type AnaliticaDistribucionCuentasResponse = z.infer<
+  typeof analiticaDistribucionCuentasResponseSchema
+>

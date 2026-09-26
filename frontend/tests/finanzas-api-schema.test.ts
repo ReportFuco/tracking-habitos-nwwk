@@ -138,3 +138,41 @@ describe("FinanzasAPI.getMovimientos / createMovimiento: adapter validado", () =
     ).rejects.toBeInstanceOf(ApiSchemaError)
   })
 })
+
+// Contrato de analitica: el backend devuelve objetos con items + metadatos
+// (backend/app/schemas/finanzas/analitica.py), no arrays planos.
+describe("FinanzasAPI analitica: contrato con el backend", () => {
+  it("tendencia mensual devuelve { months, items }", async () => {
+    const respuesta = {
+      months: 2,
+      items: [
+        { year: 2026, month: 8, label: "2026-08", gasto_total: 100, ingreso_total: 300, balance_total: 200, cantidad_movimientos: 3 },
+        { year: 2026, month: 9, label: "2026-09", gasto_total: 50, ingreso_total: 0, balance_total: -50, cantidad_movimientos: 1 },
+      ],
+    }
+    vi.mocked(api.get).mockResolvedValue({ data: respuesta })
+
+    await expect(FinanzasAPI.getAnaliticaTendenciaMensual({ months: 2 })).resolves.toEqual(respuesta)
+  })
+
+  it("distribucion por categorias usa categoria y porcentaje_del_total", async () => {
+    const respuesta = {
+      year: 2026,
+      month: 9,
+      tipo_movimiento: "gasto",
+      total_periodo: 1000,
+      items: [
+        { id_categoria: 1, categoria: "Comida", total: 600, cantidad_movimientos: 4, porcentaje_del_total: 60 },
+      ],
+    }
+    vi.mocked(api.get).mockResolvedValue({ data: respuesta })
+
+    await expect(FinanzasAPI.getAnaliticaDistribucionCategorias()).resolves.toEqual(respuesta)
+  })
+
+  it("rechaza la forma vieja (array plano con label/porcentaje)", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [{ label: "Comida", total: 600, porcentaje: 60 }] })
+
+    await expect(FinanzasAPI.getAnaliticaDistribucionCuentas()).rejects.toBeInstanceOf(ApiSchemaError)
+  })
+})

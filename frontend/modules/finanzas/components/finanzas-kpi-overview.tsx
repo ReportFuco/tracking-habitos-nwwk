@@ -16,16 +16,12 @@ import {
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { FinanzasKpiOverviewSkeleton } from "@/modules/finanzas/components/skeletons/kpi-overview-skeleton"
+import { formatCLP } from "@/lib/format"
 import { useAnaliticaResumen } from "@/modules/finanzas/hooks/useFinanzas"
 
 const MODULE_COLOR = "var(--module-finanzas)"
 
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0,
-  }).format(value)
+const formatCurrency = formatCLP
 
 const formatPercent = (value: number | null) => {
   if (value === null) return "Sin referencia"
