@@ -205,8 +205,10 @@ export const EntrenamientosAPI = {
       Object.entries(params ?? {}).filter(([, valor]) => valor !== undefined && valor !== ""),
     )
 
+    // `endpoint` es solo la etiqueta para los logs de items descartados; la ruta HTTP va
+    // aparte para que el verbo no termine dentro de la URL.
     const endpoint = "GET /api/entrenamientos/ejercicios/"
-    const { data } = await api.get(endpoint, {
+    const { data } = await api.get("/api/entrenamientos/ejercicios/", {
       params: Object.keys(activos).length > 0 ? activos : undefined,
     })
 
@@ -223,7 +225,7 @@ export const EntrenamientosAPI = {
 
   createEjercicio: async (payload: EjercicioCreate): Promise<EjercicioResponse> => {
     const endpoint = "POST /api/entrenamientos/ejercicios/"
-    const { data } = await api.post(endpoint, toEjercicioPayload(payload))
+    const { data } = await api.post("/api/entrenamientos/ejercicios/", toEjercicioPayload(payload))
     return normalizeEjercicio(data, endpoint) ?? (data as EjercicioResponse)
   },
 
@@ -242,7 +244,7 @@ export const EntrenamientosAPI = {
 
   getMusculos: async (): Promise<Musculo[]> => {
     const endpoint = "GET /api/entrenamientos/ejercicios/musculos"
-    const { data } = await api.get(endpoint)
+    const { data } = await api.get("/api/entrenamientos/ejercicios/musculos")
 
     return toArray<unknown>(data)
       .map((item) => normalizeMusculo(item, endpoint))

@@ -119,3 +119,41 @@ describe("EntrenamientosAPI.getEjercicios / getMusculos: normalizador tolerante,
     consoleError.mockRestore()
   })
 })
+
+// AUD-002: la etiqueta de logging ("GET /api/...") terminaba pasada a axios como URL.
+describe("EntrenamientosAPI catalogo: rutas HTTP", () => {
+  it("getEjercicios llama a la ruta sin el verbo", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [] })
+
+    await EntrenamientosAPI.getEjercicios({ q: "press" })
+
+    expect(api.get).toHaveBeenCalledWith("/api/entrenamientos/ejercicios/", {
+      params: { q: "press" },
+    })
+  })
+
+  it("getMusculos llama a la ruta sin el verbo", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [] })
+
+    await EntrenamientosAPI.getMusculos()
+
+    expect(api.get).toHaveBeenCalledWith("/api/entrenamientos/ejercicios/musculos")
+  })
+
+  it("createEjercicio hace POST a la ruta sin el verbo", async () => {
+    vi.mocked(api.post).mockResolvedValue({ data: {} })
+
+    await EntrenamientosAPI.createEjercicio({ nombre: "Press banca" } as never)
+
+    expect(vi.mocked(api.post).mock.calls[0][0]).toBe("/api/entrenamientos/ejercicios/")
+  })
+
+  it("ninguna ruta del catalogo empieza con un verbo HTTP", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [] })
+    await EntrenamientosAPI.getEjercicios()
+    await EntrenamientosAPI.getMusculos()
+    for (const [url] of vi.mocked(api.get).mock.calls) {
+      expect(url).toMatch(/^\/api\//)
+    }
+  })
+})
