@@ -1,11 +1,14 @@
 # Deploy a producción
 
-Verificado por inspección directa del servidor el 2026-08-02. Si algo de acá no
+Verificado por inspección directa del servidor el 2026-08-02; actualizado el 2026-09-26. Si algo de acá no
 coincide con lo que ves en el servidor, confiá en el servidor y actualizá este archivo.
 
 ## Servidor
 
 - Acceso: `ssh fucolabs` (host configurado en `~/.ssh/config` del usuario, key propia).
+  Ese alias resuelve por Tailscale; si el servidor aparece offline en `tailscale status`
+  (le pasó el 2026-09: `tailscaled` quedó "Logged out"), entrar por la IP pública con la
+  misma key: `ssh -i ~/.ssh/id_ed25519_fucolabs root@147.93.145.132`.
 - Es una VPS **compartida** con otras apps del usuario (Supermercado al Día, Evolution
   API/WhatsApp, un sitio de noticias). No asumas que sos el único servicio ni el único
   proceso escuchando en un puerto dado.
@@ -28,14 +31,13 @@ No hay CI/CD ni webhooks. Todo el proceso de abajo es manual.
 - Dueño del proceso: usuario del sistema `report-fuco` (los `systemctl restart` de abajo
   necesitan privilegios de sudo/root, no el usuario `report-fuco`)
 - Es un `git clone` de `https://github.com/ReportFuco/tracking-habitos-nwwk.git`
-- ⚠️ El checkout de producción puede estar parado en una rama que no es `main`. Antes
-  de asumir qué versión sirve tráfico real, confirmá con:
-  ```
-  cd /home/report-fuco/proyectos/tracking-habitos-nwwk
-  git -c safe.directory='*' branch --show-current
-  ```
-  (el repo tiene "dubious ownership" para el usuario `root`; el flag `-c safe.directory='*'`
-  evita tener que tocar la git config global del servidor solo para leer el estado.)
+- Producción sigue `main` desde el 2026-09-26 (antes estuvo parada en una rama de
+  feature). Se trabaja directo en `main`, sin ramas.
+- **Todo el checkout es de `report-fuco`, y los comandos de git/npm/build se corren como
+  ese usuario** (`sudo -u report-fuco -H ...`). Un `git pull` o `npm run build` corrido
+  como root deja archivos de root en `.git/`, `node_modules/` y `.next/`, y el siguiente
+  `git fetch` como `report-fuco` falla con `failed to write object`. Si pasa:
+  `chown -R report-fuco:report-fuco /home/report-fuco/proyectos/tracking-habitos-nwwk`.
 
 ## Backend (`tracking-api.service`)
 
@@ -98,7 +100,10 @@ Restart=always
   si no vas a seguir sirviendo el build viejo.
 - `NEXT_PUBLIC_API_URL` (ver `frontend/CLAUDE.md`) se resuelve en build time. Si cambia,
   hace falta rebuild, no alcanza con reiniciar el servicio.
-- Node instalado en el servidor: v22.22.2 / npm 10.9.7.
+- Node instalado en el servidor: v22.22.2 / npm 10.9.7. Usar `npm ci` (instala el
+  lockfile tal cual). `npm install`/`npm update` con npm 10.9 se cae con
+  `Cannot read properties of null (reading 'edgesOut')` en este árbol con overrides; el
+  lockfile se regenera en local con `npx npm@11 install`.
 
 ## Nginx
 
@@ -115,23 +120,25 @@ cambia el puerto interno, el dominio, o se agrega un servicio nuevo.
 ## Procedimiento de deploy manual
 
 ```
-ssh fucolabs
+ssh fucolabs          # como root
 cd /home/report-fuco/proyectos/tracking-habitos-nwwk
-git -c safe.directory='*' pull   # confirmar antes en qué rama está parado
+U="sudo -u report-fuco -H"
+$U git fetch origin && $U git merge --ff-only origin/main
 
-# Backend
+# Backend (solo si cambió requirements.txt o hay migraciones nuevas)
 cd backend
-env/bin/pip install -r requirements.txt   # + gunicorn/uvicorn a mano si el venv es nuevo
-env/bin/alembic -c app/alembic.ini upgrade head
+$U env/bin/pip install -r requirements.txt   # + gunicorn/uvicorn a mano si el venv es nuevo
+set -a; . ./.env; set +a                     # alembic lee DATABASE_URL del entorno
+$U --preserve-env=DATABASE_URL PYTHONPATH=$PWD env/bin/alembic -c app/alembic.ini upgrade head
 cd ..
 
 # Frontend
 cd frontend
-npm install
-npm run build
+$U npm ci
+$U npm run build
 cd ..
 
-# Reiniciar (requiere sudo/root)
+# Reiniciar (requiere root)
 systemctl restart tracking-api.service frontend-tracking-habitos.service
 systemctl status tracking-api.service frontend-tracking-habitos.service --no-pager
 ```
