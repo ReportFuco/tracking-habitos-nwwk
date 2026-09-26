@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useEffect, useState } from "react"
+import { FormEvent, useState } from "react"
 import { toast } from "sonner"
 import { FieldGroup, FormNote, FormPanel } from "@/components/forms/editorial-form"
 import { Button } from "@/components/ui/button"
@@ -42,10 +42,14 @@ const diffPayload = (current: FormState, original: FormState): UsuarioPerfilPatc
 
 export function PerfilEditForm({ perfil, submitting, onSubmit }: PerfilEditFormProps) {
   const [form, setForm] = useState<FormState>(() => toFormState(perfil))
+  const [perfilBase, setPerfilBase] = useState(perfil)
 
-  useEffect(() => {
+  // Si llega un perfil nuevo (refetch o guardado), el formulario vuelve a partir de el.
+  // Se ajusta durante el render en vez de en un efecto para no pintar datos viejos.
+  if (perfil !== perfilBase) {
+    setPerfilBase(perfil)
     setForm(toFormState(perfil))
-  }, [perfil])
+  }
 
   const original = toFormState(perfil)
   const payload = diffPayload(form, original)
