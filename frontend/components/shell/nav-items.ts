@@ -21,7 +21,8 @@ export interface NavItem {
   href: string
   icon: LucideIcon
   moduleColor?: string
-  activePrefix?: string
+  /** Prefijos de ruta que tambien marcan el item como activo (por defecto, su href). */
+  activePrefix?: string | string[]
   exactMatch?: boolean
 }
 
@@ -112,6 +113,16 @@ export const adminBottomNavItems: NavItem[] = [
   { label: "Resumen", href: "/administrador", icon: Gauge, exactMatch: true },
   { label: "Usuarios", href: "/administrador/usuarios", icon: Users },
   { label: "Finanzas", href: "/administrador/finanzas/bancos", icon: Building2, activePrefix: "/administrador/finanzas" },
-  { label: "Catalogo", href: "/administrador/marcas", icon: Package, activePrefix: "/administrador/marcas" },
-  { label: "Compras", href: "/administrador/cadenas", icon: Store, activePrefix: "/administrador/cadenas" },
+  {
+    label: "Catalogo",
+    href: "/administrador/marcas",
+    icon: Package,
+    activePrefix: ["/administrador/marcas", "/administrador/productos", "/administrador/tablas-nutricionales"],
+  },
+  {
+    label: "Compras",
+    href: "/administrador/cadenas",
+    icon: Store,
+    activePrefix: ["/administrador/cadenas", "/administrador/locales"],
+  },
 ]

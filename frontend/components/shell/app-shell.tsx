@@ -5,7 +5,7 @@ import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useProfile } from "@/modules/auth/hooks/useProfile"
-import { MobileBottomNav } from "./mobile-bottom-nav"
+import { MobileBottomNav, userBottomNavOrder } from "./mobile-bottom-nav"
 import { SidebarNav } from "./sidebar-nav"
 import { Topbar } from "./topbar"
 import { adminBottomNavItems, adminNavSections, userNavSections, type NavSection } from "./nav-items"
@@ -82,7 +82,7 @@ export function AppShell({ children, variant = "user", sections }: AppShellProps
         </div>
       </div>
 
-      {usesMobileBottomNav ? <MobileBottomNav items={mobileNavItems} /> : null}
+      {usesMobileBottomNav ? <MobileBottomNav items={mobileNavItems} preferredOrder={userBottomNavOrder} /> : null}
       {isAdmin ? (
         <MobileBottomNav items={adminBottomNavItems} className="md:hidden" />
       ) : null}

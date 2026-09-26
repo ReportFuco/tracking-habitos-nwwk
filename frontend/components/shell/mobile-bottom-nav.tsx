@@ -11,7 +11,7 @@ interface MobileBottomNavProps {
   className?: string;
 }
 
-const defaultPreferredOrder = [
+export const userBottomNavOrder = [
   "/app/dashboard",
   "/app/finanzas",
   "/app/entrenamientos",
@@ -19,20 +19,29 @@ const defaultPreferredOrder = [
   "/app/compras",
 ];
 
-function isItemActive(item: NavItem, pathname: string): boolean {
+export function isItemActive(item: NavItem, pathname: string): boolean {
   if (item.exactMatch) return pathname === item.href;
-  const prefix = item.activePrefix ?? item.href;
-  return pathname === item.href || pathname.startsWith(prefix + "/");
+  if (pathname === item.href) return true;
+  const prefixes = [item.activePrefix ?? item.href].flat();
+  return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(prefix + "/"));
+}
+
+/**
+ * Items a mostrar, en orden. Con `preferredOrder` se filtra y ordena por esos href;
+ * sin el, se respetan los items tal como llegan (asi el nav admin no queda vacio por
+ * no coincidir con el orden por defecto de `/app/...`).
+ */
+export function resolveVisibleItems(items: NavItem[], preferredOrder?: string[]): NavItem[] {
+  if (!preferredOrder) return items;
+  return preferredOrder
+    .map((href) => items.find((item) => item.href === href))
+    .filter((item): item is NavItem => Boolean(item));
 }
 
 export function MobileBottomNav({ items, preferredOrder, className }: MobileBottomNavProps) {
   const pathname = usePathname() ?? "";
-  const order = preferredOrder ?? defaultPreferredOrder;
-  const visibleItems = order
-    .map((href) => items.find((item) => item.href === href))
-    .filter((item): item is NavItem => Boolean(item));
+  const visibleItems = resolveVisibleItems(items, preferredOrder);
   const activeIndex = visibleItems.findIndex((item) => isItemActive(item, pathname));
-  const normalizedActiveIndex = activeIndex >= 0 ? activeIndex : 0;
   const indicatorWidth =
     visibleItems.length > 0 ? `${100 / visibleItems.length}%` : "0%";
 
@@ -45,14 +54,16 @@ export function MobileBottomNav({ items, preferredOrder, className }: MobileBott
       )}
     >
       <div className="relative mx-auto max-w-md">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-0 rounded-3xl bg-surface-lowest shadow-(--shadow-airy) transition-transform duration-300 ease-out"
-          style={{
-            width: indicatorWidth,
-            transform: `translateX(${normalizedActiveIndex * 100}%)`,
-          }}
-        />
+        {activeIndex >= 0 ? (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-0 rounded-3xl bg-surface-lowest shadow-(--shadow-airy) transition-transform duration-300 ease-out"
+            style={{
+              width: indicatorWidth,
+              transform: `translateX(${activeIndex * 100}%)`,
+            }}
+          />
+        ) : null}
         <ul
           className="relative grid items-end"
           style={{
