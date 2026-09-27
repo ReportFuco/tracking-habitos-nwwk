@@ -33,6 +33,10 @@ interface ColumnChartProps {
   tone?: "surface" | "hero"
   /** Color del periodo en curso (solo con una serie). */
   currentColor?: string
+  /** Linea horizontal de referencia (p. ej. promedio diario). Sin label, solo la linea. */
+  reference?: { value: number; label?: string }
+  /** Muestra la etiqueta del eje X cada N columnas (y siempre la del periodo en curso). */
+  xLabelEvery?: number
   className?: string
 }
 
@@ -60,6 +64,8 @@ export function ColumnChart({
   height = 180,
   tone = "surface",
   currentColor,
+  reference,
+  xLabelEvery = 1,
   className,
 }: ColumnChartProps) {
   const [active, setActive] = useState<number | null>(null)
@@ -67,7 +73,10 @@ export function ColumnChart({
   const isHero = tone === "hero"
   const single = series.length === 1
 
-  const max = Math.max(0, ...data.flatMap((d) => series.map((s) => d.values[s.key] ?? 0)))
+  const max = Math.max(0, reference?.value ?? 0, ...data.flatMap((d) => series.map((s) => d.values[s.key] ?? 0)))
+  // Con muchas columnas (dias del mes) el espacio entre ellas se reduce al minimo.
+  const dense = data.length > 14
+  const gapClass = dense ? "gap-[2px]" : isHero ? "gap-1.5" : "gap-2"
   const ticks = niceTicks(max)
   const top = ticks[ticks.length - 1] || 1
   const axisWidth = isHero ? 0 : AXIS_WIDTH
@@ -109,8 +118,22 @@ export function ColumnChart({
             ))
           : null}
 
+        {reference && reference.value > 0 ? (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute right-0 z-20 border-t-2 border-foreground/70"
+            style={{ left: axisWidth, bottom: `${(reference.value / top) * 100}%` }}
+          >
+            {reference.label ? (
+              <span className="absolute right-0 bottom-1 rounded-sm bg-foreground px-1.5 py-0.5 text-[10px] font-semibold text-background tabular-nums">
+                {reference.label}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
         <div
-          className={cn("absolute inset-y-0 right-0 flex items-end", isHero ? "gap-1.5" : "gap-2")}
+          className={cn("absolute inset-y-0 right-0 flex items-end", gapClass)}
           style={{ left: axisWidth }}
           onMouseLeave={() => setActive(null)}
         >
@@ -181,14 +204,16 @@ export function ColumnChart({
 
       <div
         aria-hidden
-        className={cn("flex gap-2 text-[10px] font-medium uppercase tracking-wide", isHero && "gap-1.5")}
+        className={cn("flex text-[10px] font-medium uppercase tracking-wide", gapClass)}
         style={{ paddingLeft: axisWidth }}
       >
-        {data.map((datum) => (
+        {data.map((datum, index) => (
           <span
             key={datum.id}
             className={cn(
-              "flex-1 text-center",
+              // min-w-0: la etiqueta desborda centrada sobre su columna sin ensancharla.
+              "flex min-w-0 flex-1 justify-center overflow-visible whitespace-nowrap",
+              index % xLabelEvery !== 0 && !datum.current && "invisible",
               isHero ? "text-[color:var(--hero-muted)]" : "text-muted-foreground",
               datum.current && (isHero ? "text-[color:var(--hero-foreground)]" : "text-foreground"),
             )}

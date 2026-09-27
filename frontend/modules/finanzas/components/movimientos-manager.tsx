@@ -1,344 +1,378 @@
 "use client"
 
-import { useRouter } from "next/navigation"
-import { ArrowUpRight, CloudUpload, ShoppingCart, Wallet } from "lucide-react"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import Link from "next/link"
+import { useDeferredValue, useMemo, useState } from "react"
+import { ArrowDownLeft, ArrowUpRight, ChevronRight, CloudOff, Plus, Search, X } from "lucide-react"
+import { addDays, datePart, formatMonth, toLocalIsoDate } from "@/lib/dates"
+import { formatCLP } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { useFinanzas } from "@/modules/finanzas/hooks/useFinanzas"
-import { MovimientosSkeleton } from "@/modules/finanzas/components/skeletons/movimientos-skeleton"
-import { TipoMovimiento } from "@/modules/finanzas/types/finanzas"
-import { isMovimientoPendiente } from "@/modules/finanzas/offline/movimientos-offline"
+import {
+  useAnaliticaResumen,
+  useFinanzas,
+  useMovimientosFiltrados,
+} from "@/modules/finanzas/hooks/useFinanzas"
+import type { MovimientoResponse, MovimientosFiltros, TipoMovimiento } from "@/modules/finanzas/types/finanzas"
+import { PeriodoSelector, usePeriodoMensual } from "./periodo-selector"
+
+type Tipo = "todos" | TipoMovimiento
+
+const TIPOS: { value: Tipo; label: string }[] = [
+  { value: "todos", label: "Todos" },
+  { value: "gasto", label: "Gastos" },
+  { value: "ingreso", label: "Ingresos" },
+]
+
+const diaFormatter = new Intl.DateTimeFormat("es-CL", { weekday: "long", day: "numeric", month: "short", timeZone: "UTC" })
+
+function etiquetaDia(isoDate: string, hoy: string) {
+  if (isoDate === hoy) return "Hoy"
+  if (isoDate === addDays(hoy, -1)) return "Ayer"
+  const [y, m, d] = isoDate.split("-").map(Number)
+  const texto = diaFormatter.format(new Date(Date.UTC(y, m - 1, d))).replace(".", "")
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
+
+interface GrupoDia {
+  fecha: string
+  movimientos: MovimientoResponse[]
+  gasto: number
+  ingreso: number
+}
+
+function agruparPorDia(movimientos: MovimientoResponse[]): GrupoDia[] {
+  const grupos = new Map<string, GrupoDia>()
+  for (const movimiento of movimientos) {
+    const fecha = datePart(movimiento.created_at)
+    const grupo = grupos.get(fecha) ?? { fecha, movimientos: [], gasto: 0, ingreso: 0 }
+    grupo.movimientos.push(movimiento)
+    if (movimiento.tipo_movimiento === "gasto") grupo.gasto += movimiento.monto
+    else grupo.ingreso += movimiento.monto
+    grupos.set(fecha, grupo)
+  }
+  return [...grupos.values()].sort((a, b) => b.fecha.localeCompare(a.fecha))
+}
 
 export function MovimientosManager() {
-  const router = useRouter()
-  const {
-    movimientos,
-    totalGastoMensual,
-    hasMoreMovimientos,
-    loadingMoreMovimientos,
-    loadingCatalogos,
-    loadMoreMovimientos,
-  } = useFinanzas()
+  const { categorias, cuentas, movimientos: principales } = useFinanzas()
+  const { periodo, esMesActual, mover } = usePeriodoMensual()
+  const [tipo, setTipo] = useState<Tipo>("todos")
+  const [idCategoria, setIdCategoria] = useState("")
+  const [idCuenta, setIdCuenta] = useState("")
+  const [busqueda, setBusqueda] = useState("")
+  const [buscando, setBuscando] = useState(false)
+  const q = useDeferredValue(busqueda.trim())
 
-  const totalIngresos = movimientos
-    .filter((m) => m.tipo_movimiento === "ingreso")
-    .reduce((acc, m) => acc + m.monto, 0)
+  const hayFiltrosExtra = tipo !== "todos" || Boolean(idCategoria) || Boolean(idCuenta) || Boolean(q)
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("es-CL", {
-      style: "currency",
-      currency: "CLP",
-      maximumFractionDigits: 0,
-    }).format(value)
+  const filtros = useMemo<MovimientosFiltros>(
+    () => ({
+      year: periodo.year,
+      month: periodo.month,
+      ...(tipo !== "todos" ? { tipo_movimiento: tipo } : {}),
+      ...(idCategoria ? { id_categoria: Number(idCategoria) } : {}),
+      ...(idCuenta ? { id_cuenta: Number(idCuenta) } : {}),
+      ...(q ? { q } : {}),
+    }),
+    [periodo, tipo, idCategoria, idCuenta, q],
+  )
 
-  const formatDate = (value: string) => {
-    try {
-      return new Intl.DateTimeFormat("es-CL", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(new Date(value))
-    } catch {
-      return value
+  const query = useMovimientosFiltrados(filtros)
+  const resumenQuery = useAnaliticaResumen({ year: periodo.year, month: periodo.month })
+
+  // Lo anotado sin conexion vive solo en la lista principal: se suma al mes en curso.
+  const pendientes = useMemo(
+    () => (esMesActual && !hayFiltrosExtra ? principales.filter((m) => m.pendiente_sincronizacion) : []),
+    [esMesActual, hayFiltrosExtra, principales],
+  )
+  const movimientos = useMemo(
+    () => [...pendientes, ...(query.data?.pages.flatMap((page) => page.items) ?? [])],
+    [pendientes, query.data],
+  )
+  const grupos = useMemo(() => agruparPorDia(movimientos), [movimientos])
+  const hoy = toLocalIsoDate()
+
+  // Totales del periodo: exactos desde la analitica si solo se filtra por mes; con otros
+  // filtros se suman los movimientos cargados.
+  const totales = useMemo(() => {
+    if (!hayFiltrosExtra && resumenQuery.data) {
+      return {
+        gasto: resumenQuery.data.gasto_total,
+        ingreso: resumenQuery.data.ingreso_total,
+        cantidad: resumenQuery.data.cantidad_movimientos,
+        parcial: false,
+      }
     }
-  }
-
-  const getCategoryTone = (tipo: TipoMovimiento) =>
-    tipo === "ingreso" ? "bg-secondary" : "bg-module-finanzas"
-
-  const navigate = (id: number) => {
-    if (id > 0) {
-      router.push(`/app/finanzas/movimientos/${id}`)
+    return {
+      gasto: movimientos.filter((m) => m.tipo_movimiento === "gasto").reduce((s, m) => s + m.monto, 0),
+      ingreso: movimientos.filter((m) => m.tipo_movimiento === "ingreso").reduce((s, m) => s + m.monto, 0),
+      cantidad: movimientos.length,
+      parcial: Boolean(query.hasNextPage),
     }
-  }
+  }, [hayFiltrosExtra, resumenQuery.data, movimientos, query.hasNextPage])
 
-  if (loadingCatalogos && movimientos.length === 0) {
-    return <MovimientosSkeleton />
+  const limpiarFiltros = () => {
+    setTipo("todos")
+    setIdCategoria("")
+    setIdCuenta("")
+    setBusqueda("")
+    setBuscando(false)
   }
 
   return (
-    <section className="flex flex-col gap-4 sm:gap-6">
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.1fr_0.9fr_0.9fr]">
-        <article className="hidden rounded-2xl bg-surface-low p-4 sm:block sm:p-6 lg:col-span-1 sm:col-span-2">
-          <p className="font-label text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
-            Diario financiero
-          </p>
-          <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-foreground sm:text-2xl lg:text-3xl">
-            Tus movimientos toman el protagonismo aqui.
-          </h2>
-          <p className="mt-2 max-w-xl text-sm leading-5 text-muted-foreground sm:leading-6">
-            Esta vista se concentra en revisar, leer y ajustar movimientos existentes.
-          </p>
-        </article>
+    <section className="flex flex-col gap-4">
+      {/* Periodo + busqueda */}
+      <div className="flex items-center gap-2">
+        <PeriodoSelector periodo={periodo} esMesActual={esMesActual} onMove={mover} className="flex-1" />
+        <button
+          type="button"
+          onClick={() => {
+            if (buscando) setBusqueda("")
+            setBuscando((value) => !value)
+          }}
+          aria-label={buscando ? "Cerrar busqueda" : "Buscar"}
+          aria-expanded={buscando}
+          className="inline-flex size-10 items-center justify-center rounded-md border border-border hover:border-foreground/40 focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          {buscando ? <X className="size-4" /> : <Search className="size-4" />}
+        </button>
+      </div>
 
-        <article className="rounded-2xl bg-surface-lowest p-4 shadow-(--shadow-airy) sm:p-5">
-          <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground sm:text-sm sm:normal-case sm:tracking-normal">
-            <ArrowUpRight className="size-3.5 text-module-finanzas sm:size-4" />
-            Ingresos
-          </p>
-          <p className="mt-2 text-xl font-semibold tracking-tight text-foreground sm:mt-4 sm:text-3xl">
-            {formatCurrency(totalIngresos)}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground sm:mt-2 sm:text-sm">
-            Suma de ingresos cargados.
-          </p>
-        </article>
-
-        <article className="rounded-2xl bg-surface-lowest p-4 shadow-(--shadow-airy) sm:p-5">
-          <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground sm:text-sm sm:normal-case sm:tracking-normal">
-            <Wallet className="size-3.5 text-module-finanzas sm:size-4" />
-            Gastos del mes
-          </p>
-          <p className="mt-2 text-xl font-semibold tracking-tight text-foreground sm:mt-4 sm:text-3xl">
-            {formatCurrency(totalGastoMensual)}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground sm:mt-2 sm:text-sm">
-            Total mensual segun el servidor.
-          </p>
-        </article>
-      </section>
-
-      <section className="rounded-3xl bg-surface-low p-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="font-label text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground">
-              Registro actual
-            </p>
-            <h3 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-              Movimientos recientes
-            </h3>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            En desktop se muestran como tabla. En pantallas pequenas, como cards editoriales.
-          </p>
+      {buscando ? (
+        <div>
+          <label htmlFor="buscar-movimientos" className="sr-only">
+            Buscar por nota o categoria
+          </label>
+          <input
+            id="buscar-movimientos"
+            autoFocus
+            type="search"
+            placeholder="Buscar por nota o categoria"
+            value={busqueda}
+            onChange={(event) => setBusqueda(event.target.value)}
+            className="h-11 w-full rounded-md border border-border bg-[color:var(--surface-lowest)] px-3 text-sm outline-none focus:border-foreground"
+          />
         </div>
+      ) : null}
 
-        {movimientos.length === 0 ? (
-          <div className="mt-6 rounded-2xl bg-surface-lowest p-6 text-sm leading-6 text-muted-foreground shadow-(--shadow-airy)">
-            Aun no tienes movimientos registrados. Usa el flujo de{" "}
-            <span className="font-medium text-foreground">Registrar movimientos</span> para comenzar a construir tu diario financiero.
-          </div>
-        ) : (
-          <>
-            {/* Desktop table */}
-            <div className="mt-6 hidden overflow-hidden rounded-2xl bg-surface-low shadow-[0_8px_48px_-12px_rgba(0,0,0,0.05)] lg:block">
-              <Table>
-                <TableHeader className="bg-primary text-primary-foreground">
-                  <TableRow className="border-0 hover:bg-transparent">
-                    <TableHead className="px-8 py-5 font-label text-[10px] font-bold uppercase tracking-[0.22em] text-primary-foreground">
-                      Movimiento
-                    </TableHead>
-                    <TableHead className="px-6 py-5 font-label text-[10px] font-bold uppercase tracking-[0.22em] text-primary-foreground">
-                      Categoria
-                    </TableHead>
-                    <TableHead className="px-6 py-5 font-label text-[10px] font-bold uppercase tracking-[0.22em] text-primary-foreground">
-                      Cuenta
-                    </TableHead>
-                    <TableHead className="px-6 py-5 font-label text-[10px] font-bold uppercase tracking-[0.22em] text-primary-foreground">
-                      Fecha
-                    </TableHead>
-                    <TableHead className="px-6 py-5 text-right font-label text-[10px] font-bold uppercase tracking-[0.22em] text-primary-foreground">
-                      Monto
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="[&_tr:not(:last-child)]:border-b [&_tr:not(:last-child)]:border-border/30">
-                  {movimientos.map((movimiento, index) => (
-                    <TableRow
-                      key={movimiento.id_transaccion}
-                      role={isMovimientoPendiente(movimiento) ? undefined : "link"}
-                      tabIndex={isMovimientoPendiente(movimiento) ? -1 : 0}
-                      className={cn(
-                        "border-0 transition-colors",
-                        !isMovimientoPendiente(movimiento) &&
-                          "cursor-pointer hover:bg-primary/8 focus-visible:bg-primary/8",
-                        index % 2 === 0 ? "bg-surface-lowest" : "bg-surface-low"
-                      )}
-                      onClick={() => navigate(movimiento.id_transaccion)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault()
-                          navigate(movimiento.id_transaccion)
-                        }
-                      }}
-                    >
-                      <TableCell className="px-5 py-4 align-top">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={cn(
-                                "inline-flex rounded-sm px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em]",
-                                movimiento.tipo_movimiento === "ingreso"
-                                  ? "bg-secondary/12 text-secondary"
-                                  : "bg-primary/12 text-primary"
-                              )}
-                            >
-                              {movimiento.tipo_movimiento}
-                            </span>
-                            <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                              {movimiento.tipo_gasto}
-                            </span>
-                            {isMovimientoPendiente(movimiento) ? (
-                              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <CloudUpload className="size-3" />
-                                Pendiente
-                              </span>
-                            ) : null}
-                            {(movimiento.compras_vinculadas?.length ?? 0) > 0 ? (
-                              <span className="flex items-center gap-1 text-xs text-muted-foreground" title="Tiene compras vinculadas">
-                                <ShoppingCart className="size-3" />
-                                {movimiento.compras_vinculadas!.length}
-                              </span>
-                            ) : null}
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {movimiento.descripcion || "Sin descripcion"}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-6 py-6">
-                        <div className="flex items-center gap-2">
-                          <span className={cn("h-2 w-2 rounded-sm", getCategoryTone(movimiento.tipo_movimiento))} />
-                          <span>{movimiento.categoria ?? "-"}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-6 py-6">{movimiento.nombre_cuenta ?? "-"}</TableCell>
-                      <TableCell className="px-5 py-4 text-sm text-muted-foreground">
-                        {formatDate(movimiento.created_at)}
-                      </TableCell>
-                      <TableCell className="px-8 py-6 text-right">
-                        <span className="font-mono font-semibold tracking-tight">
-                          {formatCurrency(movimiento.monto)}
-                        </span>
-                        {(movimiento.total_compras_vinculadas ?? 0) > 0 ? (
-                          <p className="text-[11px] text-muted-foreground">
-                            {formatCurrency(movimiento.total_compras_vinculadas!)} en compras
-                          </p>
-                        ) : null}
-                      </TableCell>
-                    </TableRow>
+      {/* Filtros */}
+      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0 [&::-webkit-scrollbar]:hidden">
+        <div role="radiogroup" aria-label="Tipo" className="flex shrink-0 rounded-md bg-[color:var(--surface-low)] p-0.5">
+          {TIPOS.map((opcion) => (
+            <button
+              key={opcion.value}
+              type="button"
+              role="radio"
+              aria-checked={tipo === opcion.value}
+              onClick={() => setTipo(opcion.value)}
+              className={cn(
+                "h-9 rounded-[3px] px-3 text-sm font-semibold transition-colors",
+                tipo === opcion.value ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {opcion.label}
+            </button>
+          ))}
+        </div>
+        <FiltroSelect
+          label="Categoria"
+          value={idCategoria}
+          onChange={setIdCategoria}
+          options={categorias.map((c) => ({ value: String(c.id_categoria), label: c.nombre }))}
+        />
+        <FiltroSelect
+          label="Cuenta"
+          value={idCuenta}
+          onChange={setIdCuenta}
+          options={cuentas.map((c) => ({ value: String(c.id_cuenta), label: c.nombre_cuenta }))}
+        />
+        {hayFiltrosExtra ? (
+          <button
+            type="button"
+            onClick={limpiarFiltros}
+            className="h-10 shrink-0 px-2 text-sm font-semibold underline underline-offset-4"
+          >
+            Limpiar
+          </button>
+        ) : null}
+      </div>
+
+      {/* Totales del periodo */}
+      <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-xl bg-border shadow-[var(--shadow-airy)]">
+        <Total etiqueta="Gastado" valor={formatCLP(totales.gasto)} parcial={totales.parcial} color="var(--gasto)" />
+        <Total etiqueta="Ingresos" valor={formatCLP(totales.ingreso)} parcial={totales.parcial} color="var(--ingreso)" />
+        <Total etiqueta="Movimientos" valor={`${totales.cantidad}${totales.parcial ? "+" : ""}`} />
+      </dl>
+
+      {/* Lista por dia */}
+      {query.isLoading ? (
+        <div className="flex flex-col gap-3" aria-hidden>
+          {[1, 2, 3].map((item) => (
+            <div key={item} className="h-28 animate-pulse rounded-xl bg-[color:var(--surface-low)]" />
+          ))}
+        </div>
+      ) : query.isError ? (
+        <div className="rounded-xl bg-[color:var(--surface-lowest)] p-5 text-sm shadow-[var(--shadow-airy)]">
+          <p className="font-semibold">No pudimos cargar los movimientos.</p>
+          <button type="button" onClick={() => void query.refetch()} className="mt-2 font-semibold underline underline-offset-4">
+            Reintentar
+          </button>
+        </div>
+      ) : grupos.length === 0 ? (
+        <div className="flex flex-col items-start gap-3 rounded-xl bg-[color:var(--surface-lowest)] p-5 shadow-[var(--shadow-airy)]">
+          <p className="font-semibold">
+            {hayFiltrosExtra ? "Nada coincide con estos filtros." : `Sin movimientos en ${formatMonth(periodo.year, periodo.month)}.`}
+          </p>
+          {hayFiltrosExtra ? (
+            <button type="button" onClick={limpiarFiltros} className="text-sm font-semibold underline underline-offset-4">
+              Limpiar filtros
+            </button>
+          ) : (
+            <Link
+              href="/app/finanzas/registrar-movimiento"
+              className="inline-flex h-10 items-center gap-1.5 rounded-md bg-highlight px-3 text-sm font-semibold text-highlight-foreground"
+            >
+              <Plus className="size-4" />
+              Anotar movimiento
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {grupos.map((grupo, index) => {
+            // El ultimo dia puede seguir en la pagina siguiente: su total seria parcial.
+            const totalIncompleto = index === grupos.length - 1 && Boolean(query.hasNextPage)
+            return (
+              <section key={grupo.fecha} aria-label={etiquetaDia(grupo.fecha, hoy)}>
+                <header className="mb-1.5 flex items-baseline justify-between gap-3 px-1">
+                  <h3 className="text-sm font-bold">{etiquetaDia(grupo.fecha, hoy)}</h3>
+                  {!totalIncompleto ? (
+                    <p className="flex gap-3 text-sm font-semibold tabular-nums text-muted-foreground">
+                      {grupo.ingreso > 0 ? <span>+{formatCLP(grupo.ingreso)}</span> : null}
+                      {grupo.gasto > 0 ? <span className="text-foreground">−{formatCLP(grupo.gasto)}</span> : null}
+                    </p>
+                  ) : null}
+                </header>
+                <ul className="divide-y divide-border overflow-hidden rounded-xl bg-[color:var(--surface-lowest)] shadow-[var(--shadow-airy)]">
+                  {grupo.movimientos.map((movimiento) => (
+                    <FilaMovimiento key={movimiento.id_transaccion} movimiento={movimiento} />
                   ))}
-                </TableBody>
-              </Table>
-              <footer className="flex items-center justify-between border-t border-border/30 bg-surface-low px-8 py-4">
-                <span className="font-label text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                  Mostrando {movimientos.length} movimiento{movimientos.length === 1 ? "" : "s"}
-                </span>
-                {hasMoreMovimientos ? (
-                  <button
-                    onClick={() => void loadMoreMovimientos()}
-                    disabled={loadingMoreMovimientos}
-                    className="text-xs font-medium text-primary transition hover:text-primary/80 disabled:opacity-50"
-                  >
-                    {loadingMoreMovimientos ? "Cargando..." : "Cargar más"}
-                  </button>
-                ) : (
-                  <span className="text-xs text-muted-foreground">Diario financiero activo</span>
-                )}
-              </footer>
-            </div>
+                </ul>
+              </section>
+            )
+          })}
 
-            {/* Mobile cards */}
-            <div className="mt-6 grid gap-4 lg:hidden">
-              {movimientos.map((movimiento) => (
-                <article
-                  key={movimiento.id_transaccion}
-                  className="rounded-2xl bg-surface-lowest p-5 shadow-(--shadow-airy)"
-                  role={isMovimientoPendiente(movimiento) ? undefined : "link"}
-                  tabIndex={isMovimientoPendiente(movimiento) ? -1 : 0}
-                  onClick={() => navigate(movimiento.id_transaccion)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault()
-                      navigate(movimiento.id_transaccion)
-                    }
-                  }}
-                >
-                  <div className="space-y-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={cn(
-                              "inline-flex rounded-sm px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em]",
-                              movimiento.tipo_movimiento === "ingreso"
-                                ? "bg-secondary/12 text-secondary"
-                                : "bg-primary/12 text-primary"
-                            )}
-                          >
-                            {movimiento.tipo_movimiento}
-                          </span>
-                          <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                            {movimiento.tipo_gasto}
-                          </span>
-                          {isMovimientoPendiente(movimiento) ? (
-                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <CloudUpload className="size-3" />
-                              Pendiente de sincronizar
-                            </span>
-                          ) : null}
-                          {(movimiento.compras_vinculadas?.length ?? 0) > 0 ? (
-                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <ShoppingCart className="size-3" />
-                              {movimiento.compras_vinculadas!.length} compra{movimiento.compras_vinculadas!.length === 1 ? "" : "s"}
-                            </span>
-                          ) : null}
-                        </div>
-                        <p className="text-lg font-semibold tracking-tight text-foreground">
-                          {formatCurrency(movimiento.monto)}
-                        </p>
-                        {(movimiento.total_compras_vinculadas ?? 0) > 0 ? (
-                          <p className="text-xs text-muted-foreground">
-                            {formatCurrency(movimiento.total_compras_vinculadas!)} en compras vinculadas
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-xl bg-surface-low p-4">
-                        <p className="font-label text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
-                          Categoria
-                        </p>
-                        <p className="mt-2 text-sm text-foreground">{movimiento.categoria ?? "-"}</p>
-                      </div>
-                      <div className="rounded-xl bg-surface-low p-4">
-                        <p className="font-label text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground">
-                          Cuenta
-                        </p>
-                        <p className="mt-2 text-sm text-foreground">
-                          {movimiento.nombre_cuenta ?? "-"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 text-sm text-muted-foreground">
-                      <p>{movimiento.descripcion || "Sin descripcion"}</p>
-                      <p>{formatDate(movimiento.created_at)}</p>
-                    </div>
-                  </div>
-                </article>
-              ))}
-
-              {hasMoreMovimientos ? (
-                <button
-                  onClick={() => void loadMoreMovimientos()}
-                  disabled={loadingMoreMovimientos}
-                  className="rounded-2xl bg-surface-lowest py-4 text-sm font-medium text-primary shadow-(--shadow-airy) transition hover:bg-primary/5 disabled:opacity-50"
-                >
-                  {loadingMoreMovimientos ? "Cargando..." : "Cargar más movimientos"}
-                </button>
-              ) : null}
-            </div>
-          </>
-        )}
-      </section>
+          {query.hasNextPage ? (
+            <button
+              type="button"
+              onClick={() => void query.fetchNextPage()}
+              disabled={query.isFetchingNextPage}
+              className="h-11 rounded-md border border-border text-sm font-semibold hover:border-foreground/40 disabled:opacity-60"
+            >
+              {query.isFetchingNextPage ? "Cargando..." : "Cargar mas"}
+            </button>
+          ) : null}
+        </div>
+      )}
     </section>
+  )
+}
+
+function FilaMovimiento({ movimiento }: { movimiento: MovimientoResponse }) {
+  const esIngreso = movimiento.tipo_movimiento === "ingreso"
+  const Icon = esIngreso ? ArrowDownLeft : ArrowUpRight
+  const hora = movimiento.created_at.slice(11, 16)
+  const titulo = movimiento.descripcion || movimiento.categoria || "Sin categoria"
+  const detalle = [movimiento.descripcion ? movimiento.categoria : null, movimiento.nombre_cuenta, hora]
+    .filter(Boolean)
+    .join(" · ")
+  const contenido = (
+    <>
+      <span
+        aria-hidden
+        className="inline-flex size-9 shrink-0 items-center justify-center rounded-md"
+        style={{
+          background: esIngreso ? "var(--ingreso)" : "var(--gasto)",
+          color: esIngreso ? "var(--ingreso-on)" : "var(--gasto-on)",
+        }}
+      >
+        <Icon className="size-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold first-letter:uppercase">{titulo}</span>
+        <span className="block truncate text-xs text-muted-foreground first-letter:uppercase">{detalle}</span>
+      </span>
+      <span className="flex shrink-0 items-center gap-1.5 text-sm font-bold tabular-nums">
+        {movimiento.pendiente_sincronizacion ? (
+          <CloudOff className="size-3.5 text-muted-foreground" aria-label="Pendiente de sincronizar" />
+        ) : null}
+        {esIngreso ? "+" : "−"}
+        {formatCLP(movimiento.monto)}
+      </span>
+    </>
+  )
+
+  return (
+    <li>
+      {movimiento.pendiente_sincronizacion ? (
+        <div className="flex items-center gap-3 px-3 py-3 opacity-80">{contenido}</div>
+      ) : (
+        <Link
+          href={`/app/finanzas/movimientos/${movimiento.id_transaccion}`}
+          className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-[color:var(--surface-low)] focus-visible:bg-[color:var(--surface-low)] focus-visible:outline-none"
+        >
+          {contenido}
+        </Link>
+      )}
+    </li>
+  )
+}
+
+function Total({ etiqueta, valor, parcial, color }: { etiqueta: string; valor: string; parcial?: boolean; color?: string }) {
+  return (
+    <div className="flex flex-col gap-1 bg-[color:var(--surface-lowest)] px-3 py-3">
+      <dt className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        {color ? <span aria-hidden className="size-2 rounded-[2px]" style={{ background: color }} /> : null}
+        {etiqueta}
+      </dt>
+      <dd className="truncate font-display text-base leading-none sm:text-xl" title={parcial ? "Suma de lo cargado hasta ahora" : undefined}>
+        {valor}
+      </dd>
+    </div>
+  )
+}
+
+function FiltroSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  options: { value: string; label: string }[]
+}) {
+  return (
+    <label
+      className={cn(
+        "relative flex h-10 shrink-0 items-center rounded-md border px-3 text-sm font-semibold",
+        value ? "border-foreground bg-foreground text-background" : "border-border text-foreground",
+      )}
+    >
+      <span className="sr-only">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="max-w-[10rem] appearance-none truncate bg-transparent pr-4 capitalize outline-none"
+      >
+        <option value="">{label}: todas</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronRight aria-hidden className="pointer-events-none absolute right-2 size-3.5 rotate-90" />
+    </label>
   )
 }

@@ -10,6 +10,7 @@ import type {
 } from "@/modules/finanzas/schemas/finanzas.schema"
 
 export type {
+  AnaliticaDiariaResponse,
   AnaliticaDistribucionCategoriasResponse,
   AnaliticaDistribucionCuentasResponse,
   AnaliticaResumenResponse,
@@ -102,5 +103,18 @@ export interface MovimientoPatch {
   tipo_movimiento?: TipoMovimiento
   tipo_gasto?: TipoGasto
   monto?: number
+  /** null borra la nota. */
+  descripcion?: string | null
+  /** YYYY-MM-DDTHH:mm:ss, hora de Chile. */
+  created_at?: string
+}
+
+export interface MovimientosFiltros {
+  year?: number
+  month?: number
+  tipo_movimiento?: TipoMovimiento
+  id_categoria?: number
+  id_cuenta?: number
+  q?: string
 }
 

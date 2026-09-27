@@ -8,6 +8,7 @@ vi.mock("@/lib/api", () => ({
     get: vi.fn(),
     post: vi.fn(),
     patch: vi.fn(),
+    delete: vi.fn(),
   },
 }))
 
@@ -174,5 +175,45 @@ describe("FinanzasAPI analitica: contrato con el backend", () => {
     vi.mocked(api.get).mockResolvedValue({ data: [{ label: "Comida", total: 600, porcentaje: 60 }] })
 
     await expect(FinanzasAPI.getAnaliticaDistribucionCuentas()).rejects.toBeInstanceOf(ApiSchemaError)
+  })
+})
+
+describe("FinanzasAPI: filtros, borrado y gasto diario", () => {
+  it("getMovimientos envia los filtros como query params", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { items: [], offset: 0, limit: 50, total_gasto_mensual: 0 } })
+
+    await FinanzasAPI.getMovimientos({ year: 2026, month: 9, tipo_movimiento: "gasto", q: "farmacia", offset: 0, limit: 50 })
+
+    expect(api.get).toHaveBeenCalledWith("/api/finanzas/movimientos/", {
+      params: { year: 2026, month: 9, tipo_movimiento: "gasto", q: "farmacia", offset: 0, limit: 50 },
+    })
+  })
+
+  it("deleteMovimiento hace DELETE a la ruta del movimiento", async () => {
+    vi.mocked(api.delete).mockResolvedValue({ data: undefined })
+
+    await FinanzasAPI.deleteMovimiento(42)
+
+    expect(api.delete).toHaveBeenCalledWith("/api/finanzas/movimientos/42")
+  })
+
+  it("getAnaliticaDiaria valida el contrato del backend", async () => {
+    const dia = { dia: 22, fecha: "2026-09-22", gasto_total: 18990, ingreso_total: 0, cantidad_movimientos: 1, es_futuro: false }
+    const respuesta = {
+      year: 2026,
+      month: 9,
+      dias_mes: 30,
+      dias_transcurridos: 26,
+      gasto_total: 18990,
+      promedio_gasto_diario: 730.4,
+      dia_mayor_gasto: dia,
+      items: [dia],
+    }
+    vi.mocked(api.get).mockResolvedValue({ data: respuesta })
+
+    await expect(FinanzasAPI.getAnaliticaDiaria({ year: 2026, month: 9 })).resolves.toEqual(respuesta)
+
+    vi.mocked(api.get).mockResolvedValue({ data: { ...respuesta, items: [{ dia: 1 }] } })
+    await expect(FinanzasAPI.getAnaliticaDiaria()).rejects.toBeInstanceOf(ApiSchemaError)
   })
 })

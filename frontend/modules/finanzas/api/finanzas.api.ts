@@ -1,6 +1,7 @@
 import { api } from "@/lib/api"
 import { parseApiResponse } from "@/lib/api-schema"
 import {
+  analiticaDiariaResponseSchema,
   analiticaDistribucionCategoriasResponseSchema,
   analiticaDistribucionCuentasResponseSchema,
   analiticaResumenResponseSchema,
@@ -11,8 +12,10 @@ import {
   movimientosPageResponseSchema,
 } from "@/modules/finanzas/schemas/finanzas.schema"
 import {
+  AnaliticaDiariaResponse,
   AnaliticaDistribucionCategoriasResponse,
   AnaliticaDistribucionCuentasResponse,
+  MovimientosFiltros,
   AnaliticaResumenResponse,
   AnaliticaTendenciaMensualResponse,
   BancoCreate,
@@ -125,7 +128,9 @@ export const FinanzasAPI = {
     await api.delete(`/api/finanzas/cuentas/${idCuenta}`)
   },
 
-  getMovimientos: async (params?: { offset?: number; limit?: number }): Promise<MovimientosPageResponse> => {
+  getMovimientos: async (
+    params?: { offset?: number; limit?: number } & MovimientosFiltros,
+  ): Promise<MovimientosPageResponse> => {
     try {
       const { data } = await api.get("/api/finanzas/movimientos/", { params })
       return parseApiResponse(
@@ -149,6 +154,15 @@ export const FinanzasAPI = {
   createMovimiento: async (payload: MovimientoCreate): Promise<MovimientoResponse> => {
     const { data } = await api.post("/api/finanzas/movimientos/", payload)
     return parseApiResponse(movimientoResponseSchema, data, "POST /api/finanzas/movimientos/")
+  },
+
+  deleteMovimiento: async (idMovimiento: number): Promise<void> => {
+    await api.delete(`/api/finanzas/movimientos/${idMovimiento}`)
+  },
+
+  getAnaliticaDiaria: async (params?: { year?: number; month?: number }): Promise<AnaliticaDiariaResponse> => {
+    const { data } = await api.get("/api/finanzas/analitica/diaria", { params })
+    return parseApiResponse(analiticaDiariaResponseSchema, data, "GET /api/finanzas/analitica/diaria")
   },
 
   updateMovimiento: async (

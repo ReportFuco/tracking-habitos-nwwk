@@ -23,6 +23,7 @@ import {
   MovimientoCreate,
   MovimientoPatch,
   MovimientoResponse,
+  MovimientosFiltros,
   ProductoFinancieroResponse,
 } from "@/modules/finanzas/types/finanzas"
 
@@ -45,6 +46,42 @@ export function useAnaliticaResumen(params?: { year?: number; month?: number }) 
     queryKey: queryKeys.finanzas.analiticaResumen(params),
     queryFn: () => FinanzasAPI.getAnaliticaResumen(params),
     staleTime: FIVE_MINUTES,
+  })
+}
+
+export function useAnaliticaDiaria(year: number, month: number) {
+  return useQuery({
+    queryKey: queryKeys.finanzas.analiticaDiaria(year, month),
+    queryFn: () => FinanzasAPI.getAnaliticaDiaria({ year, month }),
+    staleTime: FIVE_MINUTES,
+  })
+}
+
+const MOVIMIENTOS_FILTRADOS_LIMIT = 50
+
+/**
+ * Movimientos con filtros (mes, tipo, categoria, cuenta, texto). Sin filtros usar la lista
+ * principal de useFinanzas: es la que lleva los pendientes offline.
+ */
+export function useMovimientosFiltrados(filtros: MovimientosFiltros, enabled = true) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.finanzas.movimientosFiltrados(filtros),
+    queryFn: ({ pageParam }) =>
+      FinanzasAPI.getMovimientos({ ...filtros, offset: pageParam, limit: MOVIMIENTOS_FILTRADOS_LIMIT }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) =>
+      lastPage.items.length === MOVIMIENTOS_FILTRADOS_LIMIT ? lastPage.offset + lastPage.items.length : undefined,
+    staleTime: ONE_MINUTE,
+    enabled,
+  })
+}
+
+export function useMovimiento(idMovimiento: number) {
+  return useQuery({
+    queryKey: queryKeys.finanzas.movimiento(idMovimiento),
+    queryFn: () => FinanzasAPI.getMovimientoById(idMovimiento),
+    staleTime: ONE_MINUTE,
+    enabled: Number.isFinite(idMovimiento),
   })
 }
 
@@ -181,7 +218,17 @@ const useFinanzasState = () => {
       idMovimiento: number
       payload: MovimientoPatch
     }) => FinanzasAPI.updateMovimiento(idMovimiento, payload),
-    onSuccess: () => invalidateFinanzas(queryKeys.finanzas.movimientos, queryKeys.finanzas.analitica),
+    onSuccess: (movimiento) => {
+      queryClient.setQueryData(queryKeys.finanzas.movimiento(movimiento.id_transaccion), movimiento)
+      return invalidateFinanzas(queryKeys.finanzas.movimientos, queryKeys.finanzas.analitica)
+    },
+  })
+  const movimientoDeleteMutation = useMutation({
+    mutationFn: FinanzasAPI.deleteMovimiento,
+    onSuccess: (_data, idMovimiento) => {
+      queryClient.removeQueries({ queryKey: queryKeys.finanzas.movimiento(idMovimiento) })
+      return invalidateFinanzas(queryKeys.finanzas.movimientos, queryKeys.finanzas.analitica)
+    },
   })
 
   const fetchCatalogos = async () => {
@@ -273,6 +320,9 @@ const useFinanzasState = () => {
     },
     editarMovimiento: (idMovimiento: number, payload: MovimientoPatch) =>
       runOnlineOnlyAction(() => movimientoUpdateMutation.mutateAsync({ idMovimiento, payload })),
+    eliminarMovimiento: (idMovimiento: number) =>
+      runOnlineOnlyAction(() => movimientoDeleteMutation.mutateAsync(idMovimiento)),
+    eliminandoMovimiento: movimientoDeleteMutation.isPending,
     getProductosByBanco,
   }
 }

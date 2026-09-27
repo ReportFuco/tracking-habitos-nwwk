@@ -9,9 +9,14 @@ export const queryKeys = {
     movimientos: ["finanzas", "movimientos"] as const,
     movimientosPage: (offset: number, limit: number) =>
       ["finanzas", "movimientos", { offset, limit }] as const,
+    // Bajo el prefijo "movimientos": se invalidan junto con la lista principal.
+    movimientosFiltrados: (filtros: object) => ["finanzas", "movimientos", "filtros", filtros] as const,
+    movimiento: (id: number) => ["finanzas", "movimiento", id] as const,
     analitica: ["finanzas", "analitica"] as const,
     analiticaResumen: (params?: { year?: number; month?: number }) =>
       ["finanzas", "analitica", "resumen", params ?? {}] as const,
+    analiticaDiaria: (year: number, month: number) =>
+      ["finanzas", "analitica", "diaria", { year, month }] as const,
     analiticaTendencia: (months: number) =>
       ["finanzas", "analitica", "tendencia", { months }] as const,
     analiticaDistribucionCategorias: (params?: {

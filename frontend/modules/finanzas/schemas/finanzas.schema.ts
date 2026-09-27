@@ -195,3 +195,25 @@ export type AnaliticaDistribucionCategoriasResponse = z.infer<
 export type AnaliticaDistribucionCuentasResponse = z.infer<
   typeof analiticaDistribucionCuentasResponseSchema
 >
+
+const analiticaDiariaItemSchema = z.object({
+  dia: z.number().int(),
+  fecha: z.string(),
+  gasto_total: z.number(),
+  ingreso_total: z.number(),
+  cantidad_movimientos: z.number().int(),
+  es_futuro: z.boolean(),
+})
+
+export const analiticaDiariaResponseSchema = z.object({
+  year: z.number().int(),
+  month: z.number().int(),
+  dias_mes: z.number().int(),
+  dias_transcurridos: z.number().int(),
+  gasto_total: z.number(),
+  promedio_gasto_diario: z.number().nullable(),
+  dia_mayor_gasto: analiticaDiariaItemSchema.nullable(),
+  items: z.array(analiticaDiariaItemSchema),
+})
+
+export type AnaliticaDiariaResponse = z.infer<typeof analiticaDiariaResponseSchema>
