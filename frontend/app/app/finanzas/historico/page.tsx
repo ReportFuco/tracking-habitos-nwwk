@@ -4,11 +4,11 @@ import { PageHeader } from "@/components/shell/page-header"
 
 export default function HistoricoFinanzasPage() {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       <PageHeader
         eyebrow="Finanzas"
         title="Historico"
-        description="Vista unificada para revisar cuentas y movimientos registrados."
+        className="pb-0"
       />
       <FinanzasMenuLinks />
 

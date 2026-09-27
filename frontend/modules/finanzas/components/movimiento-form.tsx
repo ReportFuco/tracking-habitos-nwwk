@@ -1,107 +1,110 @@
 "use client"
 
-import { FormEvent, useMemo, useState } from "react"
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  CalendarClock,
-  Check,
-  Folder,
-  LoaderCircle,
-  MapPin,
-  ReceiptText,
-  Repeat,
-  Wallet,
-  Zap,
-} from "lucide-react"
+import { FormEvent, useCallback, useMemo, useRef, useState } from "react"
+import { ArrowDownLeft, ArrowUpRight, CalendarClock, Check, LoaderCircle, MapPin, Repeat, X } from "lucide-react"
 import { toast } from "sonner"
+import { ChipSelect, type ChipOption } from "@/components/forms/chip-select"
 import { Button } from "@/components/ui/button"
-import { FieldGroup, FormPanel, FormSubmitBar } from "@/components/forms/editorial-form"
-import { SearchableCombobox } from "@/components/forms/searchable-combobox"
-import { Input } from "@/components/ui/input"
-import {
-  getGeolocationErrorMessage,
-  obtenerUbicacion,
-  type UbicacionUsuario,
-} from "@/lib/geolocation"
+import { formatCLP } from "@/lib/format"
+import { getGeolocationErrorMessage, obtenerUbicacion, type UbicacionUsuario } from "@/lib/geolocation"
 import { cn } from "@/lib/utils"
 import { useFinanzas } from "@/modules/finanzas/hooks/useFinanzas"
 import { movimientoCreateSchema } from "@/modules/finanzas/schemas/finanzas.schema"
-import { TipoGasto, TipoMovimiento } from "@/modules/finanzas/types/finanzas"
+import type { TipoGasto, TipoMovimiento } from "@/modules/finanzas/types/finanzas"
+import { MovimientoRegistrado, type MovimientoRegistradoInfo } from "./movimiento-registrado"
 
-const initialMovimientoForm = {
+type Campo = "monto" | "id_categoria" | "id_cuenta" | "created_at"
+
+const initialForm = {
   id_categoria: "",
+  /** "" = usar la cuenta por defecto (la del ultimo movimiento). */
   id_cuenta: "",
   tipo_movimiento: "gasto" as TipoMovimiento,
   tipo_gasto: "variable" as TipoGasto,
+  /** Solo digitos; se muestra con separador de miles. */
   monto: "",
   descripcion: "",
   created_at: "",
   en_lugar_compra: false,
 }
 
-const tipoMovimientoOpts: {
-  value: TipoMovimiento
-  label: string
-  icon: typeof ArrowDownLeft
-  tone: string
-}[] = [
-  { value: "gasto", label: "Gasto", icon: ArrowUpRight, tone: "tertiary" },
-  { value: "ingreso", label: "Ingreso", icon: ArrowDownLeft, tone: "secondary" },
+const MAX_DIGITS = 11
+const milesFormatter = new Intl.NumberFormat("es-CL")
+
+const TIPOS: { value: TipoMovimiento; label: string; icon: typeof ArrowUpRight }[] = [
+  { value: "gasto", label: "Gasto", icon: ArrowUpRight },
+  { value: "ingreso", label: "Ingreso", icon: ArrowDownLeft },
 ]
 
-const tipoGastoOpts: { value: TipoGasto; label: string; icon: typeof Zap }[] = [
-  { value: "variable", label: "Variable", icon: Zap },
-  { value: "fijo", label: "Fijo", icon: Repeat },
-]
+/** Cuenta de ocurrencias por nombre para ordenar las opciones por uso. */
+function contarPorNombre(nombres: (string | null | undefined)[]) {
+  const conteo = new Map<string, number>()
+  for (const nombre of nombres) {
+    if (!nombre) continue
+    const key = nombre.toLocaleLowerCase("es")
+    conteo.set(key, (conteo.get(key) ?? 0) + 1)
+  }
+  return conteo
+}
 
 export function MovimientoFormCard() {
-  const {
-    categorias,
-    cuentas,
-    loadingCatalogos,
-    submittingMovimiento,
-    crearMovimiento,
-  } = useFinanzas()
+  const { categorias, cuentas, movimientos, loadingCatalogos, submittingMovimiento, crearMovimiento } =
+    useFinanzas()
 
-  const [form, setForm] = useState(initialMovimientoForm)
+  const [form, setForm] = useState(initialForm)
+  const [errores, setErrores] = useState<Partial<Record<Campo, string>>>({})
   const [ubicacion, setUbicacion] = useState<UbicacionUsuario | null>(null)
   const [capturandoUbicacion, setCapturandoUbicacion] = useState(false)
+  const [mostrarFecha, setMostrarFecha] = useState(false)
+  const [registrado, setRegistrado] = useState<MovimientoRegistradoInfo | null>(null)
+  const montoRef = useRef<HTMLInputElement>(null)
 
-  const categoriaOptions = useMemo(
-    () =>
-      categorias.map((categoria) => ({
-        value: String(categoria.id_categoria),
-        label: categoria.nombre,
-      })),
-    [categorias]
-  )
+  const esIngreso = form.tipo_movimiento === "ingreso"
 
-  const cuentaOptions = useMemo(
+  // Las categorias que mas usas quedan primero: la mayoria de los registros son un toque.
+  const categoriaOptions = useMemo<ChipOption[]>(() => {
+    const uso = contarPorNombre(movimientos.map((m) => m.categoria))
+    return [...categorias]
+      .sort((a, b) => {
+        const diff = (uso.get(b.nombre.toLocaleLowerCase("es")) ?? 0) - (uso.get(a.nombre.toLocaleLowerCase("es")) ?? 0)
+        return diff || a.nombre.localeCompare(b.nombre, "es")
+      })
+      .map((categoria) => ({ value: String(categoria.id_categoria), label: categoria.nombre }))
+  }, [categorias, movimientos])
+
+  const cuentaOptions = useMemo<ChipOption[]>(
     () =>
       cuentas.map((cuenta) => ({
         value: String(cuenta.id_cuenta),
         label: cuenta.nombre_cuenta,
-        description: [cuenta.nombre_banco, cuenta.nombre_producto]
-          .filter(Boolean)
-          .join(" · ") || undefined,
+        hint: cuenta.nombre_banco ?? undefined,
       })),
-    [cuentas]
+    [cuentas],
   )
 
-  const esIngreso = form.tipo_movimiento === "ingreso"
+  // Cuenta por defecto: la del movimiento mas reciente, o la unica que exista.
+  const cuentaPorDefecto = useMemo(() => {
+    if (cuentas.length === 1) return String(cuentas[0].id_cuenta)
+    const ultima = movimientos[0]?.nombre_cuenta?.toLocaleLowerCase("es")
+    const match = cuentas.find((cuenta) => cuenta.nombre_cuenta.toLocaleLowerCase("es") === ultima)
+    return match ? String(match.id_cuenta) : ""
+  }, [cuentas, movimientos])
+  const cuentaSeleccionada = form.id_cuenta || cuentaPorDefecto
 
-  const selectTipoMovimiento = (tipoMovimiento: TipoMovimiento) => {
+  const montoNumero = Number(form.monto || 0)
+
+  const actualizar = <K extends keyof typeof initialForm>(campo: K, valor: (typeof initialForm)[K]) => {
+    setForm((prev) => ({ ...prev, [campo]: valor }))
+    if (campo in errores) setErrores((prev) => ({ ...prev, [campo]: undefined }))
+  }
+
+  const seleccionarTipo = (tipo: TipoMovimiento) => {
     setForm((prev) => ({
       ...prev,
-      tipo_movimiento: tipoMovimiento,
-      en_lugar_compra:
-        tipoMovimiento === "ingreso" ? false : prev.en_lugar_compra,
+      tipo_movimiento: tipo,
+      en_lugar_compra: tipo === "ingreso" ? false : prev.en_lugar_compra,
     }))
-
-    if (tipoMovimiento === "ingreso") {
-      setUbicacion(null)
-    }
+    if (tipo === "ingreso") setUbicacion(null)
   }
 
   const toggleLugarCompra = async () => {
@@ -110,32 +113,43 @@ export function MovimientoFormCard() {
       setUbicacion(null)
       return
     }
-
     setCapturandoUbicacion(true)
     try {
-      const current = await obtenerUbicacion()
-      setUbicacion(current)
+      setUbicacion(await obtenerUbicacion())
       setForm((prev) => ({ ...prev, en_lugar_compra: true }))
     } catch (error) {
       setUbicacion(null)
-      setForm((prev) => ({ ...prev, en_lugar_compra: false }))
-      toast.error("No pudimos obtener tu ubicacion", {
-        description: getGeolocationErrorMessage(error),
-      })
+      toast.error("No pudimos obtener tu ubicacion", { description: getGeolocationErrorMessage(error) })
     } finally {
       setCapturandoUbicacion(false)
     }
   }
 
-  const handleCreateMovimiento = async (event: FormEvent<HTMLFormElement>) => {
+  const resetParaOtro = useCallback(() => {
+    setRegistrado(null)
+    window.requestAnimationFrame(() => montoRef.current?.focus())
+  }, [])
+  const cerrarConfirmacion = useCallback(() => setRegistrado(null), [])
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+
+    const nuevosErrores: Partial<Record<Campo, string>> = {}
+    if (!montoNumero) nuevosErrores.monto = "Ingresa un monto"
+    if (!form.id_categoria) nuevosErrores.id_categoria = "Elige una categoria"
+    if (!cuentaSeleccionada) nuevosErrores.id_cuenta = "Elige una cuenta"
+    if (Object.keys(nuevosErrores).length > 0) {
+      setErrores(nuevosErrores)
+      if (nuevosErrores.monto) montoRef.current?.focus()
+      return
+    }
 
     const parsed = movimientoCreateSchema.safeParse({
       id_categoria: Number(form.id_categoria),
-      id_cuenta: Number(form.id_cuenta),
+      id_cuenta: Number(cuentaSeleccionada),
       tipo_movimiento: form.tipo_movimiento,
       tipo_gasto: form.tipo_gasto,
-      monto: Number(form.monto),
+      monto: montoNumero,
       descripcion: form.descripcion,
       created_at: form.created_at,
       en_lugar_compra: form.en_lugar_compra,
@@ -145,270 +159,320 @@ export function MovimientoFormCard() {
     })
 
     if (!parsed.success) {
-      toast.error("Revisa el formulario", {
-        description: parsed.error.issues[0]?.message ?? "Completa los datos del movimiento.",
-      })
+      const issue = parsed.error.issues[0]
+      const campo = issue?.path[0]
+      if (campo === "created_at") setErrores({ created_at: issue.message })
+      else toast.error(issue?.message ?? "Revisa los datos del movimiento")
       return
     }
 
-    const payload = {
+    const result = await crearMovimiento({
       ...parsed.data,
       client_request_id: crypto.randomUUID(),
       descripcion: parsed.data.descripcion || null,
       created_at: parsed.data.created_at ? ensureSeconds(parsed.data.created_at) : undefined,
-    }
+    })
 
-    const result = await crearMovimiento(payload)
-
-    if (result.ok) {
-      setForm(initialMovimientoForm)
-      setUbicacion(null)
-      toast.success(result.queued ? "Movimiento guardado sin conexion" : "Movimiento creado", {
-        description: result.queued
-          ? "Quedo pendiente y se sincronizara automaticamente al recuperar internet."
-          : "El movimiento se registro correctamente.",
-      })
+    if (!result.ok) {
+      toast.error("No pudimos registrar el movimiento", { description: result.message })
       return
     }
 
-    toast.error("No pudimos registrar el movimiento", {
-      description: result.message,
+    setRegistrado({
+      id: crypto.randomUUID(),
+      tipo: form.tipo_movimiento,
+      monto: montoNumero,
+      categoria: categoriaOptions.find((option) => option.value === form.id_categoria)?.label,
+      cuenta: cuentaOptions.find((option) => option.value === cuentaSeleccionada)?.label,
+      queued: Boolean(result.queued),
     })
+    // Se conserva el tipo (gasto/ingreso) y la cuenta: lo normal es anotar varios seguidos.
+    setForm((prev) => ({
+      ...initialForm,
+      tipo_movimiento: prev.tipo_movimiento,
+      id_cuenta: prev.id_cuenta,
+    }))
+    setUbicacion(null)
+    setMostrarFecha(false)
+    setErrores({})
   }
 
+  const colorTipo = esIngreso ? "var(--ingreso)" : "var(--gasto)"
+  const colorTipoOn = esIngreso ? "var(--ingreso-on)" : "var(--gasto-on)"
+
   return (
-    <FormPanel
-      eyebrow="Nuevo movimiento"
-      aside={
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-md bg-primary/12 text-primary">
-              <Wallet className="size-4" />
-            </span>
-            <p className="text-sm leading-6 text-foreground/80">
-              Elige bien la cuenta y la categoria para que despues el historial tenga sentido.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-md bg-primary/12 text-primary">
-              <ReceiptText className="size-4" />
-            </span>
-            <p className="text-sm leading-6 text-foreground/80">
-              Una descripcion breve ayuda a recordar el contexto real del movimiento.
-            </p>
-          </div>
+    <>
+      <form
+        onSubmit={handleSubmit}
+        noValidate
+        className="flex flex-col gap-5 rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-6"
+      >
+        {/* Gasto / Ingreso */}
+        <div role="radiogroup" aria-label="Tipo de movimiento" className="grid grid-cols-2 gap-1 rounded-lg bg-[color:var(--surface-low)] p-1">
+          {TIPOS.map(({ value, label, icon: Icon }) => {
+            const active = form.tipo_movimiento === value
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => seleccionarTipo(value)}
+                className={cn(
+                  "flex h-10 items-center justify-center gap-2 rounded-md text-sm font-semibold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                  active ? "" : "text-muted-foreground hover:text-foreground",
+                )}
+                style={active ? { background: value === "ingreso" ? "var(--ingreso)" : "var(--gasto)", color: value === "ingreso" ? "var(--ingreso-on)" : "var(--gasto-on)" } : undefined}
+              >
+                <Icon className="size-4" aria-hidden />
+                {label}
+              </button>
+            )
+          })}
         </div>
-      }
-    >
-      <form onSubmit={handleCreateMovimiento} className="space-y-4 sm:space-y-5">
-        <FieldGroup label="Tipo de movimiento">
-          <div className="relative grid grid-cols-2 gap-2 rounded-lg bg-[color:var(--surface-variant)] p-1">
-            <div
-              aria-hidden
-              className={cn(
-                "pointer-events-none absolute inset-y-1 w-[calc(50%-0.25rem)] rounded-lg shadow-[var(--shadow-airy)] transition-all duration-300 ease-out",
-                esIngreso
-                  ? "translate-x-[calc(100%+0.5rem)] bg-[color:var(--secondary)]"
-                  : "translate-x-0 bg-[color:var(--tertiary)]"
-              )}
-            />
-            {tipoMovimientoOpts.map((opt) => {
-              const Icon = opt.icon
-              const active = form.tipo_movimiento === opt.value
-              const activeTextClass =
-                opt.tone === "secondary"
-                  ? "text-[color:var(--secondary-foreground)]"
-                  : "text-[color:var(--tertiary-foreground)]"
 
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => selectTipoMovimiento(opt.value)}
-                  className={cn(
-                    "relative z-10 flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-medium transition-all duration-300 ease-out",
-                    active ? activeTextClass : "text-foreground/70 hover:text-foreground"
-                  )}
-                >
-                  <Icon className={cn("size-4 transition-transform duration-300", active && "scale-105")} />
-                  {opt.label}
-                </button>
-              )
-            })}
-          </div>
-        </FieldGroup>
-
-        <FieldGroup label="Monto" hint={esIngreso ? "Lo recibido" : "Lo que gastaste"}>
-          <div className="relative">
-            <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-base font-semibold text-muted-foreground">
+        {/* Monto: la cifra es la protagonista. */}
+        <div>
+          <label htmlFor="monto" className="sr-only">
+            Monto
+          </label>
+          <div
+            className={cn(
+              "flex items-baseline gap-2 border-b-2 pb-2 transition-colors",
+              errores.monto ? "border-destructive" : "border-border focus-within:border-foreground",
+            )}
+          >
+            <span className="font-display text-3xl text-muted-foreground sm:text-4xl" aria-hidden>
               $
             </span>
-            <Input
-              type="number"
+            <input
+              ref={montoRef}
+              id="monto"
+              type="text"
               inputMode="numeric"
-              min={1}
+              autoComplete="off"
+              enterKeyHint="done"
               placeholder="0"
-              value={form.monto}
-              onChange={(event) => setForm((prev) => ({ ...prev, monto: event.target.value }))}
-              className="h-14 rounded-lg border-0 bg-[color:var(--surface-variant)] pl-9 pr-4 text-xl font-semibold shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0 sm:text-2xl"
+              aria-invalid={Boolean(errores.monto) || undefined}
+              aria-describedby={errores.monto ? "monto-error" : undefined}
+              value={form.monto ? milesFormatter.format(Number(form.monto)) : ""}
+              onChange={(event) => actualizar("monto", event.target.value.replace(/\D/g, "").replace(/^0+/, "").slice(0, MAX_DIGITS))}
+              className="w-full min-w-0 bg-transparent font-display text-[2.6rem] leading-none tabular-nums outline-none placeholder:text-muted-foreground/40 sm:text-5xl"
+              style={{ color: form.monto ? colorTipo : undefined }}
             />
           </div>
-        </FieldGroup>
-
-        <div className="grid gap-4 sm:gap-5 lg:grid-cols-2">
-          <FieldGroup label="Categoria">
-            <SearchableCombobox
-              value={form.id_categoria}
-              onChange={(value) => setForm((prev) => ({ ...prev, id_categoria: value }))}
-              options={categoriaOptions}
-              placeholder="Selecciona una categoria"
-              searchPlaceholder="Buscar categoria..."
-              emptyMessage="No hay categorias"
-              loading={loadingCatalogos && categoriaOptions.length === 0}
-              loadingMessage="Cargando..."
-              leadingIcon={<Folder className="size-4" />}
-              required
-            />
-          </FieldGroup>
-
-          <FieldGroup label="Cuenta bancaria">
-            <SearchableCombobox
-              value={form.id_cuenta}
-              onChange={(value) => setForm((prev) => ({ ...prev, id_cuenta: value }))}
-              options={cuentaOptions}
-              placeholder="Selecciona una cuenta"
-              searchPlaceholder="Buscar cuenta..."
-              emptyMessage="No hay cuentas registradas"
-              loading={loadingCatalogos && cuentaOptions.length === 0}
-              loadingMessage="Cargando..."
-              leadingIcon={<Wallet className="size-4" />}
-              required
-            />
-          </FieldGroup>
+          {errores.monto ? (
+            <p id="monto-error" className="mt-1.5 text-xs font-medium text-destructive">
+              {errores.monto}
+            </p>
+          ) : null}
         </div>
 
-        {esIngreso ? null : (
-          <>
-            <FieldGroup label="Tipo de gasto" hint="Para clasificar">
-              <div className="relative grid grid-cols-2 gap-2 rounded-lg bg-[color:var(--surface-variant)] p-1">
-                <div
-                  aria-hidden
-                  className={cn(
-                    "pointer-events-none absolute inset-y-1 w-[calc(50%-0.25rem)] rounded-lg bg-[color:var(--surface-lowest)] shadow-[var(--shadow-airy)] transition-all duration-300 ease-out",
-                    form.tipo_gasto === "fijo" ? "translate-x-[calc(100%+0.5rem)]" : "translate-x-0"
-                  )}
-                />
-                {tipoGastoOpts.map((opt) => {
-                  const Icon = opt.icon
-                  const active = form.tipo_gasto === opt.value
+        <Grupo titulo="Categoria" error={errores.id_categoria} errorId="categoria-error">
+          <ChipSelect
+            label="Categoria"
+            options={categoriaOptions}
+            value={form.id_categoria}
+            onChange={(value) => actualizar("id_categoria", value)}
+            loading={loadingCatalogos && categoriaOptions.length === 0}
+            invalid={Boolean(errores.id_categoria)}
+            errorId={errores.id_categoria ? "categoria-error" : undefined}
+            emptyMessage="Aun no hay categorias. Pide que las creen en administracion."
+          />
+        </Grupo>
 
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() =>
-                        setForm((prev) => ({ ...prev, tipo_gasto: opt.value }))
-                      }
-                      className={cn(
-                        "relative z-10 flex h-10 items-center justify-center gap-2 rounded-lg text-sm font-medium transition-all duration-300 ease-out",
-                        active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <Icon className={cn("size-3.5 transition-transform duration-300", active && "scale-105")} />
-                      {opt.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </FieldGroup>
+        <Grupo titulo="Cuenta" error={errores.id_cuenta} errorId="cuenta-error">
+          <ChipSelect
+            label="Cuenta"
+            options={cuentaOptions}
+            value={cuentaSeleccionada}
+            onChange={(value) => actualizar("id_cuenta", value)}
+            loading={loadingCatalogos && cuentaOptions.length === 0}
+            invalid={Boolean(errores.id_cuenta)}
+            errorId={errores.id_cuenta ? "cuenta-error" : undefined}
+            emptyMessage="Registra una cuenta para empezar."
+          />
+        </Grupo>
 
-            <FieldGroup label="Ubicacion de la compra" hint="Opcional">
-              <button
-                type="button"
-                aria-pressed={form.en_lugar_compra}
+        {/* Opciones secundarias en una sola fila de interruptores. */}
+        <div className="flex flex-wrap gap-2">
+          {esIngreso ? null : (
+            <>
+              <Toggle
+                pressed={form.tipo_gasto === "fijo"}
+                onClick={() => actualizar("tipo_gasto", form.tipo_gasto === "fijo" ? "variable" : "fijo")}
+                icon={<Repeat className="size-4" aria-hidden />}
+                label="Fijo"
+                title="Gasto que se repite cada mes (arriendo, planes, suscripciones)."
+              />
+              <Toggle
+                pressed={form.en_lugar_compra}
                 onClick={() => void toggleLugarCompra()}
                 disabled={capturandoUbicacion}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left transition",
-                  form.en_lugar_compra
-                    ? "bg-primary/12 text-foreground"
-                    : "bg-[color:var(--surface-variant)] text-foreground/80",
-                  capturandoUbicacion && "cursor-wait opacity-70",
-                )}
-              >
-                <span
-                  className={cn(
-                    "flex size-9 shrink-0 items-center justify-center rounded-md",
-                    form.en_lugar_compra
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-[color:var(--surface-lowest)] text-muted-foreground",
-                  )}
-                >
-                  {capturandoUbicacion ? (
-                    <LoaderCircle className="size-4 animate-spin" />
+                icon={
+                  capturandoUbicacion ? (
+                    <LoaderCircle className="size-4 animate-spin" aria-hidden />
                   ) : form.en_lugar_compra ? (
-                    <Check className="size-4" />
+                    <Check className="size-4" aria-hidden />
                   ) : (
-                    <MapPin className="size-4" />
-                  )}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium">
-                    Estoy en el lugar de compra
-                  </span>
-                  <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
-                    {capturandoUbicacion
-                      ? "Obteniendo tu ubicacion..."
-                      : ubicacion
-                        ? `Ubicacion capturada · precision aproximada ${Math.round(ubicacion.precision)} m`
-                        : "Activalo solo para compras presenciales. Pagos automaticos y compras remotas quedan fuera."}
-                  </span>
-                </span>
-              </button>
-            </FieldGroup>
-          </>
-        )}
-
-        <FieldGroup label="Descripcion" hint="Opcional">
-          <Input
-            placeholder="Ej: Farmacia del barrio"
-            value={form.descripcion}
-            onChange={(event) => setForm((prev) => ({ ...prev, descripcion: event.target.value }))}
-            className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+                    <MapPin className="size-4" aria-hidden />
+                  )
+                }
+                label={ubicacion ? `En el local · ±${Math.round(ubicacion.precision)} m` : "En el local"}
+                title="Guarda la ubicacion del local. Solo para compras presenciales."
+              />
+            </>
+          )}
+          <Toggle
+            pressed={mostrarFecha || Boolean(form.created_at)}
+            onClick={() => {
+              if (mostrarFecha || form.created_at) {
+                setMostrarFecha(false)
+                actualizar("created_at", "")
+              } else {
+                setMostrarFecha(true)
+              }
+            }}
+            icon={<CalendarClock className="size-4" aria-hidden />}
+            label={form.created_at ? formatFechaCorta(form.created_at) : "Fecha"}
           />
-        </FieldGroup>
+        </div>
 
-        <FieldGroup label="Fecha" hint="Opcional">
-          <div className="relative">
-            <Input
-              type="datetime-local"
-              value={form.created_at}
-              onChange={(event) => setForm((prev) => ({ ...prev, created_at: event.target.value }))}
-              className="h-13 appearance-none rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 pr-11 text-sm leading-none shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0 sm:text-base [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-4 [&::-webkit-calendar-picker-indicator]:h-4 [&::-webkit-calendar-picker-indicator]:w-4 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-date-and-time-value]:text-left [&::-webkit-datetime-edit]:leading-none"
-            />
-            <CalendarClock className="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-muted-foreground" />
+        {mostrarFecha ? (
+          <div className="-mt-2">
+            <label htmlFor="fecha" className="sr-only">
+              Fecha del movimiento
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                id="fecha"
+                type="datetime-local"
+                value={form.created_at}
+                onChange={(event) => actualizar("created_at", event.target.value)}
+                aria-invalid={Boolean(errores.created_at) || undefined}
+                className="h-11 min-w-0 flex-1 rounded-md border border-border bg-[color:var(--surface-lowest)] px-3 text-sm outline-none focus:border-foreground"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setMostrarFecha(false)
+                  actualizar("created_at", "")
+                }}
+                aria-label="Usar fecha y hora actual"
+                className="inline-flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-[color:var(--surface-low)] hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            {errores.created_at ? <p className="mt-1.5 text-xs font-medium text-destructive">{errores.created_at}</p> : null}
           </div>
-        </FieldGroup>
+        ) : null}
 
-        <FormSubmitBar className="lg:flex lg:justify-end lg:pr-6 lg:pb-5 lg:pt-4">
-          <Button
-            type="submit"
-            size="lg"
-            className="h-13 w-full rounded-xl text-sm font-semibold lg:h-12 lg:w-auto lg:min-w-[13rem] lg:px-6"
-            disabled={submittingMovimiento || loadingCatalogos || capturandoUbicacion}
-          >
-            {submittingMovimiento
-              ? "Guardando..."
-              : esIngreso
-                ? "Registrar ingreso"
-                : "Registrar gasto"}
-          </Button>
-        </FormSubmitBar>
+        <div>
+          <label htmlFor="nota" className="sr-only">
+            Nota
+          </label>
+          <input
+            id="nota"
+            maxLength={250}
+            placeholder="Nota (opcional)"
+            value={form.descripcion}
+            onChange={(event) => actualizar("descripcion", event.target.value)}
+            className="h-11 w-full rounded-md border border-border bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground"
+          />
+        </div>
+
+        <Button
+          type="submit"
+          size="lg"
+          disabled={submittingMovimiento || capturandoUbicacion}
+          className="h-12 w-full text-base"
+          style={montoNumero ? { background: colorTipo, color: colorTipoOn } : undefined}
+        >
+          {submittingMovimiento
+            ? "Guardando..."
+            : `${esIngreso ? "Registrar ingreso" : "Registrar gasto"}${montoNumero ? ` · ${formatCLP(montoNumero)}` : ""}`}
+        </Button>
       </form>
-    </FormPanel>
+
+      {registrado ? (
+        <MovimientoRegistrado key={registrado.id} info={registrado} onClose={cerrarConfirmacion} onAnother={resetParaOtro} />
+      ) : null}
+    </>
+  )
+}
+
+function Grupo({
+  titulo,
+  error,
+  errorId,
+  children,
+}: {
+  titulo: string
+  error?: string
+  errorId: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{titulo}</span>
+        {error ? (
+          <span id={errorId} className="text-xs font-medium text-destructive">
+            {error}
+          </span>
+        ) : null}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function Toggle({
+  pressed,
+  onClick,
+  icon,
+  label,
+  disabled,
+  title,
+}: {
+  pressed: boolean
+  onClick: () => void
+  icon: React.ReactNode
+  label: string
+  disabled?: boolean
+  title?: string
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={cn(
+        "inline-flex min-h-9 items-center gap-1.5 rounded-md border px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-wait disabled:opacity-70",
+        pressed
+          ? "border-highlight bg-highlight text-highlight-foreground"
+          : "border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground",
+      )}
+    >
+      {icon}
+      {label}
+    </button>
   )
 }
 
 function ensureSeconds(value: string) {
   return value.length === 16 ? `${value}:00` : value
+}
+
+/** "24 sep, 18:30" desde el valor de un datetime-local, sin conversion de zona horaria. */
+function formatFechaCorta(value: string) {
+  const [fecha, hora = ""] = value.split("T")
+  const [y, m, d] = fecha.split("-").map(Number)
+  const dia = new Intl.DateTimeFormat("es-CL", { day: "numeric", month: "short", timeZone: "UTC" })
+    .format(new Date(Date.UTC(y, m - 1, d)))
+    .replace(".", "")
+  return hora ? `${dia}, ${hora.slice(0, 5)}` : dia
 }

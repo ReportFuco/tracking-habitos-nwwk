@@ -4,11 +4,11 @@ import { PageHeader } from "@/components/shell/page-header"
 
 export default function RegistrarCuentaPage() {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       <PageHeader
         eyebrow="Finanzas"
-        title="Cuentas bancarias"
-        description="Flujo dedicado para crear una cuenta bancaria nueva y dejar lista la base del modulo."
+        title="Nueva cuenta"
+        className="pb-0"
       />
       <FinanzasMenuLinks />
 

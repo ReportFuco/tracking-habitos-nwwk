@@ -1,5 +1,5 @@
-import { ContextNav } from "@/components/shell/context-nav"
 import { PageHeader } from "@/components/shell/page-header"
+import { FinanzasMenuLinks } from "@/modules/finanzas/components/menu-links"
 import { MovimientoDetailView } from "@/modules/finanzas/components/movimiento-detail-view"
 
 export default async function MovimientoDetallePage({
@@ -11,21 +11,9 @@ export default async function MovimientoDetallePage({
   const idMovimiento = Number(id)
 
   return (
-    <div className="flex flex-col gap-6">
-      <ContextNav
-        crumbs={[
-          { label: "Inicio", href: "/app/dashboard" },
-          { label: "Finanzas", href: "/app/finanzas" },
-          { label: "Movimientos", href: "/app/finanzas/movimientos" },
-          { label: `Detalle #${id}` },
-        ]}
-      />
-
-      <PageHeader
-        eyebrow="Finanzas"
-        title="Detalle de movimiento"
-        description="Vista individual para revisar el contexto completo de un movimiento."
-      />
+    <div className="flex flex-col gap-4 sm:gap-6">
+      <PageHeader eyebrow="Finanzas" title={`Movimiento #${id}`} className="pb-0" />
+      <FinanzasMenuLinks />
 
       <MovimientoDetailView idMovimiento={idMovimiento} />
     </div>

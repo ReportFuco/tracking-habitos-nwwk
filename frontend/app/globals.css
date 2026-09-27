@@ -162,6 +162,12 @@
   --serie-gasto: #d63b24;
   --chart-grid: #e6e6e2;
 
+  /* Tipo de movimiento como bloque (selector, confirmacion). Mismos tonos que las series. */
+  --gasto: #d63b24;
+  --gasto-on: #ffffff;
+  --ingreso: #1f4ddb;
+  --ingreso-on: #ffffff;
+
   /* Sin sombras difusas: bordes nitidos de 1px y una sombra corta solo para flotantes. */
   --shadow-airy: 0 0 0 1px oklch(0 0 0 / 0.07);
   --shadow-airy-lg: 0 0 0 1px oklch(0 0 0 / 0.08), 0 14px 28px -16px oklch(0 0 0 / 0.28);
@@ -259,6 +265,11 @@
   --serie-ingreso: #5b7dff;
   --serie-gasto: #f2573a;
   --chart-grid: #2a2a2a;
+
+  --gasto: #f2573a;
+  --gasto-on: #111111;
+  --ingreso: #5b7dff;
+  --ingreso-on: #111111;
 
   --shadow-airy: 0 0 0 1px oklch(1 0 0 / 0.07);
   --shadow-airy-lg: 0 0 0 1px oklch(1 0 0 / 0.09), 0 14px 28px -16px oklch(0 0 0 / 0.7);
@@ -459,4 +470,32 @@
 @keyframes ritmo-beat {
   0%, 100% { transform: scaleY(0.35); }
   50% { transform: scaleY(1); }
+}
+
+/* Confirmacion de registro: la tarjeta "salta", el check se dibuja y los bloques estallan. */
+@keyframes ritmo-pop {
+  0% { transform: translateY(28px) scale(0.7); opacity: 0; }
+  55% { transform: translateY(0) scale(1.05); opacity: 1; }
+  75% { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+@keyframes ritmo-check {
+  from { stroke-dashoffset: 32; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes ritmo-burst {
+  0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.5); opacity: 0; }
+}
+@keyframes ritmo-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ritmo-countdown {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+@keyframes ritmo-flash {
+  0% { background-color: color-mix(in oklch, var(--highlight) 45%, transparent); }
+  100% { background-color: transparent; }
 }
