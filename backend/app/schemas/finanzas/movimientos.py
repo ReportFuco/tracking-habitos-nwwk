@@ -143,19 +143,26 @@ class MovimientoCreate(BaseModel):
     )
 
 
+# Columnas NOT NULL: en el PATCH un null explicito no significa "borrar", es invalido.
+CAMPOS_PATCH_NO_NULOS = ("tipo_movimiento", "tipo_gasto", "id_categoria", "id_cuenta", "monto", "created_at")
+
+
 class MovimientoPatch(BaseModel):
     tipo_movimiento: Optional[EnumTipoMovimiento] = None
     tipo_gasto: Optional[EnumTipoGasto] = None
     id_categoria: Optional[int] = None
     id_cuenta: Optional[int] = None
     monto: Optional[int] = Field(None, gt=0)
+    # null borra la descripcion (la columna es nullable).
+    descripcion: Optional[str] = Field(None, max_length=250)
+    created_at: Optional[datetime] = None
 
     @model_validator(mode="after")
     def validate_no_nulls(self):
-        # Todos los campos son opcionales para permitir PATCH parcial, pero las columnas
-        # son NOT NULL: un null explícito no significa "borrar", es un payload inválido.
         nulos = sorted(
-            campo for campo in self.model_fields_set if getattr(self, campo) is None
+            campo
+            for campo in self.model_fields_set
+            if campo in CAMPOS_PATCH_NO_NULOS and getattr(self, campo) is None
         )
         if nulos:
             raise ValueError(f"Estos campos no pueden ser nulos: {', '.join(nulos)}.")

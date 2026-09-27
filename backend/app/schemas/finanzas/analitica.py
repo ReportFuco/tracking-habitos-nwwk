@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -99,3 +99,31 @@ class AnaliticaDistribucionCuentasResponse(BaseModel):
     items: list[AnaliticaDistribucionCuentaItem] = Field(default_factory=list)
 
     model_config = ConfigDict(title="Distribucion cuentas finanzas")
+
+
+class AnaliticaDiariaItem(BaseModel):
+    dia: int = Field(..., examples=[26])
+    fecha: date = Field(..., examples=["2026-09-26"])
+    gasto_total: float = Field(..., examples=[41490])
+    ingreso_total: float = Field(..., examples=[0])
+    cantidad_movimientos: int = Field(..., examples=[3])
+    es_futuro: bool = Field(..., description="Dia posterior a hoy (solo en el mes en curso).")
+
+    model_config = ConfigDict(title="Dia de la analitica diaria")
+
+
+class AnaliticaDiariaResponse(BaseModel):
+    year: int = Field(..., examples=[2026])
+    month: int = Field(..., examples=[9])
+    dias_mes: int = Field(..., examples=[30])
+    dias_transcurridos: int = Field(
+        ..., examples=[26], description="Dias del mes hasta hoy; el mes completo si ya paso."
+    )
+    gasto_total: float = Field(..., examples=[245000])
+    promedio_gasto_diario: float | None = Field(
+        None, examples=[9423], description="Gasto total / dias transcurridos. Null si no hay dias."
+    )
+    dia_mayor_gasto: AnaliticaDiariaItem | None = None
+    items: list[AnaliticaDiariaItem] = Field(default_factory=list)
+
+    model_config = ConfigDict(title="Gasto diario finanzas")

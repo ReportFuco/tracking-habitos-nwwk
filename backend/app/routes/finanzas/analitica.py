@@ -1,5 +1,5 @@
 from calendar import monthrange
-from datetime import datetime
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -11,6 +11,8 @@ from app.db import get_db
 from app.models import CuentaUsuario, Movimiento, Usuario
 from app.models.finanzas import EnumTipoGasto, EnumTipoMovimiento
 from app.schemas.finanzas import (
+    AnaliticaDiariaItem,
+    AnaliticaDiariaResponse,
     AnaliticaDistribucionCategoriaItem,
     AnaliticaDistribucionCategoriasResponse,
     AnaliticaDistribucionCuentaItem,
@@ -379,3 +381,73 @@ async def obtener_distribucion_cuentas(
         total_periodo=total_periodo,
         items=items,
     )
+
+
+def agrupar_por_dia(movimientos, year: int, month: int, hoy: date) -> AnaliticaDiariaResponse:
+    """Totales por dia del mes. Puro: recibe los movimientos ya filtrados al periodo."""
+    dias_mes = monthrange(year, month)[1]
+    es_mes_actual = (hoy.year, hoy.month) == (year, month)
+    if es_mes_actual:
+        dias_transcurridos = hoy.day
+    elif (year, month) < (hoy.year, hoy.month):
+        dias_transcurridos = dias_mes
+    else:
+        dias_transcurridos = 0
+
+    gasto = [0.0] * (dias_mes + 1)
+    ingreso = [0.0] * (dias_mes + 1)
+    cantidad = [0] * (dias_mes + 1)
+    for mov in movimientos:
+        dia = mov.created_at.day
+        cantidad[dia] += 1
+        if mov.tipo_movimiento == EnumTipoMovimiento.GASTO:
+            gasto[dia] += float(mov.monto)
+        else:
+            ingreso[dia] += float(mov.monto)
+
+    items = [
+        AnaliticaDiariaItem(
+            dia=dia,
+            fecha=date(year, month, dia),
+            gasto_total=gasto[dia],
+            ingreso_total=ingreso[dia],
+            cantidad_movimientos=cantidad[dia],
+            es_futuro=es_mes_actual and dia > hoy.day,
+        )
+        for dia in range(1, dias_mes + 1)
+    ]
+    gasto_total = sum(gasto)
+    con_gasto = [item for item in items if item.gasto_total > 0]
+    return AnaliticaDiariaResponse(
+        year=year,
+        month=month,
+        dias_mes=dias_mes,
+        dias_transcurridos=dias_transcurridos,
+        gasto_total=gasto_total,
+        promedio_gasto_diario=gasto_total / dias_transcurridos if dias_transcurridos else None,
+        dia_mayor_gasto=max(con_gasto, key=lambda item: item.gasto_total) if con_gasto else None,
+        items=items,
+    )
+
+
+@router.get(
+    "/diaria",
+    summary="Gasto e ingreso por dia del mes",
+    response_model=AnaliticaDiariaResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def obtener_analitica_diaria(
+    year: int | None = Query(default=None, ge=2000, le=2100),
+    month: int | None = Query(default=None, ge=1, le=12),
+    user=Depends(current_user_or_api_key),
+    db: AsyncSession = Depends(get_db),
+):
+    usuario = await obtener_usuario_actual(user, db)
+    resolved_year, resolved_month, period_start, period_end = _resolve_period(year, month)
+    movimientos = await _get_movimientos_periodo(
+        db=db,
+        id_usuario=usuario.id_usuario,
+        start=period_start,
+        end=period_end,
+    )
+    return agrupar_por_dia(movimientos, resolved_year, resolved_month, _get_chile_now().date())

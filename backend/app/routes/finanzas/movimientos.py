@@ -5,11 +5,13 @@ from app.schemas.finanzas import (
     MovimientoPatch
 )
 from datetime import datetime
+from typing import Annotated
 from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
     Query,
+    Response,
     status
 )
 from app.models import (
@@ -23,7 +25,7 @@ from app.models import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
-from sqlalchemy import select, and_, desc, func
+from sqlalchemy import select, and_, desc, func, or_
 from sqlalchemy.orm import selectinload
 from app.auth.fastapi_users import current_user_or_api_key
 from app.models.finanzas import EnumTipoMovimiento
@@ -65,17 +67,42 @@ async def obtener_movimiento(
         description="Cantidad maxima de movimientos a devolver."
     ),
     user = Depends(current_user_or_api_key),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    # Annotated deja None como default real (la funcion tambien se llama directo en tests).
+    year: Annotated[int | None, Query(ge=2000, le=2100, description="Año del periodo.")] = None,
+    month: Annotated[int | None, Query(ge=1, le=12, description="Mes del periodo, calendario de Chile.")] = None,
+    tipo_movimiento: Annotated[EnumTipoMovimiento | None, Query()] = None,
+    id_categoria: Annotated[int | None, Query(ge=1)] = None,
+    id_cuenta: Annotated[int | None, Query(ge=1)] = None,
+    q: Annotated[
+        str | None,
+        Query(min_length=1, max_length=100, description="Busca en la descripcion y en el nombre de la categoria."),
+    ] = None,
 ):
     usuario = await obtener_usuario_actual(user, db)
     rango_inicio, rango_fin = _get_current_chile_month_range()
 
+    filtros = filtros_listado_movimientos(
+        year=year,
+        month=month,
+        tipo_movimiento=tipo_movimiento,
+        id_categoria=id_categoria,
+        id_cuenta=id_cuenta,
+        q=q,
+    )
+
+    consulta = (
+        select(Movimiento)
+        .execution_options(populate_existing=True)
+        .join(CuentaUsuario, Movimiento.id_cuenta == CuentaUsuario.id_cuenta)
+        .where(CuentaUsuario.id_usuario == usuario.id_usuario, *filtros)
+    )
+    if q:
+        consulta = consulta.join(CategoriaFinanza, Movimiento.id_categoria == CategoriaFinanza.id_categoria)
+
     movimiento_usuario = (
         await db.execute(
-            select(Movimiento)
-            .execution_options(populate_existing=True)
-            .join(CuentaUsuario, Movimiento.id_cuenta == CuentaUsuario.id_cuenta)
-            .where(CuentaUsuario.id_usuario == usuario.id_usuario)
+            consulta
             .order_by(desc(Movimiento.created_at), desc(Movimiento.id_transaccion))
             .offset(offset)
             .limit(limit)
@@ -93,12 +120,7 @@ async def obtener_movimiento(
         )
     ).scalars().all()
 
-    if not movimiento_usuario:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Usuario sin movimientos"
-        )
-
+    # Sin resultados es una lista vacia, no un error: con filtros es un caso normal.
     total_gasto_mensual = await db.scalar(
         select(func.coalesce(func.sum(Movimiento.monto), 0))
         .join(CuentaUsuario, Movimiento.id_cuenta == CuentaUsuario.id_cuenta)
@@ -349,6 +371,76 @@ async def editar_movimiento(
     )
 
     return movimiento
+
+
+def rango_mes(year: int, month: int) -> tuple[datetime, datetime]:
+    """Inicio y fin (naive, calendario de Chile) de un mes. created_at es naive."""
+    inicio = datetime(year, month, 1)
+    fin = datetime(year + 1, 1, 1) if month == 12 else datetime(year, month + 1, 1)
+    return inicio, fin
+
+
+def filtros_listado_movimientos(
+    *,
+    year: int | None,
+    month: int | None,
+    tipo_movimiento: EnumTipoMovimiento | None,
+    id_categoria: int | None,
+    id_cuenta: int | None,
+    q: str | None,
+) -> list:
+    """Condiciones WHERE del listado. Un mes sin año usa el año actual de Chile."""
+    filtros = []
+    if month is not None:
+        anio = year or datetime.now(CHILE_TZ).year
+        inicio, fin = rango_mes(anio, month)
+        filtros += [Movimiento.created_at >= inicio, Movimiento.created_at < fin]
+    elif year is not None:
+        filtros += [
+            Movimiento.created_at >= datetime(year, 1, 1),
+            Movimiento.created_at < datetime(year + 1, 1, 1),
+        ]
+    if tipo_movimiento is not None:
+        filtros.append(Movimiento.tipo_movimiento == tipo_movimiento)
+    if id_categoria is not None:
+        filtros.append(Movimiento.id_categoria == id_categoria)
+    if id_cuenta is not None:
+        filtros.append(Movimiento.id_cuenta == id_cuenta)
+    if q:
+        patron = f"%{q.strip()}%"
+        filtros.append(or_(Movimiento.descripcion.ilike(patron), CategoriaFinanza.nombre.ilike(patron)))
+    return filtros
+
+
+@router.delete(
+    "/{id_movimiento}",
+    summary="Eliminar movimiento",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+async def eliminar_movimiento(
+    id_movimiento: int,
+    db: AsyncSession = Depends(get_db),
+    user = Depends(current_user_or_api_key),
+):
+    usuario = await obtener_usuario_actual(user, db)
+
+    movimiento = await db.scalar(
+        select(Movimiento)
+        .join(CuentaUsuario, Movimiento.id_cuenta == CuentaUsuario.id_cuenta)
+        .where(
+            Movimiento.id_transaccion == id_movimiento,
+            CuentaUsuario.id_usuario == usuario.id_usuario,
+        )
+        .options(selectinload(Movimiento.vinculos_compra))
+    )
+    if not movimiento:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movimiento no encontrado.")
+
+    # Los vinculos con compras se borran en cascada; las compras quedan intactas.
+    await db.delete(movimiento)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 def aplicar_patch_movimiento(movimiento: Movimiento, update_data: dict) -> None:

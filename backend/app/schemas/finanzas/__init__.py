@@ -32,6 +32,8 @@ from .analitica import (
     AnaliticaDistribucionCategoriasResponse,
     AnaliticaDistribucionCuentaItem,
     AnaliticaDistribucionCuentasResponse,
+    AnaliticaDiariaItem,
+    AnaliticaDiariaResponse,
 )
 
 
