@@ -10,11 +10,12 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from app.auth.api_key import get_user_by_api_key
+from app.auth.api_key import autenticar_api_key
 from app.db.session import AsyncSessionLocal
 
 
 SCOPE_AUTH_USER_ID = "ritmo.auth_user_id"
+SCOPE_API_KEY_SCOPES = "ritmo.api_key_scopes"
 
 
 def extraer_api_key(request: Request) -> str | None:
@@ -53,12 +54,14 @@ class ApiKeyAuthMiddleware:
 
         async with AsyncSessionLocal() as db:
             try:
-                user = await get_user_by_api_key(api_key, request, db)
+                user, key = await autenticar_api_key(api_key, request, db)
             except HTTPException as exc:
                 await _no_autorizado(exc.detail)(scope, receive, send)
                 return
-            # get_user_by_api_key registra el uso de la key (contador, fecha e IP).
+            # autenticar_api_key registra el uso de la key (contador, fecha e IP).
             await db.commit()
 
+        # Los permisos se exigen por herramienta (app/mcp/tools), no por ruta.
         scope[SCOPE_AUTH_USER_ID] = user.id
+        scope[SCOPE_API_KEY_SCOPES] = list(key.scopes)
         await self.app(scope, receive, send)

@@ -1,4 +1,4 @@
-"""Servidor MCP de finanzas: auth por API key y herramientas de solo lectura.
+"""Servidor MCP de finanzas: auth por API key, permisos por herramienta y lectura/escritura.
 
 Los tests de auth sin credencial no tocan la BD. El resto es integracion HTTP + PostgreSQL
 con el cliente MCP del SDK; como los de test_finanzas_movimientos_db.py, solo corren con
@@ -23,7 +23,7 @@ RUN_DB = os.environ.get("RUN_DB_TESTS") == "1" and DB_URL.rsplit("/", 1)[-1].end
 requiere_db = pytest.mark.skipif(not RUN_DB, reason="Requiere RUN_DB_TESTS=1 y una base *_test.")
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
-HERRAMIENTAS = {
+LECTURA = {
     "listar_cuentas",
     "listar_categorias",
     "buscar_movimientos",
@@ -33,6 +33,7 @@ HERRAMIENTAS = {
     "distribucion_por_cuenta",
     "gasto_diario",
 }
+ESCRITURA = {"registrar_movimiento", "editar_movimiento", "eliminar_movimiento"}
 
 
 @asynccontextmanager
@@ -129,19 +130,27 @@ async def escenario():
             mov(ajena, comida, 99999, datetime(2026, 9, 10, 12, 0), descripcion="Farmacia ajena"),
         ])
 
-        key_a, prefijo_a, hash_a = generate_api_key()
-        key_revocada, prefijo_r, hash_r = generate_api_key()
-        db.add_all([
-            ApiKey(auth_user_id=auth_a.id, nombre="mcp", key_prefix=prefijo_a, key_hash=hash_a),
-            ApiKey(auth_user_id=auth_a.id, nombre="revocada", key_prefix=prefijo_r, key_hash=hash_r, activo=False),
-        ])
+        keys = {}
+        for nombre, scopes, activo in (
+            ("lectura", ["finanzas:read"], True),
+            ("escritura", ["finanzas:write"], True),
+            ("revocada", ["*"], False),
+        ):
+            valor, prefijo, key_hash = generate_api_key()
+            db.add(ApiKey(
+                auth_user_id=auth_a.id, nombre=nombre, key_prefix=prefijo, key_hash=key_hash,
+                scopes=scopes, activo=activo,
+            ))
+            keys[nombre] = valor
         await db.commit()
         datos = {
-            "key": key_a, "key_revocada": key_revocada, "auth_ids": [auth_a.id, auth_b.id],
+            "key": keys["lectura"], "key_escritura": keys["escritura"], "key_revocada": keys["revocada"],
+            "auth_ids": [auth_a.id, auth_b.id],
             "perfiles": [perfil_a.id_usuario, perfil_b.id_usuario],
             "cuentas": [rut.id_cuenta, tc.id_cuenta, vieja.id_cuenta, ajena.id_cuenta],
-            "rut": rut.id_cuenta, "tc": tc.id_cuenta,
+            "rut": rut.id_cuenta, "tc": tc.id_cuenta, "ajena": ajena.id_cuenta,
             "categorias": [comida.id_categoria, salud.id_categoria], "salud": salud.id_categoria,
+            "comida": comida.id_categoria,
             "banco": banco.id_banco, "producto": producto.id_producto_financiero,
         }
 
@@ -171,13 +180,15 @@ async def test_key_revocada_o_inventada_da_401(escenario):
 
 
 @requiere_db
-async def test_expone_solo_herramientas_de_lectura(escenario):
+async def test_herramientas_marcan_lectura_y_escritura(escenario):
     async with cliente_mcp(escenario["key"]) as cliente:
-        herramientas = (await cliente.list_tools()).tools
+        herramientas = {h.name: h for h in (await cliente.list_tools()).tools}
         instrucciones = cliente.instructions
 
-    assert {h.name for h in herramientas} == HERRAMIENTAS
-    assert all(h.annotations.read_only_hint for h in herramientas)
+    assert set(herramientas) == LECTURA | ESCRITURA
+    assert all(herramientas[nombre].annotations.read_only_hint for nombre in LECTURA)
+    assert not any(herramientas[nombre].annotations.read_only_hint for nombre in ESCRITURA)
+    assert herramientas["eliminar_movimiento"].annotations.destructive_hint
     assert "CLP" in instrucciones
 
 
@@ -228,3 +239,70 @@ async def test_analitica_del_mes(escenario):
     assert {item["nombre_cuenta"]: item["total"] for item in cuentas["items"]} == {"RUT": 58500, "TC": 18990}
     assert diario["dia_mayor_gasto"]["dia"] == 5
     assert len(diario["items"]) == 30
+
+
+@requiere_db
+async def test_key_de_lectura_no_puede_escribir(escenario):
+    async with cliente_mcp(escenario["key"]) as cliente:
+        resultado = await cliente.call_tool("registrar_movimiento", {
+            "tipo_movimiento": "gasto", "monto": 1000,
+            "id_categoria": escenario["comida"], "id_cuenta": escenario["rut"],
+        })
+        despues = await cliente.call_tool("buscar_movimientos", {"texto": "Almuerzo"})
+
+    assert resultado.is_error
+    assert "finanzas:write" in resultado.content[0].text
+    assert len(despues.structured_content["items"]) == 1
+
+
+@requiere_db
+async def test_registrar_editar_y_eliminar_movimiento(escenario):
+    id_solicitud = str(uuid.uuid4())
+    nuevo = {
+        "tipo_movimiento": "gasto", "monto": 5990, "id_categoria": escenario["comida"],
+        "id_cuenta": escenario["tc"], "descripcion": "Cafe MCP",
+        "fecha": "2026-09-27T16:30:00Z", "client_request_id": id_solicitud,
+    }
+    async with cliente_mcp(escenario["key_escritura"]) as cliente:
+        creado = await cliente.call_tool("registrar_movimiento", nuevo)
+        reintento = await cliente.call_tool("registrar_movimiento", nuevo)
+        id_mov = creado.structured_content["id_movimiento"]
+        editado = await cliente.call_tool(
+            "editar_movimiento", {"id_movimiento": id_mov, "monto": 6500, "descripcion": ""}
+        )
+        sin_cambios = await cliente.call_tool("editar_movimiento", {"id_movimiento": id_mov})
+        eliminado = await cliente.call_tool("eliminar_movimiento", {"id_movimiento": id_mov})
+        otra_vez = await cliente.call_tool("eliminar_movimiento", {"id_movimiento": id_mov})
+
+    assert not creado.is_error, creado.content
+    movimiento = creado.structured_content
+    assert movimiento["cuenta"] == "TC" and movimiento["monto"] == 5990
+    # 16:30 UTC son las 13:30 en Chile (UTC-3 en septiembre).
+    assert movimiento["fecha"].startswith("2026-09-27T13:30")
+    # El mismo client_request_id devuelve el movimiento ya creado, no uno nuevo.
+    assert reintento.structured_content["id_movimiento"] == id_mov
+    assert editado.structured_content["monto"] == 6500
+    assert editado.structured_content["descripcion"] is None
+    assert sin_cambios.is_error
+    assert eliminado.structured_content == {"id_movimiento": id_mov, "eliminado": True}
+    assert otra_vez.is_error
+    assert "no encontrado" in otra_vez.content[0].text
+
+
+@requiere_db
+async def test_escritura_no_toca_datos_de_otro_usuario(escenario):
+    async with cliente_mcp(escenario["key_escritura"]) as cliente:
+        en_cuenta_ajena = await cliente.call_tool("registrar_movimiento", {
+            "tipo_movimiento": "gasto", "monto": 1000,
+            "id_categoria": escenario["comida"], "id_cuenta": escenario["ajena"],
+        })
+        ajeno = (await cliente.call_tool("buscar_movimientos", {"id_cuenta": escenario["ajena"]}))
+        monto_invalido = await cliente.call_tool("registrar_movimiento", {
+            "tipo_movimiento": "gasto", "monto": -5,
+            "id_categoria": escenario["comida"], "id_cuenta": escenario["rut"],
+        })
+
+    assert en_cuenta_ajena.is_error
+    assert "Cuenta no encontrada" in en_cuenta_ajena.content[0].text
+    assert ajeno.structured_content["items"] == []
+    assert monto_invalido.is_error

@@ -1,25 +1,31 @@
-"""Herramientas MCP de solo lectura del modulo de finanzas.
+"""Herramientas MCP del modulo de finanzas.
 
-Cada herramienta abre su propia sesion de BD, resuelve el perfil del usuario autenticado
-y delega en app.services.finanzas: la misma logica que usa la API REST.
+Cada herramienta exige un scope de la API key, abre su propia sesion de BD, resuelve el
+perfil del usuario autenticado y delega en app.services.finanzas: la misma logica que usa
+la API REST.
 """
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import Annotated, Literal
+from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
-from pydantic import Field
+from pydantic import Field, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.scopes import FINANZAS_READ, FINANZAS_WRITE, tiene_scope
 from app.db.session import AsyncSessionLocal
-from app.mcp.auth import SCOPE_AUTH_USER_ID
+from app.mcp.auth import SCOPE_API_KEY_SCOPES, SCOPE_AUTH_USER_ID
 from app.mcp.schemas import (
     CategoriaMCP,
     CategoriasMCP,
     CuentaMCP,
     CuentasMCP,
+    MovimientoEliminadoMCP,
     MovimientoMCP,
     MovimientosMCP,
 )
@@ -31,14 +37,31 @@ from app.schemas.finanzas import (
     AnaliticaDistribucionCuentasResponse,
     AnaliticaResumenResponse,
     AnaliticaTendenciaMensualResponse,
+    MovimientoCreate,
+    MovimientoPatch,
 )
 from app.services.errores import ErrorDominio
 from app.services.finanzas import analitica, categorias, cuentas, movimientos
 from app.services.usuarios import obtener_perfil
 
 
+CHILE_TZ = ZoneInfo("America/Santiago")
+
 SOLO_LECTURA = ToolAnnotations(
     read_only_hint=True,
+    idempotent_hint=True,
+    open_world_hint=False,
+)
+CREA = ToolAnnotations(
+    read_only_hint=False,
+    destructive_hint=False,
+    idempotent_hint=False,
+    open_world_hint=False,
+)
+# Editar y borrar pisan datos existentes: los clientes suelen pedir confirmacion.
+MODIFICA = ToolAnnotations(
+    read_only_hint=False,
+    destructive_hint=True,
     idempotent_hint=True,
     open_world_hint=False,
 )
@@ -52,28 +75,59 @@ Mes = Annotated[
     Field(ge=1, le=12, description="Mes del periodo (1-12). Si se omite, el mes actual en Chile."),
 ]
 TipoMovimiento = Literal["gasto", "ingreso"]
+TipoGasto = Literal["variable", "fijo"]
+Fecha = Annotated[
+    datetime | None,
+    Field(description="Fecha y hora del movimiento en hora de Chile, ej. 2026-09-27T13:30:00."),
+]
 
 
 @asynccontextmanager
-async def sesion_usuario(ctx: Context) -> AsyncIterator[tuple[AsyncSession, Usuario]]:
+async def sesion_usuario(
+    ctx: Context,
+    scope_requerido: str = FINANZAS_READ,
+) -> AsyncIterator[tuple[AsyncSession, Usuario]]:
+    """Sesion de BD con el perfil del usuario de la key. Confirma la transaccion al salir."""
     request = ctx.request_context.request
-    auth_user_id = request.scope.get(SCOPE_AUTH_USER_ID) if request is not None else None
+    request_scope = request.scope if request is not None else {}
+    auth_user_id = request_scope.get(SCOPE_AUTH_USER_ID)
     if auth_user_id is None:
         raise ToolError("Solicitud sin usuario autenticado.")
+    if not tiene_scope(request_scope.get(SCOPE_API_KEY_SCOPES), scope_requerido):
+        raise ToolError(
+            f"La API key no tiene el permiso {scope_requerido}. "
+            "Crea una key con ese permiso en Ritmo > Perfil > Conexiones con IA."
+        )
 
     async with AsyncSessionLocal() as db:
         try:
             usuario = await obtener_perfil(db, auth_user_id)
             yield db, usuario
+            await db.commit()
         except ErrorDominio as exc:
             raise ToolError(exc.mensaje) from exc
+
+
+def _fecha_chile(fecha: datetime | None) -> datetime | None:
+    """created_at es naive en hora de Chile: una fecha con zona se convierte y se le quita."""
+    if fecha is None or fecha.tzinfo is None:
+        return fecha
+    return fecha.astimezone(CHILE_TZ).replace(tzinfo=None)
+
+
+def _validar(modelo, **datos):
+    try:
+        return modelo(**datos)
+    except ValidationError as exc:
+        errores = "; ".join(error["msg"] for error in exc.errors())
+        raise ToolError(f"Datos inválidos: {errores}") from exc
 
 
 async def listar_cuentas(ctx: Context) -> CuentasMCP:
     """Cuentas activas del usuario (id, nombre, producto y banco).
 
     Úsala para traducir el nombre de una cuenta ("la débito", "la tarjeta de crédito")
-    a su id_cuenta antes de filtrar movimientos.
+    a su id_cuenta antes de filtrar o registrar movimientos.
     """
     async with sesion_usuario(ctx) as (db, usuario):
         items = await cuentas.listar_cuentas(db, usuario, solo_activas=True)
@@ -185,18 +239,110 @@ async def gasto_diario(ctx: Context, year: Anio = None, month: Mes = None) -> An
         return await analitica.analitica_diaria(db, usuario, year, month)
 
 
+async def registrar_movimiento(
+    ctx: Context,
+    tipo_movimiento: TipoMovimiento,
+    monto: Annotated[int, Field(gt=0, description="Monto en CLP, entero y positivo (ej. 5990).")],
+    id_categoria: Annotated[int, Field(ge=1, description="Ver listar_categorias.")],
+    id_cuenta: Annotated[int, Field(ge=1, description="Ver listar_cuentas.")],
+    tipo_gasto: Annotated[
+        TipoGasto,
+        Field(description="'fijo' para gastos recurrentes (arriendo, planes); si no, 'variable'."),
+    ] = "variable",
+    descripcion: Annotated[str | None, Field(max_length=250, description="Detalle breve, ej. 'Almuerzo'.")] = None,
+    fecha: Fecha = None,
+    client_request_id: Annotated[
+        UUID | None,
+        Field(
+            description=(
+                "UUID generado por ti para este movimiento. Si repites la llamada con el mismo "
+                "valor (por ejemplo tras un error de red) no se duplica."
+            ),
+        ),
+    ] = None,
+) -> MovimientoMCP:
+    """Registra un gasto o ingreso del usuario. Sin fecha, usa el momento actual.
+
+    Resuelve los ids con listar_cuentas y listar_categorias, y si hay dudas sobre el monto,
+    la cuenta o la categoría, confírmalas con el usuario antes de registrar.
+    """
+    data = _validar(
+        MovimientoCreate,
+        client_request_id=client_request_id,
+        id_categoria=id_categoria,
+        id_cuenta=id_cuenta,
+        tipo_movimiento=tipo_movimiento,
+        tipo_gasto=tipo_gasto,
+        monto=monto,
+        descripcion=descripcion,
+        created_at=_fecha_chile(fecha),
+    )
+    async with sesion_usuario(ctx, FINANZAS_WRITE) as (db, usuario):
+        movimiento = await movimientos.crear_movimiento(db, usuario, data)
+        return MovimientoMCP.desde_modelo(movimiento)
+
+
+async def editar_movimiento(
+    ctx: Context,
+    id_movimiento: Annotated[int, Field(ge=1)],
+    monto: Annotated[int | None, Field(gt=0, description="Nuevo monto en CLP.")] = None,
+    tipo_movimiento: TipoMovimiento | None = None,
+    tipo_gasto: TipoGasto | None = None,
+    id_categoria: Annotated[int | None, Field(ge=1)] = None,
+    id_cuenta: Annotated[int | None, Field(ge=1)] = None,
+    descripcion: Annotated[
+        str | None,
+        Field(max_length=250, description="Nueva descripción. Un texto vacío la borra."),
+    ] = None,
+    fecha: Fecha = None,
+) -> MovimientoMCP:
+    """Modifica un movimiento existente del usuario. Solo cambia los campos que se envían."""
+    cambios = {
+        "monto": monto,
+        "tipo_movimiento": tipo_movimiento,
+        "tipo_gasto": tipo_gasto,
+        "id_categoria": id_categoria,
+        "id_cuenta": id_cuenta,
+        "created_at": _fecha_chile(fecha),
+    }
+    cambios = {campo: valor for campo, valor in cambios.items() if valor is not None}
+    if descripcion is not None:
+        cambios["descripcion"] = descripcion.strip() or None
+    if not cambios:
+        raise ToolError("Indica al menos un campo a modificar.")
+
+    data = _validar(MovimientoPatch, **cambios)
+    async with sesion_usuario(ctx, FINANZAS_WRITE) as (db, usuario):
+        movimiento = await movimientos.editar_movimiento(db, usuario, id_movimiento, data)
+        return MovimientoMCP.desde_modelo(movimiento)
+
+
+async def eliminar_movimiento(
+    ctx: Context,
+    id_movimiento: Annotated[int, Field(ge=1)],
+) -> MovimientoEliminadoMCP:
+    """Elimina definitivamente un movimiento del usuario. No se puede deshacer: confirma
+    con el usuario antes de llamarla."""
+    async with sesion_usuario(ctx, FINANZAS_WRITE) as (db, usuario):
+        await movimientos.eliminar_movimiento(db, usuario, id_movimiento)
+        return MovimientoEliminadoMCP(id_movimiento=id_movimiento)
+
+
 HERRAMIENTAS = (
-    (listar_cuentas, "Listar cuentas"),
-    (listar_categorias, "Listar categorías"),
-    (buscar_movimientos, "Buscar movimientos"),
-    (resumen_mes, "Resumen del mes"),
-    (tendencia_mensual, "Tendencia mensual"),
-    (distribucion_por_categoria, "Gasto por categoría"),
-    (distribucion_por_cuenta, "Gasto por cuenta"),
-    (gasto_diario, "Gasto diario"),
+    (listar_cuentas, "Listar cuentas", SOLO_LECTURA),
+    (listar_categorias, "Listar categorías", SOLO_LECTURA),
+    (buscar_movimientos, "Buscar movimientos", SOLO_LECTURA),
+    (resumen_mes, "Resumen del mes", SOLO_LECTURA),
+    (tendencia_mensual, "Tendencia mensual", SOLO_LECTURA),
+    (distribucion_por_categoria, "Gasto por categoría", SOLO_LECTURA),
+    (distribucion_por_cuenta, "Gasto por cuenta", SOLO_LECTURA),
+    (gasto_diario, "Gasto diario", SOLO_LECTURA),
+    (registrar_movimiento, "Registrar movimiento", CREA),
+    (editar_movimiento, "Editar movimiento", MODIFICA),
+    (eliminar_movimiento, "Eliminar movimiento", MODIFICA),
 )
 
 
 def registrar_herramientas_finanzas(servidor: MCPServer) -> None:
-    for funcion, titulo in HERRAMIENTAS:
-        servidor.add_tool(funcion, title=titulo, annotations=SOLO_LECTURA)
+    for funcion, titulo, anotaciones in HERRAMIENTAS:
+        servidor.add_tool(funcion, title=titulo, annotations=anotaciones)

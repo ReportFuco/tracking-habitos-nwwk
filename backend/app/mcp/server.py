@@ -16,9 +16,12 @@ from app.mcp.tools.finanzas import registrar_herramientas_finanzas
 MCP_PATH = "/mcp"
 
 INSTRUCCIONES = """\
-Servidor de finanzas personales de Ritmo. Da acceso de solo lectura a las cuentas,
-categorías, movimientos y analítica del usuario dueño de la API key.
+Servidor de finanzas personales de Ritmo: cuentas, categorías, movimientos y analítica
+del usuario dueño de la API key.
 
+- Leer requiere el permiso finanzas:read; registrar, editar y eliminar movimientos
+  requiere finanzas:write. Si una herramienta responde que falta un permiso, díselo al
+  usuario en vez de reintentar.
 - Montos en pesos chilenos (CLP), enteros y siempre positivos; el signo lo da
   tipo_movimiento ('gasto' o 'ingreso').
 - Fechas y meses en calendario de Chile (America/Santiago). Sin year/month, las
@@ -27,7 +30,9 @@ categorías, movimientos y analítica del usuario dueño de la API key.
   distribucion_por_categoria, distribucion_por_cuenta, tendencia_mensual y gasto_diario:
   ya vienen agregadas. buscar_movimientos es para ver movimientos puntuales.
 - Si el usuario nombra una cuenta o categoría, resuelve su id con listar_cuentas o
-  listar_categorias antes de filtrar.
+  listar_categorias antes de filtrar o registrar.
+- Al registrar, genera un client_request_id (UUID) y reutilízalo si reintentas la misma
+  llamada. Antes de eliminar un movimiento, confirma con el usuario.
 """
 
 

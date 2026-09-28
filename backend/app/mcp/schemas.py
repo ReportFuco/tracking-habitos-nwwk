@@ -77,3 +77,8 @@ class MovimientosMCP(BaseModel):
     offset: int
     limit: int
     hay_mas: bool = Field(description="True si existen más resultados: repetir con offset + limit.")
+
+
+class MovimientoEliminadoMCP(BaseModel):
+    id_movimiento: int
+    eliminado: bool = True
