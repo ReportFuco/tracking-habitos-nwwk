@@ -54,6 +54,8 @@ ExecStart=/home/report-fuco/proyectos/tracking-habitos-nwwk/backend/env/bin/guni
 Restart=always
 ```
 
+- Drop-in `/etc/systemd/system/tracking-api.service.d/override.conf` con
+  `Environment=TZ=America/Santiago` (visto el 2026-09-28).
 - venv en `backend/env`.
 - **`gunicorn` no está en `requirements.txt`.** Si el venv es nuevo, instalarlo a mano
   después de `pip install -r requirements.txt`. Producción fija `gunicorn==25.3.0` y
