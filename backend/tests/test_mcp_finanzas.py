@@ -1,0 +1,230 @@
+"""Servidor MCP de finanzas: auth por API key y herramientas de solo lectura.
+
+Los tests de auth sin credencial no tocan la BD. El resto es integracion HTTP + PostgreSQL
+con el cliente MCP del SDK; como los de test_finanzas_movimientos_db.py, solo corren con
+RUN_DB_TESTS=1 y un DATABASE_URL cuya base termine en "_test".
+"""
+import os
+import uuid
+from contextlib import asynccontextmanager
+from datetime import datetime
+
+import httpx
+import httpx2
+import pytest
+from mcp import Client
+from mcp.client.streamable_http import streamable_http_client
+
+from app.main import app
+from app.mcp.server import MCP_PATH, crear_app_mcp, crear_servidor_mcp
+
+DB_URL = os.environ.get("DATABASE_URL", "")
+RUN_DB = os.environ.get("RUN_DB_TESTS") == "1" and DB_URL.rsplit("/", 1)[-1].endswith("_test")
+requiere_db = pytest.mark.skipif(not RUN_DB, reason="Requiere RUN_DB_TESTS=1 y una base *_test.")
+pytestmark = pytest.mark.asyncio(loop_scope="session")
+
+HERRAMIENTAS = {
+    "listar_cuentas",
+    "listar_categorias",
+    "buscar_movimientos",
+    "resumen_mes",
+    "tendencia_mensual",
+    "distribucion_por_categoria",
+    "distribucion_por_cuenta",
+    "gasto_diario",
+}
+
+
+@asynccontextmanager
+async def cliente_mcp(api_key: str):
+    # Servidor nuevo por test: el session manager solo puede arrancar una vez por instancia.
+    servidor = crear_servidor_mcp()
+    app_mcp = crear_app_mcp(servidor)
+    http = httpx2.AsyncClient(
+        transport=httpx2.ASGITransport(app=app_mcp),
+        headers={"Authorization": f"Bearer {api_key}"},
+    )
+    async with servidor.session_manager.run(), http:
+        async with Client(streamable_http_client(f"http://test{MCP_PATH}", http_client=http)) as cliente:
+            yield cliente
+
+
+async def test_endpoint_montado_en_la_app_exige_api_key():
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.post(MCP_PATH, json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
+
+    assert r.status_code == 401
+    assert r.json()["detail"] == "API key requerida."
+    assert r.headers["www-authenticate"].startswith("Bearer")
+
+
+async def test_bearer_que_no_es_bearer_no_cuenta_como_api_key():
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.post(MCP_PATH, headers={"Authorization": "Basic abc"}, json={})
+
+    assert r.status_code == 401
+
+
+if RUN_DB:
+    from sqlalchemy import delete, select
+
+    from app.auth.api_key import generate_api_key
+    from app.db.session import AsyncSessionLocal, engine
+    from app.models import ApiKey, Banco, CategoriaFinanza, CuentaUsuario, Movimiento, ProductoFinanciero, Usuario
+    from app.models.finanzas import EnumTipoGasto, EnumTipoMovimiento
+    from app.models.usuario_auth import User
+
+
+@pytest.fixture
+async def escenario():
+    """Usuario A con dos cuentas activas y una inactiva; usuario B con un gasto propio."""
+    sufijo = uuid.uuid4().hex[:8]
+    async with AsyncSessionLocal() as db:
+        auth_a = User(email=f"mcp-a-{sufijo}@example.com", hashed_password="x", is_active=True)
+        auth_b = User(email=f"mcp-b-{sufijo}@example.com", hashed_password="x", is_active=True)
+        db.add_all([auth_a, auth_b])
+        await db.flush()
+        perfil_a = Usuario(
+            username=f"ma{sufijo}", nombre="A", apellido="Mcp", telefono=f"1{sufijo[:7]}",
+            email=auth_a.email, auth_user_id=auth_a.id,
+        )
+        perfil_b = Usuario(
+            username=f"mb{sufijo}", nombre="B", apellido="Mcp", telefono=f"2{sufijo[:7]}",
+            email=auth_b.email, auth_user_id=auth_b.id,
+        )
+        banco = Banco(nombre_banco=f"Banco MCP {sufijo}")
+        db.add_all([perfil_a, perfil_b, banco])
+        await db.flush()
+        producto = ProductoFinanciero(id_banco=banco.id_banco, nombre_producto="Cuenta Vista")
+        comida = CategoriaFinanza(nombre=f"comida-mcp-{sufijo}")
+        salud = CategoriaFinanza(nombre=f"salud-mcp-{sufijo}")
+        db.add_all([producto, comida, salud])
+        await db.flush()
+
+        def cuenta(perfil, nombre, activo=True):
+            return CuentaUsuario(
+                id_usuario=perfil.id_usuario, id_producto_financiero=producto.id_producto_financiero,
+                nombre_cuenta=nombre, activo=activo,
+            )
+
+        rut, tc, vieja = cuenta(perfil_a, "RUT"), cuenta(perfil_a, "TC"), cuenta(perfil_a, "Vieja", activo=False)
+        ajena = cuenta(perfil_b, "Ajena")
+        db.add_all([rut, tc, vieja, ajena])
+        await db.flush()
+
+        def mov(cuenta, categoria, monto, fecha, tipo=EnumTipoMovimiento.GASTO, tipo_gasto=EnumTipoGasto.VARIABLE,
+                descripcion=None):
+            return Movimiento(
+                id_cuenta=cuenta.id_cuenta, id_categoria=categoria.id_categoria, tipo_movimiento=tipo,
+                tipo_gasto=tipo_gasto, monto=monto, created_at=fecha, descripcion=descripcion,
+                en_lugar_compra=False,
+            )
+
+        db.add_all([
+            mov(rut, comida, 8500, datetime(2026, 9, 25, 13, 0), descripcion="Almuerzo"),
+            mov(tc, salud, 18990, datetime(2026, 9, 22, 19, 0), descripcion="Farmacia del barrio"),
+            mov(rut, comida, 50000, datetime(2026, 9, 5, 9, 0), tipo_gasto=EnumTipoGasto.FIJO, descripcion="Arriendo"),
+            mov(rut, comida, 850000, datetime(2026, 9, 1, 9, 0), tipo=EnumTipoMovimiento.INGRESO),
+            mov(rut, comida, 40000, datetime(2026, 8, 30, 20, 0)),
+            mov(ajena, comida, 99999, datetime(2026, 9, 10, 12, 0), descripcion="Farmacia ajena"),
+        ])
+
+        key_a, prefijo_a, hash_a = generate_api_key()
+        key_revocada, prefijo_r, hash_r = generate_api_key()
+        db.add_all([
+            ApiKey(auth_user_id=auth_a.id, nombre="mcp", key_prefix=prefijo_a, key_hash=hash_a),
+            ApiKey(auth_user_id=auth_a.id, nombre="revocada", key_prefix=prefijo_r, key_hash=hash_r, activo=False),
+        ])
+        await db.commit()
+        datos = {
+            "key": key_a, "key_revocada": key_revocada, "auth_ids": [auth_a.id, auth_b.id],
+            "perfiles": [perfil_a.id_usuario, perfil_b.id_usuario],
+            "cuentas": [rut.id_cuenta, tc.id_cuenta, vieja.id_cuenta, ajena.id_cuenta],
+            "rut": rut.id_cuenta, "tc": tc.id_cuenta,
+            "categorias": [comida.id_categoria, salud.id_categoria], "salud": salud.id_categoria,
+            "banco": banco.id_banco, "producto": producto.id_producto_financiero,
+        }
+
+    yield datos
+
+    async with AsyncSessionLocal() as db:
+        await db.execute(delete(Movimiento).where(Movimiento.id_cuenta.in_(datos["cuentas"])))
+        await db.execute(delete(CuentaUsuario).where(CuentaUsuario.id_cuenta.in_(datos["cuentas"])))
+        await db.execute(delete(CategoriaFinanza).where(CategoriaFinanza.id_categoria.in_(datos["categorias"])))
+        await db.execute(delete(ProductoFinanciero).where(ProductoFinanciero.id_producto_financiero == datos["producto"]))
+        await db.execute(delete(Banco).where(Banco.id_banco == datos["banco"]))
+        await db.execute(delete(ApiKey).where(ApiKey.auth_user_id.in_(datos["auth_ids"])))
+        await db.execute(delete(Usuario).where(Usuario.id_usuario.in_(datos["perfiles"])))
+        await db.execute(delete(User).where(User.id.in_(datos["auth_ids"])))
+        await db.commit()
+    await engine.dispose()
+
+
+@requiere_db
+async def test_key_revocada_o_inventada_da_401(escenario):
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c:
+        revocada = await c.post(MCP_PATH, headers={"X-API-Key": escenario["key_revocada"]}, json={})
+        inventada = await c.post(MCP_PATH, headers={"Authorization": "Bearer thw_no-existe"}, json={})
+
+    assert revocada.status_code == 401
+    assert inventada.status_code == 401
+
+
+@requiere_db
+async def test_expone_solo_herramientas_de_lectura(escenario):
+    async with cliente_mcp(escenario["key"]) as cliente:
+        herramientas = (await cliente.list_tools()).tools
+        instrucciones = cliente.instructions
+
+    assert {h.name for h in herramientas} == HERRAMIENTAS
+    assert all(h.annotations.read_only_hint for h in herramientas)
+    assert "CLP" in instrucciones
+
+
+@requiere_db
+async def test_listar_cuentas_omite_inactivas_y_ajenas(escenario):
+    async with cliente_mcp(escenario["key"]) as cliente:
+        resultado = await cliente.call_tool("listar_cuentas", {})
+
+    assert not resultado.is_error
+    nombres = {c["nombre_cuenta"] for c in resultado.structured_content["items"]}
+    assert nombres == {"RUT", "TC"}
+
+
+@requiere_db
+async def test_buscar_movimientos_filtra_pagina_y_aisla_usuarios(escenario):
+    async with cliente_mcp(escenario["key"]) as cliente:
+        septiembre = await cliente.call_tool("buscar_movimientos", {"year": 2026, "month": 9, "limit": 2})
+        farmacia = await cliente.call_tool("buscar_movimientos", {"texto": "farmacia"})
+        salud = await cliente.call_tool("buscar_movimientos", {"id_categoria": escenario["salud"]})
+        ingresos = await cliente.call_tool("buscar_movimientos", {"tipo_movimiento": "ingreso"})
+        invalido = await cliente.call_tool("buscar_movimientos", {"limit": 500})
+
+    pagina = septiembre.structured_content
+    assert [m["monto"] for m in pagina["items"]] == [8500, 18990]
+    assert pagina["hay_mas"] is True
+    # La "Farmacia ajena" es de otro usuario: no aparece.
+    assert [m["descripcion"] for m in farmacia.structured_content["items"]] == ["Farmacia del barrio"]
+    assert farmacia.structured_content["items"][0]["cuenta"] == "TC"
+    assert [m["monto"] for m in salud.structured_content["items"]] == [18990]
+    assert [m["monto"] for m in ingresos.structured_content["items"]] == [850000]
+    assert invalido.is_error
+
+
+@requiere_db
+async def test_analitica_del_mes(escenario):
+    periodo = {"year": 2026, "month": 9}
+    async with cliente_mcp(escenario["key"]) as cliente:
+        resumen = (await cliente.call_tool("resumen_mes", periodo)).structured_content
+        categorias = (await cliente.call_tool("distribucion_por_categoria", periodo)).structured_content
+        cuentas = (await cliente.call_tool("distribucion_por_cuenta", periodo)).structured_content
+        diario = (await cliente.call_tool("gasto_diario", periodo)).structured_content
+
+    assert resumen["gasto_total"] == 8500 + 18990 + 50000
+    assert resumen["ingreso_total"] == 850000
+    assert resumen["gasto_fijo_total"] == 50000
+    assert resumen["variacion_gasto_vs_mes_anterior"] == (8500 + 18990 + 50000) - 40000
+    assert [item["total"] for item in categorias["items"]] == [58500, 18990]
+    assert {item["nombre_cuenta"]: item["total"] for item in cuentas["items"]} == {"RUT": 58500, "TC": 18990}
+    assert diario["dia_mayor_gasto"]["dia"] == 5
+    assert len(diario["items"]) == 30

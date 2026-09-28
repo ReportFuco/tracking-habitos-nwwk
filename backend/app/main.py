@@ -1,6 +1,9 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.routing import Route
 
 from app import settings
 from app.auth.routes import router as auth_router
@@ -8,9 +11,20 @@ from app.docs import OPENAPI_TAGS, install_docs, use_custom_openapi
 from app.routes import router
 from app.core.logging import setup_logging
 from app.core.middleware import cookie_csrf_middleware, logging_middleware
+from app.mcp.server import MCP_PATH, crear_app_mcp, crear_servidor_mcp
 
 
 setup_logging()
+
+servidor_mcp = crear_servidor_mcp()
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # El transporte MCP despacha cada request en un task group que vive con este manager.
+    async with servidor_mcp.session_manager.run():
+        yield
+
 
 app = FastAPI(
     title=settings.TITLE_API,
@@ -20,6 +34,7 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None,
     openapi_tags=OPENAPI_TAGS,
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -51,6 +66,9 @@ app.middleware("http")(cookie_csrf_middleware)
 
 app.include_router(router)
 app.include_router(auth_router)
+# Route y no Mount: con Mount el endpoint quedaria en /mcp/ y POST /mcp responderia con
+# un redirect, que no todos los clientes MCP siguen.
+app.router.routes.append(Route(MCP_PATH, endpoint=crear_app_mcp(servidor_mcp)))
 use_custom_openapi(app)
 install_docs(app)
 
