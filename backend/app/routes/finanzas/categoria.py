@@ -1,14 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import CategoriaFinanza
 from app.db import get_db
-from sqlalchemy import select
 from app.auth.fastapi_users import current_superuser, current_user_or_api_key
+from app.routes.finanzas._http import errores_http
 from app.schemas.finanzas import (
-    CategoriaResponse, 
-    CategoriaCreate, 
+    CategoriaResponse,
+    CategoriaCreate,
     CategoriaPatch
 )
+from app.services.finanzas import categorias as servicio
 
 
 router = APIRouter(prefix="/categoria", tags=["Finanzas · Categorías"])
@@ -22,11 +22,9 @@ router = APIRouter(prefix="/categoria", tags=["Finanzas · Categorías"])
 )
 async def obtener_categorias(
     db:AsyncSession = Depends(get_db),
-    user = Depends(current_user_or_api_key)  
-):    
-    categoria = (await db.execute(select(CategoriaFinanza))).scalars().all()
-    
-    return categoria
+    user = Depends(current_user_or_api_key)
+):
+    return await servicio.listar_categorias(db)
 
 
 @router.get(
@@ -41,16 +39,8 @@ async def obtener_categoria(
     db: AsyncSession = Depends(get_db),
     user = Depends(current_user_or_api_key)
 ):
-    query = await db.execute(
-        select(CategoriaFinanza).where(CategoriaFinanza.id_categoria == id_categoria)
-    )
-    categoria = query.scalar_one_or_none()
-    if not categoria:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Categoría no encontrada")
-    
-    return categoria
+    with errores_http():
+        return await servicio.obtener_categoria(db, id_categoria)
 
 
 @router.post(
@@ -61,28 +51,12 @@ async def obtener_categoria(
     status_code=status.HTTP_201_CREATED
 )
 async def crear_categoria(
-    data: CategoriaCreate, 
+    data: CategoriaCreate,
     db: AsyncSession = Depends(get_db),
     user = Depends(current_superuser)
 ):
-    query = await db.execute(
-        select(CategoriaFinanza)
-        .where(CategoriaFinanza.nombre == data.nombre)
-    )
-
-    categoria = query.scalar_one_or_none()
-
-    if categoria:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, 
-            detail="Categoría ya existe"
-        )
-
-    ingreso_categoria = CategoriaFinanza(nombre=data.nombre)
-    db.add(ingreso_categoria)
-    await db.flush()
-
-    return ingreso_categoria
+    with errores_http():
+        return await servicio.crear_categoria(db, data)
 
 
 @router.patch(
@@ -97,25 +71,8 @@ async def actualizar_categoria(
     db:AsyncSession = Depends(get_db),
     user = Depends(current_superuser)
 ):
-    categoria = (
-        await db.execute(
-            select(CategoriaFinanza)
-            .where(CategoriaFinanza.id_categoria == id_categoria)
-        )
-    ).scalar_one_or_none()
-
-    if not categoria:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Categoría no encontrada"
-        )
-    
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(categoria, field, value)
-
-    await db.refresh(categoria)
-
-    return categoria
+    with errores_http():
+        return await servicio.actualizar_categoria(db, id_categoria, data)
 
 
 @router.delete(
@@ -129,17 +86,5 @@ async def eliminar_categoria(
     db:AsyncSession = Depends(get_db),
     user = Depends(current_superuser)
 ):
-    categoria = (
-        await db.execute(
-            select(CategoriaFinanza)
-            .where(CategoriaFinanza.id_categoria == id_categoria)
-        )
-    ).scalar_one_or_none()
-
-    if categoria:
-        await db.delete(categoria)
-    
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Categoría no encontrada")
+    with errores_http():
+        await servicio.eliminar_categoria(db, id_categoria)
