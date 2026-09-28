@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, text
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -20,6 +21,8 @@ class ApiKey(Base):
     nombre: Mapped[str] = mapped_column(String(80), nullable=False)
     key_prefix: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
     key_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    # Permisos de la key (ver app/auth/scopes.py). Sin default: se declaran al crearla.
+    scopes: Mapped[list[str]] = mapped_column(ARRAY(String(40)), nullable=False)
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"), default=True)
     usage_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

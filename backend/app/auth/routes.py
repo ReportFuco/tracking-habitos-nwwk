@@ -112,6 +112,7 @@ async def crear_api_key(
             nombre=data.nombre,
             key_prefix=key_prefix,
             key_hash=key_hash,
+            scopes=data.scopes,
         )
         db.add(api_key)
         try:

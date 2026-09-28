@@ -2,7 +2,9 @@ from typing import Any
 from datetime import datetime
 
 from fastapi_users import schemas
-from pydantic import BaseModel, Field, EmailStr, ConfigDict, model_validator
+from pydantic import BaseModel, Field, EmailStr, ConfigDict, field_validator, model_validator
+
+from app.auth.scopes import FINANZAS_READ, Scope
 
 
 class UsuarioAuthRead(schemas.BaseUser[int]):
@@ -46,6 +48,20 @@ class UsuarioAuthCreate(schemas.CreateUpdateDictModel):
 
 class ApiKeyCreate(BaseModel):
     nombre: str = Field(..., min_length=1, max_length=80, examples=["LangChain agent"])
+    scopes: list[Scope] = Field(
+        default_factory=lambda: [FINANZAS_READ],
+        min_length=1,
+        examples=[["finanzas:read"]],
+        description=(
+            "Permisos de la key. '*' es acceso total; 'finanzas:read' solo lee finanzas y "
+            "'finanzas:write' ademas crea, edita y borra en finanzas. Por defecto, solo lectura."
+        ),
+    )
+
+    @field_validator("scopes")
+    @classmethod
+    def quitar_duplicados(cls, scopes: list[str]) -> list[str]:
+        return sorted(set(scopes))
 
     model_config = ConfigDict(extra="forbid")
 
@@ -54,6 +70,7 @@ class ApiKeyResponse(BaseModel):
     id_api_key: int
     nombre: str
     key_prefix: str
+    scopes: list[str]
     activo: bool
     usage_count: int
     last_used_at: datetime | None

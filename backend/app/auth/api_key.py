@@ -7,6 +7,7 @@ from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.scopes import scope_requerido, tiene_scope
 from app.db import get_db
 from app.models import ApiKey, User
 
@@ -37,11 +38,12 @@ def get_client_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
 
 
-async def get_user_by_api_key(
+async def autenticar_api_key(
     api_key_value: str,
     request: Request,
     db: AsyncSession,
-) -> User:
+) -> tuple[User, ApiKey]:
+    """Valida la key, registra su uso y devuelve el usuario junto a la key (y sus scopes)."""
     candidate_hash = hash_api_key(api_key_value)
     result = await db.execute(
         select(ApiKey)
@@ -82,6 +84,24 @@ async def get_user_by_api_key(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario de API key no disponible.",
+        )
+
+    return user, api_key
+
+
+async def get_user_by_api_key(
+    api_key_value: str,
+    request: Request,
+    db: AsyncSession,
+) -> User:
+    """Autenticacion REST: ademas de validar la key, exige el scope que pide la ruta."""
+    user, api_key = await autenticar_api_key(api_key_value, request, db)
+
+    requerido = scope_requerido(request.method, request.url.path)
+    if not tiene_scope(api_key.scopes, requerido):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"La API key no tiene el permiso {requerido}.",
         )
 
     return user
