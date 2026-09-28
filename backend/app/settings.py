@@ -23,6 +23,9 @@ TITLE_API = os.getenv("TITLE_API", "Tracking Hábitos")
 VERSION_API = os.getenv("VERSION", "0.1.0")
 PORT = int(os.getenv("PORT", 8000))
 URL_SITE = os.getenv("URL_SITE", "").strip() or f"http://localhost:{PORT}"
+# URL publica de esta API (sin barra final). Es el emisor OAuth y la base del recurso MCP:
+# los clientes la comparan exacta, asi que en produccion debe ser la URL https real.
+URL_API = (os.getenv("URL_API", "").strip() or f"http://localhost:{PORT}").rstrip("/")
 CORS_ORIGINS = _parse_csv_env(os.getenv("CORS_ORIGINS"))
 
 # api openai
@@ -97,6 +100,7 @@ __all__ = [
     "VERSION_API", 
     "PORT", 
     "URL_SITE", 
+    "URL_API",
     "CORS_ORIGINS",
     "API_KEY", 
     "DATABASE_URL",

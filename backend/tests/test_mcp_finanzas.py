@@ -55,7 +55,7 @@ async def test_endpoint_montado_en_la_app_exige_api_key():
         r = await c.post(MCP_PATH, json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
 
     assert r.status_code == 401
-    assert r.json()["detail"] == "API key requerida."
+    assert r.json()["detail"] == "Credenciales requeridas."
     assert r.headers["www-authenticate"].startswith("Bearer")
 
 

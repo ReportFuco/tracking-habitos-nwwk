@@ -95,8 +95,8 @@ async def sesion_usuario(
         raise ToolError("Solicitud sin usuario autenticado.")
     if not tiene_scope(request_scope.get(SCOPE_API_KEY_SCOPES), scope_requerido):
         raise ToolError(
-            f"La API key no tiene el permiso {scope_requerido}. "
-            "Crea una key con ese permiso en Ritmo > Perfil > Conexiones con IA."
+            f"Esta conexion no tiene el permiso {scope_requerido}. "
+            "El usuario puede crear una nueva con ese permiso en Ritmo > Perfil > Conexiones con IA."
         )
 
     async with AsyncSessionLocal() as db:

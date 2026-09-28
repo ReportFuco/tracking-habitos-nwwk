@@ -31,6 +31,7 @@ from .nutricion import Consumo, ConsumoDetalle, TablaNutricional, MetaNutriciona
 from .usuario_auth import User
 from .api_key import ApiKey
 from .web_session import WebSession
+from .oauth import OAuthAutorizacion, OAuthCliente, OAuthCodigo, OAuthToken
 from .notification import (
     NotificationPreference,
     PushDelivery,
@@ -41,6 +42,10 @@ from .notification import (
 __all__ = [
     "ApiKey",
     "WebSession",
+    "OAuthCliente",
+    "OAuthAutorizacion",
+    "OAuthCodigo",
+    "OAuthToken",
     "NotificationPreference",
     "PushDelivery",
     "PushSubscription",

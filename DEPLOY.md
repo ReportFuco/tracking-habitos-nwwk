@@ -64,8 +64,11 @@ Restart=always
 - Variables de entorno en `backend/.env` (no versionado, nunca commitear). Producción
   tiene declaradas: `CORS_ORIGINS`, `DATABASE_HOST`, `DATABASE_NAME`, `DATABASE_PASSWORD`,
   `DATABASE_PORT`, `DATABASE_URL`, `DATABASE_USER`, `PORT`, `SECRET_JWT`,
-  `SESSION_COOKIE_SECURE`, `TITLE_API`, `URL_SITE`, `VERSION`. Ver todas las claves
+  `SESSION_COOKIE_SECURE`, `TITLE_API`, `URL_API`, `URL_SITE`, `VERSION`. Ver todas las claves
   posibles y sus defaults en `backend/.env.example`.
+  - `URL_API=https://api.fucolabs.dev` (desde 2026-09-28): es el emisor OAuth del
+    servidor MCP. Sin ella cae en `http://localhost:8000` y Claude.ai/ChatGPT no pueden
+    conectarse (la metadata OAuth publicaria URLs locales). Ver `backend/docs/MCP.md`.
   - `SECRET_JWT` es obligatorio: `app/settings.py` lanza `RuntimeError` al importar si
     falta, la API no arranca.
   - `VAPID_*`, `EVOLUTION_*`, `APIKEY_OPENAI` no están configuradas en producción a

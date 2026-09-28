@@ -4,20 +4,24 @@ Transporte Streamable HTTP en modo stateless con respuestas JSON: cada request e
 independiente, asi que funciona con varios workers de gunicorn sin sesiones pegajosas
 ni streams SSE de larga duracion pasando por nginx.
 """
+from mcp.server.auth.routes import create_auth_routes, create_protected_resource_routes
+from mcp.server.auth.settings import ClientRegistrationOptions, RevocationOptions
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
+from pydantic import AnyHttpUrl, ConfigDict, TypeAdapter
+from starlette.routing import Route
 from starlette.types import ASGIApp
 
 from app import settings
-from app.mcp.auth import ApiKeyAuthMiddleware
+from app.mcp.auth import McpAuthMiddleware
+from app.mcp.oauth import SCOPES_OAUTH, RitmoOAuthProvider
+from app.mcp.urls import ISSUER_URL, MCP_PATH, MCP_URL
 from app.mcp.tools.finanzas import registrar_herramientas_finanzas
 
 
-MCP_PATH = "/mcp"
-
 INSTRUCCIONES = """\
 Servidor de finanzas personales de Ritmo: cuentas, categorías, movimientos y analítica
-del usuario dueño de la API key.
+del usuario que autorizó esta conexión.
 
 - Leer requiere el permiso finanzas:read; registrar, editar y eliminar movimientos
   requiere finanzas:write. Si una herramienta responde que falta un permiso, díselo al
@@ -58,8 +62,40 @@ def crear_app_mcp(servidor: MCPServer) -> ASGIApp:
         stateless_http=True,
         json_response=True,
         # La proteccion contra DNS rebinding apunta a servidores locales sin auth que
-        # confian en el navegador. Aqui toda request exige una API key explicita en un
-        # header (nunca cookies), que un sitio ajeno no puede adjuntar.
+        # confian en el navegador. Aqui toda request exige una credencial explicita en un
+        # header (API key o token OAuth, nunca cookies), que un sitio ajeno no puede adjuntar.
         transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
     )
-    return ApiKeyAuthMiddleware(app)
+    return McpAuthMiddleware(app)
+
+
+def _url(valor: str) -> AnyHttpUrl:
+    # Sin esto pydantic agrega "/" a una URL sin ruta, y el issuer publicado dejaria de ser
+    # identico al que los clientes comparan (RFC 8414 exige igualdad exacta).
+    return TypeAdapter(AnyHttpUrl, config=ConfigDict(url_preserve_empty_path=True)).validate_python(valor)
+
+
+def crear_rutas_oauth() -> list[Route]:
+    """Servidor de autorizacion OAuth del MCP (metadata, /authorize, /token, /register,
+    /revoke) y metadata del recurso protegido, en la raiz de la API."""
+    rutas = create_auth_routes(
+        RitmoOAuthProvider(),
+        issuer_url=_url(ISSUER_URL),
+        # Registro dinamico abierto: cualquier cliente puede registrarse, pero no obtiene
+        # nada sin que el usuario apruebe en la pantalla de consentimiento.
+        client_registration_options=ClientRegistrationOptions(enabled=True, default_scopes=SCOPES_OAUTH),
+        revocation_options=RevocationOptions(enabled=True),
+    )
+    metadata_recurso = create_protected_resource_routes(
+        resource_url=_url(MCP_URL),
+        authorization_servers=[_url(ISSUER_URL)],
+        scopes_supported=SCOPES_OAUTH,
+        resource_name="Ritmo · Finanzas",
+    )
+    # Ademas de la ruta con sufijo (RFC 9728), la raiz: algunos clientes solo prueban esa.
+    raiz = Route(
+        "/.well-known/oauth-protected-resource",
+        endpoint=metadata_recurso[0].endpoint,
+        methods=["GET", "OPTIONS"],
+    )
+    return [*rutas, *metadata_recurso, raiz]

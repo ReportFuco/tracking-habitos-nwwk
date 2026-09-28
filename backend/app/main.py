@@ -11,7 +11,9 @@ from app.docs import OPENAPI_TAGS, install_docs, use_custom_openapi
 from app.routes import router
 from app.core.logging import setup_logging
 from app.core.middleware import cookie_csrf_middleware, logging_middleware
-from app.mcp.server import MCP_PATH, crear_app_mcp, crear_servidor_mcp
+from app.auth.oauth_routes import router as oauth_router
+from app.mcp.server import crear_app_mcp, crear_rutas_oauth, crear_servidor_mcp
+from app.mcp.urls import MCP_PATH
 
 
 setup_logging()
@@ -66,9 +68,12 @@ app.middleware("http")(cookie_csrf_middleware)
 
 app.include_router(router)
 app.include_router(auth_router)
+app.include_router(oauth_router)
 # Route y no Mount: con Mount el endpoint quedaria en /mcp/ y POST /mcp responderia con
 # un redirect, que no todos los clientes MCP siguen.
 app.router.routes.append(Route(MCP_PATH, endpoint=crear_app_mcp(servidor_mcp)))
+# OAuth del MCP para clientes web (Claude.ai, ChatGPT): ver app/mcp/oauth.py.
+app.router.routes.extend(crear_rutas_oauth())
 use_custom_openapi(app)
 install_docs(app)
 
