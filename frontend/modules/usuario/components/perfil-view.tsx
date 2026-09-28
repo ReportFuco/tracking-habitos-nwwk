@@ -4,6 +4,7 @@ import { ContextNav } from "@/components/shell/context-nav"
 import { PageHeader } from "@/components/shell/page-header"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { usePerfil } from "@/modules/usuario/hooks/usePerfil"
+import { ConexionesIA } from "./conexiones-ia"
 import { PerfilEditForm } from "./perfil-edit-form"
 import { PerfilSummaryCard } from "./perfil-summary-card"
 
@@ -58,6 +59,7 @@ export function PerfilView() {
             submitting={submitting}
             onSubmit={actualizarPerfil}
           />
+          <ConexionesIA />
         </>
       ) : null}
     </div>
