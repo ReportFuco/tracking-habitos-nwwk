@@ -348,3 +348,59 @@ async def test_cliente_oauth_del_sdk_descubre_y_se_conecta_solo(usuario):
 
     assert len(herramientas) == 11
     assert not cuentas.is_error, cuentas.content
+
+
+def datos_registro(nombre: str) -> dict:
+    return {"redirect_uris": [REDIRECT], "client_name": nombre, "token_endpoint_auth_method": "none"}
+
+
+@requiere_db
+async def test_registro_limitado_por_ip_y_global(usuario, monkeypatch):
+    from app.mcp import oauth
+
+    monkeypatch.setattr(oauth, "LIMITE_REGISTROS_POR_IP", 2)
+    ip_a, ip_b = {"X-Real-IP": "203.0.113.7"}, {"X-Real-IP": "198.51.100.9"}
+    async with cliente() as c:
+        respuestas = [await c.post("/register", json=datos_registro(f"spam {i}"), headers=ip_a) for i in range(3)]
+        otra_ip = await c.post("/register", json=datos_registro("otra ip"), headers=ip_b)
+        monkeypatch.setattr(oauth, "LIMITE_REGISTROS_GLOBAL", 0)
+        global_lleno = await c.post("/register", json=datos_registro("global"), headers={"X-Real-IP": "192.0.2.1"})
+
+    usuario["clientes"].extend(r.json()["client_id"] for r in [*respuestas, otra_ip] if r.status_code == 201)
+    assert [r.status_code for r in respuestas] == [201, 201, 429]
+    assert respuestas[2].headers["retry-after"] == "3600"
+    assert respuestas[2].json()["error"] == "too_many_requests"
+    assert otra_ip.status_code == 201
+    assert global_lleno.status_code == 429
+
+
+@requiere_db
+async def test_registro_purga_clientes_viejos_sin_autorizar(usuario):
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import select
+
+    from app.models import OAuthAutorizacion
+
+    hace_ocho_dias = datetime.now(timezone.utc) - timedelta(days=8)
+    viejo, usado = f"viejo-{uuid.uuid4().hex[:8]}", f"usado-{uuid.uuid4().hex[:8]}"
+    async with AsyncSessionLocal() as db:
+        for client_id in (viejo, usado):
+            db.add(OAuthCliente(
+                client_id=client_id, metadata_cliente={"redirect_uris": [REDIRECT]}, created_at=hace_ocho_dias,
+            ))
+        await db.flush()
+        db.add(OAuthAutorizacion(client_id=usado, auth_user_id=usuario["auth"].id, scopes=["finanzas:read"]))
+        await db.commit()
+    usuario["clientes"].extend([viejo, usado])
+
+    async with cliente() as c:
+        nuevo = await c.post("/register", json=datos_registro("nuevo"))
+    usuario["clientes"].append(nuevo.json()["client_id"])
+
+    async with AsyncSessionLocal() as db:
+        quedan = set((await db.execute(
+            select(OAuthCliente.client_id).where(OAuthCliente.client_id.in_([viejo, usado]))
+        )).scalars())
+    # El viejo sin uso se borra; el que tiene una autorizacion se conserva.
+    assert quedan == {usado}

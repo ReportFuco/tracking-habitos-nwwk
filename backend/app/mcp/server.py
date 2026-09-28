@@ -14,7 +14,7 @@ from starlette.types import ASGIApp
 
 from app import settings
 from app.mcp.auth import McpAuthMiddleware
-from app.mcp.oauth import SCOPES_OAUTH, RitmoOAuthProvider
+from app.mcp.oauth import SCOPES_OAUTH, LimiteRegistroMiddleware, RitmoOAuthProvider
 from app.mcp.urls import ISSUER_URL, MCP_PATH, MCP_URL
 from app.mcp.tools.finanzas import registrar_herramientas_finanzas
 
@@ -81,11 +81,18 @@ def crear_rutas_oauth() -> list[Route]:
     rutas = create_auth_routes(
         RitmoOAuthProvider(),
         issuer_url=_url(ISSUER_URL),
-        # Registro dinamico abierto: cualquier cliente puede registrarse, pero no obtiene
-        # nada sin que el usuario apruebe en la pantalla de consentimiento.
+        # Registro dinamico abierto: cualquier cliente puede registrarse (con limite por
+        # hora, ver LimiteRegistroMiddleware), pero no obtiene nada sin que el usuario
+        # apruebe en la pantalla de consentimiento.
         client_registration_options=ClientRegistrationOptions(enabled=True, default_scopes=SCOPES_OAUTH),
         revocation_options=RevocationOptions(enabled=True),
     )
+    rutas = [
+        Route(ruta.path, endpoint=LimiteRegistroMiddleware(ruta.app), methods=list(ruta.methods or ()))
+        if ruta.path == "/register"
+        else ruta
+        for ruta in rutas
+    ]
     metadata_recurso = create_protected_resource_routes(
         resource_url=_url(MCP_URL),
         authorization_servers=[_url(ISSUER_URL)],

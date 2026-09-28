@@ -25,7 +25,11 @@ class OAuthCliente(Base):
     client_secret: Mapped[str | None] = mapped_column(String(128), nullable=True)
     # Metadata completa del registro dinamico (RFC 7591): redirect_uris, nombre, grants...
     metadata_cliente: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    # IP que hizo el registro: el limite de registros por hora se cuenta con ella.
+    registro_ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, index=True
+    )
 
 
 class OAuthAutorizacion(Base):

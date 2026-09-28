@@ -26,10 +26,12 @@ def upgrade() -> None:
         sa.Column("client_id", sa.String(length=64), nullable=False),
         sa.Column("client_secret", sa.String(length=128), nullable=True),
         sa.Column("metadata_cliente", postgresql.JSONB(), nullable=False),
+        sa.Column("registro_ip", sa.String(length=45), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("client_id"),
         schema=AUTH_SCHEMA,
     )
+    op.create_index("ix_auth_oauth_cliente_created_at", "oauth_cliente", ["created_at"], schema=AUTH_SCHEMA)
     op.create_table(
         "oauth_autorizacion",
         sa.Column("id_autorizacion", sa.Integer(), autoincrement=True, nullable=False),
@@ -91,4 +93,5 @@ def downgrade() -> None:
     op.drop_index("ix_auth_oauth_autorizacion_auth_user_id", table_name="oauth_autorizacion", schema=AUTH_SCHEMA)
     op.drop_index("ix_auth_oauth_autorizacion_client_id", table_name="oauth_autorizacion", schema=AUTH_SCHEMA)
     op.drop_table("oauth_autorizacion", schema=AUTH_SCHEMA)
+    op.drop_index("ix_auth_oauth_cliente_created_at", table_name="oauth_cliente", schema=AUTH_SCHEMA)
     op.drop_table("oauth_cliente", schema=AUTH_SCHEMA)

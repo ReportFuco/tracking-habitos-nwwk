@@ -48,7 +48,9 @@ almacenamiento y la emisión.
 2. `/.well-known/oauth-protected-resource/mcp` (RFC 9728) apunta al emisor, y
    `/.well-known/oauth-authorization-server` (RFC 8414) publica los endpoints.
 3. `POST /register`: registro dinámico abierto (RFC 7591). `redirect_uris` https, o http
-   solo hacia localhost.
+   solo hacia localhost. Limitado a 10 registros por hora por IP y 50 en total (429 con
+   `Retry-After`), contado en la BD para que valga entre workers; cada registro borra los
+   clientes de más de 7 días que nadie autorizó.
 4. `GET /authorize` firma la solicitud y redirige a `URL_SITE/app/conexiones/autorizar`,
    donde el usuario (con su sesión) elige solo lectura o lectura y escritura.
 5. Al aprobar (`/auth/oauth/solicitud/aprobar`) se crea una autorización y un código de un

@@ -11,6 +11,7 @@ cliente canjea en /token por un access token (1 h) y un refresh token (30 dias, 
 """
 import hashlib
 import secrets
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from ipaddress import ip_address
@@ -28,11 +29,15 @@ from mcp.server.auth.provider import (
     construct_redirect_uri,
 )
 from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, exists, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app import settings
+from app.auth.api_key import get_client_ip
 from app.auth.scopes import FINANZAS_READ, FINANZAS_WRITE
 from app.db.session import AsyncSessionLocal
 from app.mcp.urls import CONSENTIMIENTO_URL, MCP_URL
@@ -41,6 +46,13 @@ from app.services.errores import ErrorDominio, NoEncontrado
 
 
 SCOPES_OAUTH = [FINANZAS_READ, FINANZAS_WRITE]
+# Registro dinamico abierto, pero acotado. Se cuenta en la BD (no en memoria) para que el
+# limite valga entre los workers de gunicorn.
+LIMITE_REGISTROS_POR_IP = 10
+LIMITE_REGISTROS_GLOBAL = 50
+VENTANA_REGISTROS = timedelta(hours=1)
+# Un cliente registrado que nadie autorizo en este plazo se borra en el proximo registro.
+VIDA_CLIENTE_SIN_USO = timedelta(days=7)
 DURACION_CODIGO = timedelta(minutes=5)
 DURACION_ACCESS = timedelta(hours=1)
 DURACION_REFRESH = timedelta(days=30)
@@ -52,6 +64,10 @@ PREFIJO_ACCESS = "rtm_at_"
 PREFIJO_REFRESH = "rtm_rt_"
 
 _firmador = URLSafeTimedSerializer(settings.SECRET, salt="ritmo-mcp-oauth-solicitud")
+
+# IP del registro en curso. La fija LimiteRegistroMiddleware y la lee register_client, que
+# el SDK llama sin la request; ambos corren en la misma tarea, asi que el contextvar llega.
+_ip_registro: ContextVar[str | None] = ContextVar("ip_registro_oauth", default=None)
 
 
 class SolicitudInvalida(ErrorDominio):
@@ -98,6 +114,63 @@ def normalizar_scopes(pedidos: list[str] | None) -> list[str]:
     """Scopes de Ritmo dentro de lo pedido. Sin pedido (o sin ninguno conocido), ambos."""
     conocidos = [scope for scope in (pedidos or []) if scope in SCOPES_OAUTH]
     return conocidos or list(SCOPES_OAUTH)
+
+
+# ---------------------------------------------------------------------------
+# Limite del registro dinamico
+# ---------------------------------------------------------------------------
+
+
+async def purgar_clientes_sin_uso(db: AsyncSession) -> None:
+    await db.execute(
+        delete(OAuthCliente).where(
+            OAuthCliente.created_at < _ahora() - VIDA_CLIENTE_SIN_USO,
+            ~exists().where(OAuthAutorizacion.client_id == OAuthCliente.client_id),
+        )
+    )
+
+
+async def registro_excede_limite(db: AsyncSession, ip: str | None) -> bool:
+    desde = _ahora() - VENTANA_REGISTROS
+    recientes = select(func.count()).select_from(OAuthCliente).where(OAuthCliente.created_at >= desde)
+    if await db.scalar(recientes) >= LIMITE_REGISTROS_GLOBAL:
+        return True
+    return ip is not None and await db.scalar(
+        recientes.where(OAuthCliente.registro_ip == ip)
+    ) >= LIMITE_REGISTROS_POR_IP
+
+
+class LimiteRegistroMiddleware:
+    """Envuelve POST /register del SDK: 429 si la IP o el total superan el limite horario."""
+
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or scope["method"] != "POST":
+            await self.app(scope, receive, send)
+            return
+
+        ip = get_client_ip(Request(scope))
+        async with AsyncSessionLocal() as db:
+            excede = await registro_excede_limite(db, ip)
+        if excede:
+            respuesta = JSONResponse(
+                status_code=429,
+                content={
+                    "error": "too_many_requests",
+                    "error_description": "Demasiados registros de clientes. Intenta mas tarde.",
+                },
+                headers={"Retry-After": str(int(VENTANA_REGISTROS.total_seconds()))},
+            )
+            await respuesta(scope, receive, send)
+            return
+
+        token = _ip_registro.set(ip)
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            _ip_registro.reset(token)
 
 
 # ---------------------------------------------------------------------------
@@ -171,10 +244,12 @@ class RitmoOAuthProvider:
 
         metadata = client_info.model_dump(mode="json", exclude={"client_secret"}, exclude_none=True)
         async with AsyncSessionLocal() as db:
+            await purgar_clientes_sin_uso(db)
             db.add(OAuthCliente(
                 client_id=client_info.client_id,
                 client_secret=client_info.client_secret,
                 metadata_cliente=metadata,
+                registro_ip=_ip_registro.get(),
             ))
             await db.commit()
 
