@@ -15,12 +15,16 @@ interface AuthGuardProps {
 export function AuthGuard({ children, redirectTo = "/login" }: AuthGuardProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const initialPathnameRef = useRef(pathname)
+  // Con la query: pantallas como /app/conexiones/autorizar?solicitud=... la necesitan
+  // intacta al volver del login.
+  const initialPathRef = useRef(
+    typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : pathname,
+  )
   const profileQuery = useProfile()
 
   useEffect(() => {
-    const next = initialPathnameRef.current
-      ? `?next=${encodeURIComponent(initialPathnameRef.current)}`
+    const next = initialPathRef.current
+      ? `?next=${encodeURIComponent(initialPathRef.current)}`
       : ""
 
     if (profileQuery.isError) {

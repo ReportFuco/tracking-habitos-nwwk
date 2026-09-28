@@ -84,6 +84,15 @@ const nextConfig: NextConfig = {
   },
   headers: async () => [
     {
+      // Nadie debe poder embeber la app: la pantalla que autoriza conexiones OAuth
+      // (/app/conexiones/autorizar) seria vulnerable a clickjacking dentro de un iframe.
+      source: "/:path*",
+      headers: [
+        { key: "X-Frame-Options", value: "DENY" },
+        { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+      ],
+    },
+    {
       source: "/sw.js",
       headers: [
         {

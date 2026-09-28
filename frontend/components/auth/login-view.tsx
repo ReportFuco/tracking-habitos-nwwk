@@ -48,7 +48,9 @@ export function LoginView() {
         typeof window !== "undefined"
           ? new URLSearchParams(window.location.search).get("next")
           : null
-      router.push(nextPath || "/app/dashboard")
+      // Solo rutas internas: "//dominio" o "/\dominio" sacarian al usuario de la app.
+      const esRutaInterna = /^\/(?![/\\])/.test(nextPath ?? "")
+      router.push(esRutaInterna && nextPath ? nextPath : "/app/dashboard")
       return
     }
 
