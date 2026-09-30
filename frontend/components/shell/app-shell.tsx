@@ -68,6 +68,8 @@ export function AppShell({ children, variant = "user", sections }: AppShellProps
             variant={variant}
             showMenuButton={!usesMobileBottomNav}
           />
+          {/* Ocupa el lugar del header mientras es fixed (ver topbar.tsx). */}
+          <div aria-hidden className={cn("h-(--app-header-h) shrink-0", isAdmin ? "md:hidden" : "lg:hidden")} />
           <main
             className={cn(
               "flex-1 px-4 py-6 sm:px-8 sm:py-10",

@@ -27,6 +27,16 @@ if RUN_DB:
     from app.models.usuario_auth import User
 
 
+async def _producto_catalogo(datos, nombre, **campos) -> int:
+    """Producto aprobado, como lo dejaria un administrador (el usuario no puede crearlos)."""
+    async with AsyncSessionLocal() as db:
+        # id_usuario_creador solo para que la limpieza del fixture lo encuentre.
+        producto = Producto(nombre_producto=nombre, estado="aprobado", id_usuario_creador=datos["perfil"], **campos)
+        db.add(producto)
+        await db.commit()
+        return producto.id_producto
+
+
 @pytest.fixture
 async def usuario_con_key():
     sufijo = uuid.uuid4().hex[:8]
@@ -101,13 +111,12 @@ async def test_flujo_rest_categoria_propia_producto_y_detalle_del_gasto(usuario_
         assert gasto.json()["items"] == []
         id_mov = gasto.json()["id_transaccion"]
 
-        producto = await c.post(
-            "/api/catalogo/producto/", json={"nombre_producto": f"Arena gato {s}", "contenido_neto": 10, "unidad_contenido": "kg"},
-            headers=h,
+        # Solo un administrador agrega productos al catalogo.
+        propuesta = await c.post("/api/catalogo/producto/", json={"nombre_producto": f"Arena gato {s}"}, headers=h)
+        assert propuesta.status_code in (401, 403)
+        id_producto = await _producto_catalogo(
+            usuario_con_key, f"Arena gato {s}", contenido_neto=10, unidad_contenido="kg"
         )
-        assert producto.status_code == 201, producto.text
-        assert producto.json()["estado"] == "pendiente"
-        id_producto = producto.json()["id_producto"]
 
         busqueda = await c.get("/api/catalogo/producto/", params={"q": f"arena {s}"}, headers=h)
         assert [p["id_producto"] for p in busqueda.json()] == [id_producto]
@@ -159,8 +168,7 @@ async def test_crear_gasto_con_productos_en_una_sola_solicitud(usuario_con_key):
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c:
         categoria = await c.post("/api/finanzas/categoria/", json={"nombre": f"Super {s}"}, headers=h)
         id_categoria = categoria.json()["id_categoria"]
-        producto = await c.post("/api/catalogo/producto/", json={"nombre_producto": f"Pan {s}"}, headers=h)
-        id_producto = producto.json()["id_producto"]
+        id_producto = await _producto_catalogo(usuario_con_key, f"Pan {s}")
         base = {
             "id_categoria": id_categoria, "id_cuenta": usuario_con_key["cuenta"],
             "tipo_gasto": "variable", "monto": 5000,
@@ -193,3 +201,29 @@ async def test_crear_gasto_con_productos_en_una_sola_solicitud(usuario_con_key):
         assert invalido.status_code == 404, invalido.text
         despues = await c.get("/api/finanzas/movimientos/", headers=h)
         assert len(despues.json()["items"]) == len(antes.json()["items"])
+
+
+async def test_busqueda_tolera_tipeo_y_ordena_por_relevancia(usuario_con_key):
+    h = usuario_con_key["headers"]
+    s = usuario_con_key["sufijo"]
+    ultra = await _producto_catalogo(usuario_con_key, f"Monster Energy Ultra White {s}", formato="Lata")
+    clasico = await _producto_catalogo(usuario_con_key, f"Monster Energy Original {s}")
+    leche = await _producto_catalogo(usuario_con_key, f"Leche Chocolate {s}", sabor="Frutilla")
+
+    async def buscar(q):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c:
+            respuesta = await c.get("/api/catalogo/producto/", params={"q": f"{q} {s}"}, headers=h)
+        assert respuesta.status_code == 200, respuesta.text
+        return [p["id_producto"] for p in respuesta.json()]
+
+    # Palabras en cualquier orden y parte de una palabra (como LIKE '%...%').
+    assert await buscar("white ultra") == [ultra]
+    assert set(await buscar("ergy")) == {ultra, clasico}
+    # Un error de tipeo sigue encontrando el producto, y lo exacto va primero.
+    assert set(await buscar("mosnter")) == {ultra, clasico}
+    assert (await buscar("monster ultra"))[0] == ultra
+    # Formato y sabor tambien cuentan.
+    assert await buscar("lata") == [ultra]
+    assert await buscar("frutilla") == [leche]
+    # Sin tildes ni mayusculas.
+    assert await buscar("CHOCOLATÉ") == [leche]

@@ -48,7 +48,7 @@ export function MobileBottomNav({ items, preferredOrder, className }: MobileBott
     <nav
       aria-label="Navegacion principal"
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/96 px-2 pb-[calc(env(safe-area-inset-bottom)+0.55rem)] pt-2 sm:bg-background/88 sm:backdrop-blur-xl lg:hidden",
+        "fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background px-2 pb-[calc(env(safe-area-inset-bottom)+0.55rem)] pt-2 lg:hidden",
         className,
       )}
     >

@@ -61,7 +61,17 @@ export function Topbar({
         </div>
       ) : null}
 
-      <header className="sticky top-0 z-30 flex h-(--app-header-h) items-center pt-[env(safe-area-inset-top)] gap-3 border-b border-transparent bg-[color:var(--background)] px-4 sm:bg-[color:var(--background)]/85 sm:backdrop-blur-md sm:px-8">
+      {/*
+        Sin sidebar el header es fixed, no sticky: iOS 26 pinta la barra de estado con el
+        fondo opaco de un elemento fixed pegado arriba; si no lo encuentra, difumina lo que
+        queda debajo (el logo y el escudo). app-shell deja un espaciador del mismo alto.
+      */}
+      <header
+        className={cn(
+          "fixed inset-x-0 top-0 z-30 flex h-(--app-header-h) items-center gap-3 border-b border-transparent bg-[color:var(--background)] px-4 pt-[env(safe-area-inset-top)] sm:px-8",
+          variant === "admin" ? "md:sticky" : "lg:sticky",
+        )}
+      >
         {showMenuButton ? (
           <Button
             type="button"

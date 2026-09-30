@@ -90,15 +90,12 @@ async def obtener_producto(id_producto: int, db: AsyncSession = Depends(get_db),
     response_model=ProductoResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Crear producto",
-    description=(
-        "Un superusuario lo crea aprobado. Un usuario lo crea pendiente: lo puede usar de "
-        "inmediato en sus gastos, pero el resto no lo ve hasta que se apruebe."
-    ),
+    description="Solo superusuarios. El producto nace aprobado y lo ven todos los usuarios.",
 )
-async def crear_producto(data: ProductoCreate, db: AsyncSession = Depends(get_db), user=Depends(current_user_or_api_key)):
+async def crear_producto(data: ProductoCreate, db: AsyncSession = Depends(get_db), user=Depends(current_superuser)):
     usuario = await _perfil_opcional(user, db)
     with errores_http():
-        return await servicio.crear_producto(db, usuario, data, es_admin=es_superusuario(user))
+        return await servicio.crear_producto(db, usuario, data, es_admin=True)
 
 
 @router.patch("/{id_producto}", response_model=ProductoResponse, status_code=status.HTTP_200_OK)

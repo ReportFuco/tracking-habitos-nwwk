@@ -76,7 +76,7 @@ async def test_bearer_que_no_es_bearer_no_cuenta_como_api_key():
 
 
 if RUN_DB:
-    from sqlalchemy import delete, select
+    from sqlalchemy import delete, select, update
 
     from app.auth.api_key import generate_api_key
     from app.db.session import AsyncSessionLocal, engine
@@ -328,9 +328,13 @@ async def test_categoria_propia_y_productos_en_un_gasto(escenario):
             "tipo_movimiento": "gasto", "monto": 4500,
             "id_categoria": categoria.structured_content["id_categoria"], "id_cuenta": escenario["rut"],
         })
-        producto = await cliente.call_tool("crear_producto", {
-            "nombre": f"Alimento gato {sufijo}", "contenido_neto": 1.5, "unidad_contenido": "kg",
-        })
+        datos_producto = {"nombre": f"Alimento gato {sufijo}", "contenido_neto": 1.5, "unidad_contenido": "kg"}
+        # Solo un administrador agrega productos al catalogo.
+        sin_permiso = await cliente.call_tool("crear_producto", datos_producto)
+        async with AsyncSessionLocal() as db:
+            await db.execute(update(User).where(User.id == escenario["auth_ids"][0]).values(is_superuser=True))
+            await db.commit()
+        producto = await cliente.call_tool("crear_producto", datos_producto)
         encontrados = await cliente.call_tool("buscar_productos", {"texto": f"gato {sufijo}"})
         id_mov = gasto.structured_content["id_movimiento"]
         con_producto = await cliente.call_tool("agregar_producto_a_gasto", {
@@ -348,7 +352,8 @@ async def test_categoria_propia_y_productos_en_un_gasto(escenario):
         assert repetida.is_error
         nombres = {c["nombre"] for c in listadas.structured_content["items"]}
         assert f"Mascotas {sufijo}" in nombres
-        assert producto.structured_content["estado"] == "pendiente"
+        assert sin_permiso.is_error
+        assert producto.structured_content["estado"] == "aprobado"
         assert producto.structured_content["contenido"] == "1.5 kg"
         assert [p["id_producto"] for p in encontrados.structured_content["items"]] == [
             producto.structured_content["id_producto"]

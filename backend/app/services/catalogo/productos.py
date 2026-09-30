@@ -1,11 +1,11 @@
 """Catálogo de productos que crece con el uso.
 
-Cualquier usuario puede crear un producto al detallar un gasto. Nace ``pendiente`` y solo
-lo ve quien lo creó hasta que un superusuario lo aprueba (pasa al catálogo compartido),
-lo rechaza (sigue siendo privado de su creador) o lo fusiona con uno ya aprobado (sus
-usos pasan a ese y el duplicado desaparece). Lo que crea un superusuario nace aprobado.
+Solo un superusuario crea productos (la ruta lo exige), y nacen aprobados. Los usuarios
+eligen del catálogo al detallar un gasto. El flujo de revisión sigue para los productos
+``pendiente`` que propusieron usuarios antes de ese cambio: solo los ve quien los creó
+hasta que un superusuario los aprueba, los rechaza o los fusiona con uno aprobado.
 """
-from sqlalchemy import delete, desc, func, or_, select, update
+from sqlalchemy import case, delete, desc, func, literal, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -62,7 +62,8 @@ async def buscar_productos(
     limit: int = 100,
     incluir_inactivos: bool = False,
 ) -> list[Producto]:
-    """Productos visibles. ``q`` busca en nombre, marca y código de barra, sin tildes."""
+    """Productos visibles. ``q`` busca en nombre, marca, formato y sabor (sin tildes y
+    tolerando errores de tipeo) y en el código de barra exacto; ordena por relevancia."""
     consulta = (
         select(Producto)
         .outerjoin(Marca, Producto.id_marca == Marca.id_marca)
@@ -70,18 +71,46 @@ async def buscar_productos(
     )
     if not incluir_inactivos:
         consulta = consulta.where(Producto.activo.is_(True))
-    if q and q.strip():
-        for palabra in normalize_search_text(q).split():
-            patron = f"%{palabra}%"
-            consulta = consulta.where(
-                or_(
-                    normalize_sql_text(Producto.nombre_producto).like(patron),
-                    normalize_sql_text(func.coalesce(Marca.nombre_marca, "")).like(patron),
-                    Producto.codigo_barra == palabra,
-                )
-            )
-    consulta = consulta.order_by(func.lower(Producto.nombre_producto), Producto.id_producto)
+
+    palabras = normalize_search_text(q).split() if q else []
+    if not palabras:
+        consulta = consulta.order_by(func.lower(Producto.nombre_producto), Producto.id_producto)
+        return (await db.execute(consulta.limit(limit).options(*_opciones()))).scalars().all()
+
+    # Cada palabra tiene que aparecer (como substring) o parecerse lo suficiente a alguna
+    # palabra del producto (pg_trgm), para tolerar errores de tipeo: "mosnter" -> Monster.
+    # Se ordena por relevancia: coincidencias exactas primero, luego las parecidas.
+    texto = normalize_sql_text(
+        func.concat_ws(" ", Producto.nombre_producto, Marca.nombre_marca, Producto.formato, Producto.sabor)
+    )
+    puntaje = literal(0.0)
+    for palabra in palabras:
+        contiene = texto.like(f"%{_escapar_like(palabra)}%", escape="\\")
+        if len(palabra) < MIN_LETRAS_PARECIDO:
+            consulta = consulta.where(or_(contiene, Producto.codigo_barra == palabra))
+            puntaje = puntaje + case((contiene, 1.0), else_=0.0)
+            continue
+        parecido = func.word_similarity(palabra, texto)
+        consulta = consulta.where(or_(contiene, parecido >= UMBRAL_PARECIDO, Producto.codigo_barra == palabra))
+        puntaje = puntaje + case((contiene, 1.0), else_=parecido)
+    frase = " ".join(palabras)
+    puntaje = puntaje + case(
+        (normalize_sql_text(Producto.nombre_producto).like(f"{_escapar_like(frase)}%", escape="\\"), 0.5),
+        else_=0.0,
+    )
+    consulta = consulta.order_by(desc(puntaje), func.lower(Producto.nombre_producto), Producto.id_producto)
     return (await db.execute(consulta.limit(limit).options(*_opciones()))).scalars().all()
+
+
+# word_similarity va de 0 a 1 y compara trigramas: dos letras invertidas en una palabra
+# de 7 ("mosnter" / "monster") dejan 0.33. 0.3 es el umbral por defecto de pg_trgm. En
+# palabras de menos de 4 letras casi todo "se parece", asi que ahi solo vale el substring.
+UMBRAL_PARECIDO = 0.3
+MIN_LETRAS_PARECIDO = 4
+
+
+def _escapar_like(texto: str) -> str:
+    return texto.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 async def productos_frecuentes(db: AsyncSession, usuario: Usuario, limit: int = 12) -> list[Producto]:

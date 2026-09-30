@@ -901,11 +901,11 @@ Payload create:
 
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
-| `GET` | `/api/catalogo/producto/` | usuario | Catálogo aprobado + propuestas propias; acepta `q` (nombre, marca o código) y `limit` |
+| `GET` | `/api/catalogo/producto/` | usuario | Catálogo aprobado + propuestas propias; acepta `q` y `limit`. `q` busca cada palabra en nombre, marca, formato y sabor (sin tildes, como `LIKE %palabra%` y tolerando errores de tipeo con `pg_trgm` desde 4 letras) o el código de barra exacto, y ordena por relevancia |
 | `GET` | `/api/catalogo/producto/frecuentes` | usuario | Los productos que más compra el usuario |
 | `GET` | `/api/catalogo/producto/revision` | superuser | Cola de propuestas (`estado=pendiente` o `rechazado`) con `username_creador` |
 | `GET` | `/api/catalogo/producto/{id_producto}` | usuario | Obtiene producto visible |
-| `POST` | `/api/catalogo/producto/` | usuario | Crea producto: aprobado si lo crea un superuser, `pendiente` si lo crea un usuario |
+| `POST` | `/api/catalogo/producto/` | superuser | Crea producto, aprobado. Los usuarios eligen del catálogo; las propuestas `pendiente` que quedan son de antes de este cambio |
 | `PATCH` | `/api/catalogo/producto/{id_producto}` | superuser / creador (si no está aprobado) | Edita producto; si el creador corrige uno rechazado, vuelve a `pendiente` |
 | `POST` | `/api/catalogo/producto/{id_producto}/aprobar` | superuser | Lo suma al catálogo compartido (409 si duplica nombre o código de uno aprobado) |
 | `POST` | `/api/catalogo/producto/{id_producto}/rechazar` | superuser | Queda privado de su creador |

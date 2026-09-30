@@ -37,9 +37,9 @@ comprados y analítica del usuario que autorizó esta conexión.
   listar_categorias antes de filtrar o registrar. Hay categorías por defecto y propias
   del usuario; si ninguna calza, ofrece crear una con crear_categoria.
 - Para detallar qué se compró en un gasto: busca cada producto con buscar_productos y
-  agrégalo con agregar_producto_a_gasto. Si no existe, créalo con crear_producto (queda
-  pendiente de revisión, pero el usuario ya puede usarlo). Busca antes por nombre y por
-  marca para no duplicar productos.
+  agrégalo con agregar_producto_a_gasto. Si no existe, solo un administrador puede
+  crearlo con crear_producto; a un usuario normal dile que lo pida a un administrador.
+  Busca antes por nombre y por marca para no duplicar productos.
 - Al registrar, genera un client_request_id (UUID) y reutilízalo si reintentas la misma
   llamada. Antes de eliminar un movimiento, confirma con el usuario.
 """

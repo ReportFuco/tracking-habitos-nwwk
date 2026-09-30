@@ -168,7 +168,7 @@ export function FormSubmitBar({
   return (
     <div
       className={cn(
-        "sticky bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] z-10 -mx-4 mt-5 border-t border-(--border)/25 px-4 py-3 backdrop-blur-md sm:-mx-8 sm:px-8 sm:py-4 lg:static lg:bottom-auto lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none",
+        "sticky bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] z-10 -mx-4 mt-5 border-t border-(--border)/25 bg-background px-4 py-3 sm:-mx-8 sm:px-8 sm:py-4 lg:static lg:bottom-auto lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0",
         className,
       )}
     >

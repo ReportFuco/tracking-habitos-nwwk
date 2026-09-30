@@ -15,6 +15,7 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 from pydantic import Field, ValidationError
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.scopes import FINANZAS_READ, FINANZAS_WRITE, tiene_scope
@@ -32,6 +33,7 @@ from app.mcp.schemas import (
     ProductosMCP,
 )
 from app.models import Usuario
+from app.models.usuario_auth import User
 from app.models.finanzas import EnumTipoMovimiento
 from app.schemas.finanzas import (
     AnaliticaDiariaResponse,
@@ -188,8 +190,8 @@ async def crear_producto(
     formato: Annotated[str | None, Field(max_length=100, description="Ej. 'Caja', 'Botella'.")] = None,
     codigo_barra: Annotated[str | None, Field(max_length=64)] = None,
 ) -> ProductoMCP:
-    """Propone un producto nuevo cuando buscar_productos no lo encuentra. Queda pendiente
-    de revisión: el usuario lo puede usar de inmediato, el resto solo cuando se apruebe."""
+    """Agrega un producto al catálogo cuando buscar_productos no lo encuentra. Solo para
+    administradores; a un usuario normal, sugiérele pedirle a un administrador que lo agregue."""
     data = _validar(
         ProductoCreate,
         nombre_producto=nombre,
@@ -199,7 +201,10 @@ async def crear_producto(
         codigo_barra=codigo_barra,
     )
     async with sesion_usuario(ctx, FINANZAS_WRITE) as (db, usuario):
-        producto = await productos.crear_producto(db, usuario, data)
+        es_admin = await db.scalar(select(User.is_superuser).where(User.id == usuario.auth_user_id))
+        if not es_admin:
+            raise ToolError("Solo un administrador puede agregar productos al catálogo.")
+        producto = await productos.crear_producto(db, usuario, data, es_admin=True)
         return ProductoMCP.desde_modelo(producto)
 
 
@@ -438,7 +443,7 @@ HERRAMIENTAS = (
     (editar_movimiento, "Editar movimiento", MODIFICA),
     (eliminar_movimiento, "Eliminar movimiento", MODIFICA),
     (crear_categoria, "Crear categoría", CREA),
-    (crear_producto, "Proponer producto", CREA),
+    (crear_producto, "Agregar producto al catálogo", CREA),
     (agregar_producto_a_gasto, "Agregar producto a un gasto", CREA),
     (quitar_producto_de_gasto, "Quitar producto de un gasto", MODIFICA),
 )

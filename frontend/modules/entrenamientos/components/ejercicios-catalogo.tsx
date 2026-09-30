@@ -222,7 +222,7 @@ export function EjerciciosCatalogo() {
     <section className="space-y-4">
       {/* La barra queda fija al hacer scroll: con mil ejercicios, volver arriba para
           cambiar un filtro es el gesto que mas se repite. */}
-      <div className="sticky top-(--app-header-h) z-20 -mx-4 space-y-3 bg-background/85 px-4 pt-1 pb-3 backdrop-blur-md sm:-mx-6 sm:px-6">
+      <div className="sticky top-(--app-header-h) z-20 -mx-4 space-y-3 bg-background px-4 pt-1 pb-3 sm:-mx-6 sm:px-6">
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search
