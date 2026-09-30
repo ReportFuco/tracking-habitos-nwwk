@@ -41,7 +41,6 @@ class Usuario(Base):
     lecturas: Mapped[list["Lectura"]] = relationship(back_populates="usuario")
     cuentas: Mapped[list["CuentaUsuario"]] = relationship(back_populates="usuario")
     entrenamientos: Mapped[list["Entrenamiento"]] = relationship(back_populates="usuario")
-    compras: Mapped[list["Compra"]] = relationship(back_populates="usuario")
     consumos: Mapped[list["Consumo"]] = relationship(back_populates="usuario")
     metas_nutricionales: Mapped[list["MetaNutricional"]] = relationship(back_populates="usuario")
     pesos: Mapped[list["PesoUsuario"]] = relationship(back_populates="usuario")

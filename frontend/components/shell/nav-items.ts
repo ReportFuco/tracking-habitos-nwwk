@@ -2,15 +2,12 @@ import {
   LayoutDashboard,
   Wallet,
   Dumbbell,
-  ShoppingBag,
   Apple,
   UserCircle,
   Users,
   Building2,
   Tag,
   Package,
-  Store,
-  MapPin,
   ClipboardList,
   Gauge,
   type LucideIcon,
@@ -55,14 +52,6 @@ export const userNavSections: NavSection[] = [
         moduleOn: "var(--module-entrenamientos-on)",
       },
       {
-        label: "Compras",
-        href: "/app/compras",
-        icon: ShoppingBag,
-        moduleColor: "var(--module-compras)",
-        moduleFill: "var(--module-compras-fill)",
-        moduleOn: "var(--module-compras-on)",
-      },
-      {
         label: "Nutricion",
         href: "/app/nutricion",
         icon: Apple,
@@ -105,13 +94,6 @@ export const adminNavSections: NavSection[] = [
     ],
   },
   {
-    title: "Compras maestras",
-    items: [
-      { label: "Cadenas", href: "/administrador/cadenas", icon: Store },
-      { label: "Locales", href: "/administrador/locales", icon: MapPin },
-    ],
-  },
-  {
     title: "Entrenamientos maestros",
     items: [
       { label: "Gimnasios", href: "/administrador/entrenamientos/gimnasios", icon: Dumbbell },
@@ -129,11 +111,5 @@ export const adminBottomNavItems: NavItem[] = [
     href: "/administrador/marcas",
     icon: Package,
     activePrefix: ["/administrador/marcas", "/administrador/productos", "/administrador/tablas-nutricionales"],
-  },
-  {
-    label: "Compras",
-    href: "/administrador/cadenas",
-    icon: Store,
-    activePrefix: ["/administrador/cadenas", "/administrador/locales"],
   },
 ]

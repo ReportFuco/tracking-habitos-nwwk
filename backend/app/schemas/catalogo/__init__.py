@@ -4,7 +4,7 @@ from .categoria_producto import (
     CategoriaProductoResponse,
 )
 from .marca import MarcaCreate, MarcaPatch, MarcaResponse
-from .producto import ProductoCreate, ProductoPatch, ProductoResponse
+from .producto import ProductoCreate, ProductoFusionar, ProductoPatch, ProductoResponse
 from .subcategoria_producto import (
     SubcategoriaProductoCreate,
     SubcategoriaProductoPatch,
@@ -19,6 +19,7 @@ __all__ = [
     "MarcaPatch",
     "MarcaResponse",
     "ProductoCreate",
+    "ProductoFusionar",
     "ProductoPatch",
     "ProductoResponse",
     "SubcategoriaProductoCreate",

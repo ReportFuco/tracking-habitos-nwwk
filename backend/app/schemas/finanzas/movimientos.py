@@ -10,8 +10,101 @@ from app.models.finanzas import (
     EnumTipoGasto
 )
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
-from app.schemas.compras import CompraVinculadaResumen
+
+
+def _formatear_cantidad(valor: Decimal | None) -> str | None:
+    if valor is None:
+        return None
+    return f"{valor.normalize():f}"
+
+
+class MovimientoItemResponse(BaseModel):
+    id_item: int
+    id_producto: int
+    nombre_producto: str
+    nombre_marca: Optional[str] = None
+    detalle_producto: Optional[str] = Field(
+        None,
+        examples=["1 L · Botella"],
+        description="Contenido y formato del producto, para distinguir variantes.",
+    )
+    estado_producto: str = Field(
+        ...,
+        description="'aprobado', o 'pendiente'/'rechazado' si es una propuesta del usuario.",
+    )
+    cantidad: float = Field(..., examples=[2])
+    precio_total: Optional[int] = Field(None, examples=[2380])
+    precio_unitario: Optional[float] = Field(None, examples=[1190])
+
+    @model_validator(mode="before")
+    @classmethod
+    def aplanar_producto(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            return data
+        producto = data.producto
+        contenido = None
+        if producto.contenido_neto is not None:
+            contenido = " ".join(
+                parte for parte in (_formatear_cantidad(producto.contenido_neto), producto.unidad_contenido) if parte
+            )
+        detalle = " · ".join(parte for parte in (contenido, producto.formato, producto.sabor) if parte) or None
+        cantidad = float(data.cantidad)
+        return {
+            "id_item": data.id_item,
+            "id_producto": data.id_producto,
+            "nombre_producto": producto.nombre_producto,
+            "nombre_marca": producto.nombre_marca,
+            "detalle_producto": detalle,
+            "estado_producto": producto.estado,
+            "cantidad": cantidad,
+            "precio_total": data.precio_total,
+            "precio_unitario": (
+                round(data.precio_total / cantidad, 2) if data.precio_total is not None and cantidad else None
+            ),
+        }
+
+    model_config = ConfigDict(title="Producto de un gasto")
+
+
+class MovimientoItemCreate(BaseModel):
+    id_producto: int = Field(..., ge=1, description="Ver GET /api/catalogo/producto/.")
+    cantidad: Decimal = Field(
+        Decimal("1"),
+        gt=0,
+        le=100000,
+        decimal_places=3,
+        examples=[2],
+        description="Unidades, o kilos/litros si se vende a granel (ej. 0.75).",
+    )
+    precio_total: Optional[int] = Field(
+        None,
+        ge=0,
+        examples=[2380],
+        description="Lo que se pagó por esta línea (cantidad × precio unitario), en CLP.",
+    )
+
+    model_config = ConfigDict(title="Agregar producto a un gasto")
+
+
+class MovimientoItemPatch(BaseModel):
+    id_producto: Optional[int] = Field(None, ge=1)
+    cantidad: Optional[Decimal] = Field(None, gt=0, le=100000, decimal_places=3)
+    # null borra el precio (la columna es nullable).
+    precio_total: Optional[int] = Field(None, ge=0)
+
+    @model_validator(mode="after")
+    def validar_no_nulos(self):
+        nulos = sorted(
+            campo for campo in ("id_producto", "cantidad")
+            if campo in self.model_fields_set and getattr(self, campo) is None
+        )
+        if nulos:
+            raise ValueError(f"Estos campos no pueden ser nulos: {', '.join(nulos)}.")
+        return self
+
+    model_config = ConfigDict(title="Editar producto de un gasto")
 
 
 class MovimientoResponse(BaseModel):
@@ -20,11 +113,18 @@ class MovimientoResponse(BaseModel):
     client_request_id: Optional[UUID] = None
     tipo_movimiento: EnumTipoMovimiento = Field(..., examples=[EnumTipoMovimiento.GASTO.value])
     tipo_gasto: EnumTipoGasto = Field(..., examples=[EnumTipoGasto.FIJO.value])
+    id_categoria: int = Field(..., examples=[1])
     categoria: Optional[str] = Field(None, examples=["comida"])
     nombre_cuenta: Optional[str] = Field(None, examples=["Nombre cuenta"])
-    compras_vinculadas: list[CompraVinculadaResumen] = Field(default_factory=list)
-    total_compras_vinculadas: Optional[float] = Field(None, examples=[9900])
-    diferencia_total_compras: Optional[float] = Field(None, examples=[100])
+    items: list[MovimientoItemResponse] = Field(
+        default_factory=list,
+        description="Productos detallados del gasto. Puede cubrir solo parte del monto.",
+    )
+    total_detallado: int = Field(
+        0,
+        examples=[9900],
+        description="Suma de los precios de los productos detallados.",
+    )
 
     monto:int = Field(..., examples=[5000])
     descripcion: Optional[str] = Field(
@@ -40,8 +140,9 @@ class MovimientoResponse(BaseModel):
     @model_validator(mode='before')
     @classmethod
     def validate_info(cls, data: Any)->Any:
-        if not isinstance(data, dict):
-            data = data.__dict__
+        # Copia: escribir sobre __dict__ del objeto ORM dejaba `categoria` como texto en
+        # la instancia de la sesión.
+        data = dict(data) if isinstance(data, dict) else dict(data.__dict__)
 
         categoria = data.get("categoria")
         cuenta = data.get("cuenta")
@@ -51,19 +152,11 @@ class MovimientoResponse(BaseModel):
         if cuenta:
             data["nombre_cuenta"] = cuenta.nombre_cuenta
 
-        vinculos = data.get("vinculos_compra", []) or []
-        compras = [vinculo.compra for vinculo in vinculos if getattr(vinculo, "compra", None)]
-        data["compras_vinculadas"] = compras
-
-        total_compras = 0
-        for compra in compras:
-            detalles = getattr(compra, "detalles", []) or []
-            total_compras += sum((detalle.precio_total for detalle in detalles), 0)
-        if compras:
-            data["total_compras_vinculadas"] = float(total_compras)
-            monto = data.get("monto")
-            if monto is not None:
-                data["diferencia_total_compras"] = float(monto - total_compras)
+        items = data.get("items") or []
+        data["total_detallado"] = sum(
+            (item.precio_total or 0) if not isinstance(item, dict) else (item.get("precio_total") or 0)
+            for item in items
+        )
 
         return data
     
@@ -119,6 +212,20 @@ class MovimientoCreate(BaseModel):
         examples=["2025-12-15T10:30:00"],
         description="Fecha del movimiento. Si no se envía, se usa la fecha actual."
     )
+    items: list[MovimientoItemCreate] = Field(
+        default_factory=list,
+        max_length=100,
+        description=(
+            "Productos comprados en el gasto, creados junto con él. Opcional: también se "
+            "pueden agregar después con POST /{id_movimiento}/items."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_items(self):
+        if self.items and self.tipo_movimiento != EnumTipoMovimiento.GASTO:
+            raise ValueError("Solo los gastos pueden detallar productos.")
+        return self
 
     @model_validator(mode="after")
     def validate_purchase_location(self):

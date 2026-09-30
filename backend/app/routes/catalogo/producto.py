@@ -1,141 +1,149 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Annotated, Literal
+
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.auth.fastapi_users import current_superuser, current_user_or_api_key
 from app.db import get_db
-from app.models import CategoriaProducto, Marca, Producto, SubcategoriaProducto
-from app.schemas.catalogo import ProductoCreate, ProductoPatch, ProductoResponse
+from app.models import Usuario
+from app.routes.finanzas._http import errores_http, obtener_usuario_actual
+from app.routes.utils import es_superusuario
+from app.schemas.catalogo import ProductoCreate, ProductoFusionar, ProductoPatch, ProductoResponse
+from app.services.catalogo import productos as servicio
 
 router = APIRouter(prefix="/producto", tags=["Catalogo · Producto"])
 
-async def _obtener_producto(db: AsyncSession, id_producto: int) -> Producto:
-    producto = await db.scalar(
-        select(Producto)
-        .where(Producto.id_producto == id_producto)
-        .options(
-            selectinload(Producto.categoria_rel),
-            selectinload(Producto.subcategoria_rel),
-            selectinload(Producto.marca),
-        )
+
+async def _perfil_opcional(user, db: AsyncSession) -> Usuario | None:
+    """El superusuario puede no tener perfil; un usuario normal siempre lo necesita."""
+    if es_superusuario(user):
+        return await db.scalar(select(Usuario).where(Usuario.auth_user_id == user.id))
+    return await obtener_usuario_actual(user, db)
+
+
+@router.get(
+    "/",
+    response_model=list[ProductoResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Buscar productos",
+    description=(
+        "Catálogo aprobado más las propuestas del propio usuario (pendientes o rechazadas). "
+        "q busca en nombre, marca y código de barra."
+    ),
+)
+async def obtener_productos(
+    db: AsyncSession = Depends(get_db),
+    user=Depends(current_user_or_api_key),
+    q: Annotated[str | None, Query(max_length=100)] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+    incluir_inactivos: Annotated[bool, Query(description="Solo superusuarios.")] = False,
+):
+    usuario = await _perfil_opcional(user, db)
+    return await servicio.buscar_productos(
+        db,
+        usuario,
+        q=q,
+        limit=limit,
+        incluir_inactivos=incluir_inactivos and es_superusuario(user),
     )
-    if not producto:
-        raise HTTPException(status_code=404, detail="Producto no encontrado")
-    return producto
 
 
-async def _validar_categoria_subcategoria(
-    db: AsyncSession,
-    id_categoria: int | None,
-    id_subcategoria: int | None,
-) -> tuple[int | None, int | None]:
-    if id_categoria is not None:
-        categoria = await db.scalar(
-            select(CategoriaProducto).where(CategoriaProducto.id_categoria == id_categoria)
-        )
-        if not categoria:
-            raise HTTPException(status_code=404, detail="Categoria no encontrada")
-
-    if id_subcategoria is not None:
-        subcategoria = await db.scalar(
-            select(SubcategoriaProducto).where(SubcategoriaProducto.id_subcategoria == id_subcategoria)
-        )
-        if not subcategoria:
-            raise HTTPException(status_code=404, detail="Subcategoria no encontrada")
-        if id_categoria is None:
-            id_categoria = subcategoria.id_categoria
-        elif subcategoria.id_categoria != id_categoria:
-            raise HTTPException(
-                status_code=400,
-                detail="La subcategoria no pertenece a la categoria enviada",
-            )
-
-    return id_categoria, id_subcategoria
+@router.get(
+    "/frecuentes",
+    response_model=list[ProductoResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Productos que más compra el usuario",
+)
+async def obtener_productos_frecuentes(
+    db: AsyncSession = Depends(get_db),
+    user=Depends(current_user_or_api_key),
+    limit: Annotated[int, Query(ge=1, le=50)] = 12,
+):
+    usuario = await obtener_usuario_actual(user, db)
+    return await servicio.productos_frecuentes(db, usuario, limit)
 
 
-@router.get("/", response_model=list[ProductoResponse], status_code=status.HTTP_200_OK)
-async def obtener_productos(db: AsyncSession = Depends(get_db), user=Depends(current_user_or_api_key)):
-    result = await db.execute(
-        select(Producto)
-        .options(
-            selectinload(Producto.categoria_rel),
-            selectinload(Producto.subcategoria_rel),
-            selectinload(Producto.marca),
-        )
-        .order_by(Producto.nombre_producto)
-    )
-    return result.scalars().all()
+@router.get(
+    "/revision",
+    response_model=list[ProductoResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Cola de revisión de productos propuestos por usuarios",
+)
+async def obtener_productos_en_revision(
+    db: AsyncSession = Depends(get_db),
+    user=Depends(current_superuser),
+    estado: Literal["pendiente", "rechazado"] = "pendiente",
+):
+    return await servicio.listar_para_revision(db, estado)
+
 
 @router.get("/{id_producto}", response_model=ProductoResponse, status_code=status.HTTP_200_OK)
 async def obtener_producto(id_producto: int, db: AsyncSession = Depends(get_db), user=Depends(current_user_or_api_key)):
-    return await _obtener_producto(db, id_producto)
+    usuario = await _perfil_opcional(user, db)
+    with errores_http():
+        return await servicio.obtener_producto(db, usuario, id_producto, es_admin=es_superusuario(user))
 
-@router.post("/", response_model=ProductoResponse, status_code=status.HTTP_201_CREATED)
-async def crear_producto(data: ProductoCreate, db: AsyncSession = Depends(get_db), user=Depends(current_superuser)):
-    if data.id_marca is not None:
-        marca = await db.scalar(select(Marca).where(Marca.id_marca == data.id_marca))
-        if not marca:
-            raise HTTPException(status_code=404, detail="Marca no encontrada")
-    if data.codigo_barra is not None:
-        existente = await db.scalar(select(Producto).where(Producto.codigo_barra == data.codigo_barra))
-        if existente:
-            raise HTTPException(status_code=409, detail="El codigo de barra ya existe")
-    payload = data.model_dump()
-    payload["id_categoria"], payload["id_subcategoria"] = await _validar_categoria_subcategoria(
-        db=db,
-        id_categoria=payload.get("id_categoria"),
-        id_subcategoria=payload.get("id_subcategoria"),
-    )
-    producto = Producto(**payload)
-    db.add(producto)
-    await db.flush()
-    await db.refresh(
-        producto,
-        attribute_names=["categoria_rel", "subcategoria_rel", "marca"],
-    )
-    return producto
+
+@router.post(
+    "/",
+    response_model=ProductoResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Crear producto",
+    description=(
+        "Un superusuario lo crea aprobado. Un usuario lo crea pendiente: lo puede usar de "
+        "inmediato en sus gastos, pero el resto no lo ve hasta que se apruebe."
+    ),
+)
+async def crear_producto(data: ProductoCreate, db: AsyncSession = Depends(get_db), user=Depends(current_user_or_api_key)):
+    usuario = await _perfil_opcional(user, db)
+    with errores_http():
+        return await servicio.crear_producto(db, usuario, data, es_admin=es_superusuario(user))
+
 
 @router.patch("/{id_producto}", response_model=ProductoResponse, status_code=status.HTTP_200_OK)
-async def editar_producto(id_producto: int, data: ProductoPatch, db: AsyncSession = Depends(get_db), user=Depends(current_superuser)):
-    producto = await _obtener_producto(db, id_producto)
-    cambios = data.model_dump(exclude_unset=True)
-    if not cambios:
-        raise HTTPException(status_code=400, detail="No se enviaron cambios")
-    if cambios.get("id_marca") is not None:
-        marca = await db.scalar(select(Marca).where(Marca.id_marca == cambios["id_marca"]))
-        if not marca:
-            raise HTTPException(status_code=404, detail="Marca no encontrada")
-    if cambios.get("codigo_barra") is not None:
-        duplicado = await db.scalar(select(Producto).where(Producto.codigo_barra == cambios["codigo_barra"], Producto.id_producto != id_producto))
-        if duplicado:
-            raise HTTPException(status_code=409, detail="El codigo de barra ya existe")
-    if (
-        "id_categoria" in cambios
-        and "id_subcategoria" not in cambios
-        and cambios["id_categoria"] != producto.id_categoria
-    ):
-        cambios["id_subcategoria"] = None
-    if "id_categoria" in cambios and cambios["id_categoria"] is None and "id_subcategoria" not in cambios:
-        cambios["id_subcategoria"] = None
-    if "id_categoria" in cambios or "id_subcategoria" in cambios:
-        id_categoria_objetivo, id_subcategoria_objetivo = await _validar_categoria_subcategoria(
-            db=db,
-            id_categoria=cambios.get("id_categoria", producto.id_categoria),
-            id_subcategoria=cambios.get("id_subcategoria", producto.id_subcategoria),
-        )
-        cambios["id_categoria"] = id_categoria_objetivo
-        cambios["id_subcategoria"] = id_subcategoria_objetivo
-    for field, value in cambios.items():
-        setattr(producto, field, value)
-    await db.flush()
-    await db.refresh(
-        producto,
-        attribute_names=["categoria_rel", "subcategoria_rel", "marca"],
-    )
-    return producto
+async def editar_producto(
+    id_producto: int,
+    data: ProductoPatch,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(current_user_or_api_key),
+):
+    usuario = await _perfil_opcional(user, db)
+    with errores_http():
+        return await servicio.editar_producto(db, usuario, id_producto, data, es_admin=es_superusuario(user))
 
-@router.delete("/{id_producto}", status_code=status.HTTP_204_NO_CONTENT)
+
+@router.post("/{id_producto}/aprobar", response_model=ProductoResponse, status_code=status.HTTP_200_OK)
+async def aprobar_producto(id_producto: int, db: AsyncSession = Depends(get_db), user=Depends(current_superuser)):
+    with errores_http():
+        return await servicio.aprobar_producto(db, id_producto)
+
+
+@router.post("/{id_producto}/rechazar", response_model=ProductoResponse, status_code=status.HTTP_200_OK)
+async def rechazar_producto(id_producto: int, db: AsyncSession = Depends(get_db), user=Depends(current_superuser)):
+    with errores_http():
+        return await servicio.rechazar_producto(db, id_producto)
+
+
+@router.post(
+    "/{id_producto}/fusionar",
+    response_model=ProductoResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Fusionar un duplicado con un producto aprobado",
+    description="Los gastos, consumos y tablas del duplicado pasan al destino y el duplicado se elimina.",
+)
+async def fusionar_producto(
+    id_producto: int,
+    data: ProductoFusionar,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(current_superuser),
+):
+    with errores_http():
+        return await servicio.fusionar_producto(db, id_producto, data.id_producto_destino)
+
+
+@router.delete("/{id_producto}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def eliminar_producto(id_producto: int, db: AsyncSession = Depends(get_db), user=Depends(current_superuser)):
-    producto = await _obtener_producto(db, id_producto)
-    producto.activo = False
+    with errores_http():
+        await servicio.desactivar_producto(db, id_producto)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -20,11 +20,11 @@ from app.mcp.tools.finanzas import registrar_herramientas_finanzas
 
 
 INSTRUCCIONES = """\
-Servidor de finanzas personales de Ritmo: cuentas, categorías, movimientos y analítica
-del usuario que autorizó esta conexión.
+Servidor de finanzas personales de Ritmo: cuentas, categorías, movimientos, productos
+comprados y analítica del usuario que autorizó esta conexión.
 
-- Leer requiere el permiso finanzas:read; registrar, editar y eliminar movimientos
-  requiere finanzas:write. Si una herramienta responde que falta un permiso, díselo al
+- Leer requiere el permiso finanzas:read; registrar, editar y eliminar (movimientos,
+  categorías, productos) requiere finanzas:write. Si una herramienta responde que falta un permiso, díselo al
   usuario en vez de reintentar.
 - Montos en pesos chilenos (CLP), enteros y siempre positivos; el signo lo da
   tipo_movimiento ('gasto' o 'ingreso').
@@ -34,7 +34,12 @@ del usuario que autorizó esta conexión.
   distribucion_por_categoria, distribucion_por_cuenta, tendencia_mensual y gasto_diario:
   ya vienen agregadas. buscar_movimientos es para ver movimientos puntuales.
 - Si el usuario nombra una cuenta o categoría, resuelve su id con listar_cuentas o
-  listar_categorias antes de filtrar o registrar.
+  listar_categorias antes de filtrar o registrar. Hay categorías por defecto y propias
+  del usuario; si ninguna calza, ofrece crear una con crear_categoria.
+- Para detallar qué se compró en un gasto: busca cada producto con buscar_productos y
+  agrégalo con agregar_producto_a_gasto. Si no existe, créalo con crear_producto (queda
+  pendiente de revisión, pero el usuario ya puede usarlo). Busca antes por nombre y por
+  marca para no duplicar productos.
 - Al registrar, genera un client_request_id (UUID) y reutilízalo si reintentas la misma
   llamada. Antes de eliminar un movimiento, confirma con el usuario.
 """

@@ -1,11 +1,11 @@
 import Link from "next/link"
-import { Apple, Dumbbell, Plus, ShoppingBag, Wallet } from "lucide-react"
+import { Apple, ArrowDownLeft, Dumbbell, Plus, Wallet } from "lucide-react"
 
 const ACTIONS = [
   { href: "/app/finanzas/registrar-movimiento", label: "Anotar gasto", icon: Wallet, module: "finanzas" },
   { href: "/app/entrenamientos/iniciar-fuerza", label: "Entrenar", icon: Dumbbell, module: "entrenamientos" },
   { href: "/app/nutricion/peso", label: "Registrar peso", icon: Apple, module: "nutricion" },
-  { href: "/app/compras", label: "Nueva compra", icon: ShoppingBag, module: "compras" },
+  { href: "/app/finanzas/registrar-movimiento?tipo=ingreso", label: "Anotar ingreso", icon: ArrowDownLeft, module: "compras" },
 ] as const
 
 /** Atajos a lo que se registra todos los dias; pensados para el pulgar en la PWA. */

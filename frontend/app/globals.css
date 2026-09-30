@@ -80,6 +80,14 @@
 :root {
   --radius: 0.375rem;
 
+  /*
+   * Alto del topbar incluyendo el area segura superior. Con statusBarStyle "black"
+   * iOS pinta la barra de estado solida y el inset es 0; se mantiene por si la
+   * pagina vuelve a extenderse bajo la barra ("black-translucent"), donde iOS
+   * difumina lo que queda detras.
+   */
+  --app-header-h: calc(4rem + env(safe-area-inset-top));
+
   --background: #f4f4f2;
   --foreground: #111111;
 
@@ -305,6 +313,23 @@
   }
   h1, h2, h3, h4 {
     @apply tracking-tight;
+  }
+
+  /*
+   * iOS hace zoom al enfocar un campo con fuente menor a 16px. En pantallas tactiles
+   * los tamanos chicos de Tailwind se suben a 16px solo dentro de los campos, asi que
+   * cualquier input con text-xs/text-sm queda cubierto sin tocar cada componente.
+   * Los campos grandes (text-2xl, cifras) no se ven afectados.
+   */
+  @media (pointer: coarse) {
+    input,
+    select,
+    textarea {
+      --text-xs: 1rem;
+      --text-xs--line-height: 1.5;
+      --text-sm: 1rem;
+      --text-sm--line-height: 1.5;
+    }
   }
 }
 

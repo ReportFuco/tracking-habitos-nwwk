@@ -84,8 +84,16 @@ export const cuentaResponseSchema = z.object({
 
 export const cuentasListResponseSchema = z.array(cuentaResponseSchema)
 
-const compraVinculadaResumenSchema = z.object({
-  id_compra: z.number().int(),
+export const movimientoItemResponseSchema = z.object({
+  id_item: z.number().int(),
+  id_producto: z.number().int(),
+  nombre_producto: z.string(),
+  nombre_marca: z.string().nullish(),
+  detalle_producto: z.string().nullish(),
+  estado_producto: z.string(),
+  cantidad: z.number(),
+  precio_total: z.number().int().nullish(),
+  precio_unitario: z.number().nullish(),
 })
 
 export const movimientoResponseSchema = z.object({
@@ -93,11 +101,11 @@ export const movimientoResponseSchema = z.object({
   client_request_id: z.string().nullish(),
   tipo_movimiento: tipoMovimientoSchema,
   tipo_gasto: tipoGastoSchema,
+  id_categoria: z.number().int(),
   categoria: z.string().nullish(),
   nombre_cuenta: z.string().nullish(),
-  compras_vinculadas: z.array(compraVinculadaResumenSchema).optional(),
-  total_compras_vinculadas: z.number().nullish(),
-  diferencia_total_compras: z.number().nullish(),
+  items: z.array(movimientoItemResponseSchema),
+  total_detallado: z.number(),
   monto: z.number(),
   descripcion: z.string().nullable(),
   en_lugar_compra: z.boolean(),
@@ -119,6 +127,7 @@ export const movimientosPageResponseSchema = z.object({
 
 export type CuentaResponse = z.infer<typeof cuentaResponseSchema>
 export type MovimientoResponse = z.infer<typeof movimientoResponseSchema>
+export type MovimientoItemResponse = z.infer<typeof movimientoItemResponseSchema>
 export type MovimientosPageResponse = z.infer<typeof movimientosPageResponseSchema>
 
 // Analitica: tendencia y distribuciones devuelven un objeto con `items` y metadatos del

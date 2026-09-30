@@ -8,16 +8,18 @@ from sqlalchemy import (
     ForeignKey,
     Enum as SQLEnum,
     Boolean,
+    Index,
     Numeric,
     UniqueConstraint,
     Uuid,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 from app.db.base import Base
-from app.models.db_schemas import FINANZAS_SCHEMA, USUARIOS_SCHEMA, table_ref
+from app.models.db_schemas import CATALOGO_SCHEMA, FINANZAS_SCHEMA, USUARIOS_SCHEMA, table_ref
 import enum
 
 
@@ -99,11 +101,41 @@ class CuentaUsuario(Base):
 
 
 class CategoriaFinanza(Base):
+    """Categoría de movimientos.
+
+    Sin ``id_usuario`` es una categoría por defecto: la ven todos y solo la administra un
+    superusuario. Con ``id_usuario`` es propia de ese usuario y nadie más la ve. El nombre
+    es único sin distinguir mayúsculas dentro de cada grupo; que una propia no repita el
+    nombre de una por defecto lo valida el servicio, porque la base no puede cruzar los
+    dos índices parciales.
+    """
+
     __tablename__ = "categoria_finanza"
-    __table_args__ = {"schema": FINANZAS_SCHEMA}
+    __table_args__ = (
+        Index(
+            "uq_categoria_finanza_defecto_nombre",
+            func.lower(text("nombre")),
+            unique=True,
+            postgresql_where=text("id_usuario IS NULL"),
+        ),
+        Index(
+            "uq_categoria_finanza_usuario_nombre",
+            "id_usuario",
+            func.lower(text("nombre")),
+            unique=True,
+            postgresql_where=text("id_usuario IS NOT NULL"),
+        ),
+        {"schema": FINANZAS_SCHEMA},
+    )
 
     id_categoria: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    nombre: Mapped[str] = mapped_column(String(100), unique=True)
+    id_usuario: Mapped[int | None] = mapped_column(
+        ForeignKey(table_ref(USUARIOS_SCHEMA, "usuario.id_usuario"), ondelete="CASCADE"),
+        nullable=True,
+    )
+    nombre: Mapped[str] = mapped_column(String(100))
+    # Una categoría con movimientos no se borra: se archiva y deja de ofrecerse al registrar.
+    activo: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, 
         server_default=text("now()"), 
@@ -111,6 +143,10 @@ class CategoriaFinanza(Base):
     )
 
     transacciones: Mapped[list["Movimiento"]] = relationship(back_populates="categoria")
+
+    @property
+    def es_propia(self) -> bool:
+        return self.id_usuario is not None
 
 
 class Movimiento(Base):
@@ -191,7 +227,54 @@ class Movimiento(Base):
 
     categoria: Mapped["CategoriaFinanza"] = relationship(back_populates="transacciones")
     cuenta: Mapped["CuentaUsuario"] = relationship(back_populates="transacciones")
-    vinculos_compra: Mapped[list["MovimientoCompra"]] = relationship(
+    items: Mapped[list["MovimientoItem"]] = relationship(
         back_populates="movimiento",
         cascade="all, delete-orphan",
+        # Al borrar el movimiento los borra la FK (ON DELETE CASCADE) sin cargarlos antes.
+        passive_deletes=True,
+        order_by="MovimientoItem.id_item",
     )
+
+
+class MovimientoItem(Base):
+    """Producto comprado dentro de un gasto.
+
+    El detalle es opcional y puede ser parcial: un gasto de $12.000 puede tener solo dos
+    productos detallados. Por eso ``precio_total`` también es opcional y no se exige que
+    la suma cuadre con el monto (los descuentos al total del ticket la descuadran).
+    """
+
+    __tablename__ = "movimiento_item"
+    __table_args__ = (
+        CheckConstraint("cantidad > 0", name="ck_movimiento_item_cantidad_positiva"),
+        CheckConstraint(
+            "precio_total IS NULL OR precio_total >= 0",
+            name="ck_movimiento_item_precio_no_negativo",
+        ),
+        {"schema": FINANZAS_SCHEMA},
+    )
+
+    id_item: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id_movimiento: Mapped[int] = mapped_column(
+        ForeignKey(table_ref(FINANZAS_SCHEMA, "movimiento.id_transaccion"), ondelete="CASCADE"),
+        index=True,
+    )
+    id_producto: Mapped[int] = mapped_column(
+        ForeignKey(table_ref(CATALOGO_SCHEMA, "producto.id_producto")),
+        index=True,
+    )
+    cantidad: Mapped[Decimal] = mapped_column(
+        Numeric(10, 3),
+        nullable=False,
+        default=Decimal("1"),
+        server_default=text("1"),
+    )
+    precio_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.now,
+        server_default=text("now()"),
+    )
+
+    movimiento: Mapped["Movimiento"] = relationship(back_populates="items")
+    producto: Mapped["Producto"] = relationship(back_populates="items_movimiento")

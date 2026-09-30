@@ -35,7 +35,7 @@ def test_docs_menu_exposes_module_links():
     assert response.status_code == 200
     assert "/docs/global" in response.text
     assert "/docs/finanzas" in response.text
-    assert "/docs/compras" in response.text
+    assert "/docs/catalogo" in response.text
     assert "/docs/auth" in response.text
 
 
@@ -47,7 +47,7 @@ def test_finanzas_openapi_only_contains_finanzas_routes():
 
     assert "/api/finanzas/cuentas/" in payload["paths"]
     assert "/api/finanzas/movimientos/" in payload["paths"]
-    assert "/api/compras/compra/" not in payload["paths"]
+    assert "/api/catalogo/producto/" not in payload["paths"]
     assert "/auth/register" not in payload["paths"]
 
 

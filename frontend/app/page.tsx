@@ -31,10 +31,10 @@ const modules = [
   {
     key: "compras",
     title: "Compras",
-    description: "Tickets por local y cadena, con el total que se va al supermercado.",
+    description: "Detalla cada gasto producto a producto y arma tu propio historial de precios.",
     icon: ShoppingBag,
-    sample: "$86.990",
-    sampleLabel: "compras del mes",
+    sample: "$1.190",
+    sampleLabel: "leche, ultima compra",
   },
 ] as const
 

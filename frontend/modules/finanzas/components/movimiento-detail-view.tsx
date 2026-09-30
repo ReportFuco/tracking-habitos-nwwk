@@ -19,6 +19,7 @@ import { formatCLP } from "@/lib/format"
 import { useFinanzas, useMovimiento } from "@/modules/finanzas/hooks/useFinanzas"
 import { MovimientoDetailSkeleton } from "@/modules/finanzas/components/skeletons/movimiento-detail-skeleton"
 import { MovimientoEditForm } from "./movimiento-edit-form"
+import { MovimientoProductos } from "./movimiento-productos"
 
 const fechaFormatter = new Intl.DateTimeFormat("es-CL", {
   weekday: "long",
@@ -109,14 +110,6 @@ export function MovimientoDetailView({ idMovimiento }: { idMovimiento: number })
           },
         ]
       : []),
-    ...((movimiento.compras_vinculadas?.length ?? 0) > 0
-      ? [
-          {
-            etiqueta: "Compras vinculadas",
-            valor: `${movimiento.compras_vinculadas?.length} · ${formatCLP(movimiento.total_compras_vinculadas ?? 0)}`,
-          },
-        ]
-      : []),
   ]
 
   return (
@@ -140,6 +133,8 @@ export function MovimientoDetailView({ idMovimiento }: { idMovimiento: number })
           </div>
         ))}
       </dl>
+
+      {esIngreso ? null : <MovimientoProductos movimiento={movimiento} />}
 
       <div className="grid grid-cols-2 gap-2">
         <Button type="button" size="lg" className="h-11" onClick={() => setEditando(true)}>

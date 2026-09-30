@@ -17,3 +17,11 @@ class NoEncontrado(ErrorDominio):
 
 class Conflicto(ErrorDominio):
     pass
+
+
+class SinPermiso(ErrorDominio):
+    pass
+
+
+class DatosInvalidos(ErrorDominio):
+    pass

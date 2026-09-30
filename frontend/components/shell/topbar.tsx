@@ -61,7 +61,7 @@ export function Topbar({
         </div>
       ) : null}
 
-      <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-transparent bg-[color:var(--background)] px-4 sm:bg-[color:var(--background)]/85 sm:backdrop-blur-md sm:px-8">
+      <header className="sticky top-0 z-30 flex h-(--app-header-h) items-center pt-[env(safe-area-inset-top)] gap-3 border-b border-transparent bg-[color:var(--background)] px-4 sm:bg-[color:var(--background)]/85 sm:backdrop-blur-md sm:px-8">
         {showMenuButton ? (
           <Button
             type="button"

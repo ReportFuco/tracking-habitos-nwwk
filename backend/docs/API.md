@@ -9,7 +9,6 @@ Esta API centraliza registros personales y operativos en varios dominios:
 - finanzas
 - entrenamientos
 - catálogo
-- compras
 - nutrición
 - lecturas
 
@@ -33,7 +32,7 @@ Fuentes usadas para construir este documento:
 
 Nota importante:
 
-- `docs/api.json` no refleja todavía todos los módulos nuevos (`catalogo`, `compras`, `nutricion`).
+- `docs/api.json` no refleja todavía todos los módulos nuevos (`catalogo`, `nutricion`).
 - cuando exista diferencia entre este archivo y `docs/api.json`, prevalece el código en `app/routes` y `app/schemas`.
 
 ## Base URL
@@ -212,7 +211,7 @@ Hay 3 patrones principales:
 - `current_user_or_api_key`: usuario autenticado por JWT o API key
 - `current_user`: usuario autenticado por JWT; se mantiene para flujos que deben ser solo sesión humana, como administrar API keys
 - `current_superuser`: solo administrador
-- ownership: el usuario solo puede ver o modificar sus propios datos en compras, nutrición, finanzas y entrenamientos
+- ownership: el usuario solo puede ver o modificar sus propios datos en nutrición, finanzas y entrenamientos
 
 ### Reglas prácticas
 
@@ -320,19 +319,27 @@ Payload base:
 
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
-| `GET` | `/api/finanzas/categoria/` | usuario | Lista categorías |
-| `GET` | `/api/finanzas/categoria/{id_categoria}` | usuario | Obtiene categoría por ID |
-| `POST` | `/api/finanzas/categoria/` | superuser | Crea categoría |
-| `PATCH` | `/api/finanzas/categoria/{id_categoria}` | superuser | Edita categoría |
-| `DELETE` | `/api/finanzas/categoria/{id_categoria}` | superuser | Elimina categoría |
+| `GET` | `/api/finanzas/categoria/` | usuario | Por defecto + propias del usuario. `incluir_archivadas=true` suma las archivadas |
+| `GET` | `/api/finanzas/categoria/{id_categoria}` | usuario | Obtiene una categoría visible para el usuario |
+| `POST` | `/api/finanzas/categoria/` | usuario | Crea una categoría propia; con `por_defecto: true` (solo superuser) crea una por defecto |
+| `PATCH` | `/api/finanzas/categoria/{id_categoria}` | usuario (propias) / superuser (por defecto) | Renombra o desarchiva (`activo: true`) |
+| `DELETE` | `/api/finanzas/categoria/{id_categoria}` | usuario (propias) / superuser (por defecto) | Borra si nunca se usó; si tiene movimientos, la archiva |
 
 Payload base:
 
 ```json
 {
-  "nombre": "comida"
+  "nombre": "Mascotas"
 }
 ```
+
+Reglas:
+
+- categorías por defecto (`id_usuario` nulo): las ve todo el mundo y solo las administra un superusuario
+- categorías propias: solo las ve y usa su dueño; la de otro usuario responde 404
+- el nombre es único sin distinguir mayúsculas: una propia no puede repetir una por defecto ni otra propia
+- una categoría archivada no se acepta en movimientos nuevos (409), pero los existentes la conservan
+- respuesta: `id_categoria`, `nombre`, `es_propia`, `activo`, `created_at`
 
 #### Cuentas de usuario
 
@@ -365,9 +372,12 @@ Campos importantes:
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
 | `GET` | `/api/finanzas/movimientos/` | usuario | Lista movimientos del usuario a partir de sus cuentas, acepta `offset` y `limit`, ordena de más nuevo a más antiguo y devuelve `total_gasto_mensual` |
-| `GET` | `/api/finanzas/movimientos/{id_movimiento}` | usuario + ownership por cuenta | Obtiene movimiento por ID, incluyendo compras vinculadas si existen |
-| `POST` | `/api/finanzas/movimientos/` | usuario | Crea movimiento |
-| `PATCH` | `/api/finanzas/movimientos/{id_movimiento}` | usuario + ownership por cuenta | Edita movimiento |
+| `GET` | `/api/finanzas/movimientos/{id_movimiento}` | usuario + ownership por cuenta | Obtiene movimiento por ID, con sus productos detallados |
+| `POST` | `/api/finanzas/movimientos/` | usuario | Crea movimiento; un gasto puede traer sus productos en `items` |
+| `PATCH` | `/api/finanzas/movimientos/{id_movimiento}` | usuario + ownership por cuenta | Edita movimiento (un gasto con productos no puede pasar a ingreso: 409) |
+| `POST` | `/api/finanzas/movimientos/{id_movimiento}/items` | usuario + ownership | Agrega un producto al gasto; devuelve el movimiento completo |
+| `PATCH` | `/api/finanzas/movimientos/{id_movimiento}/items/{id_item}` | usuario + ownership | Edita producto, cantidad o precio (`precio_total: null` lo borra) |
+| `DELETE` | `/api/finanzas/movimientos/{id_movimiento}/items/{id_item}` | usuario + ownership | Quita el producto; devuelve el movimiento completo |
 
 Parámetros útiles para `GET /api/finanzas/movimientos/`:
 
@@ -390,11 +400,23 @@ Respuesta base del listado:
       "id_transaccion": 15,
       "tipo_movimiento": "gasto",
       "tipo_gasto": "variable",
+      "id_categoria": 1,
       "categoria": "comida",
       "nombre_cuenta": "Cuenta principal",
-      "compras_vinculadas": [],
-      "total_compras_vinculadas": 0,
-      "diferencia_total_compras": 3500,
+      "items": [
+        {
+          "id_item": 4,
+          "id_producto": 12,
+          "nombre_producto": "Leche entera",
+          "nombre_marca": "Colun",
+          "detalle_producto": "1 L · Caja",
+          "estado_producto": "aprobado",
+          "cantidad": 2,
+          "precio_total": 2380,
+          "precio_unitario": 1190
+        }
+      ],
+      "total_detallado": 2380,
       "monto": 3500,
       "descripcion": "Compra en supermercado",
       "created_at": "2026-04-22T09:00:00"
@@ -416,14 +438,39 @@ Payload create:
   "tipo_gasto": "fijo",
   "monto": 3500,
   "descripcion": "Compra en supermercado",
-  "created_at": "2026-01-03T18:37:18"
+  "created_at": "2026-01-03T18:37:18",
+  "items": [
+    { "id_producto": 12, "cantidad": 2, "precio_total": 2380 }
+  ]
 }
 ```
+
+`items` es opcional (hasta 100) y usa el mismo formato que `POST /{id_movimiento}/items`.
+Se crean en la misma transacción que el gasto: si un producto no existe o fue dado de
+baja, no se crea nada. Un ingreso con `items` responde `422`.
 
 Enums usados:
 
 - `tipo_movimiento`: `gasto`, `ingreso`
 - `tipo_gasto`: `variable`, `fijo`
+
+Productos de un gasto (`items`):
+
+- solo los gastos tienen productos; el detalle es opcional y puede ser parcial
+- `total_detallado` suma los `precio_total` informados; no se exige que cuadre con `monto`
+  (los descuentos al total del ticket lo descuadran)
+- `cantidad` admite decimales para productos a granel (ej. `0.75` kg)
+- el producto debe ser visible para el usuario (aprobado o propuesto por él)
+
+Payload para agregar un producto:
+
+```json
+{
+  "id_producto": 12,
+  "cantidad": 2,
+  "precio_total": 2380
+}
+```
 
 #### Analítica
 
@@ -854,10 +901,15 @@ Payload create:
 
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
-| `GET` | `/api/catalogo/producto/` | usuario | Lista productos |
-| `GET` | `/api/catalogo/producto/{id_producto}` | usuario | Obtiene producto |
-| `POST` | `/api/catalogo/producto/` | superuser | Crea producto |
-| `PATCH` | `/api/catalogo/producto/{id_producto}` | superuser | Edita producto |
+| `GET` | `/api/catalogo/producto/` | usuario | Catálogo aprobado + propuestas propias; acepta `q` (nombre, marca o código) y `limit` |
+| `GET` | `/api/catalogo/producto/frecuentes` | usuario | Los productos que más compra el usuario |
+| `GET` | `/api/catalogo/producto/revision` | superuser | Cola de propuestas (`estado=pendiente` o `rechazado`) con `username_creador` |
+| `GET` | `/api/catalogo/producto/{id_producto}` | usuario | Obtiene producto visible |
+| `POST` | `/api/catalogo/producto/` | usuario | Crea producto: aprobado si lo crea un superuser, `pendiente` si lo crea un usuario |
+| `PATCH` | `/api/catalogo/producto/{id_producto}` | superuser / creador (si no está aprobado) | Edita producto; si el creador corrige uno rechazado, vuelve a `pendiente` |
+| `POST` | `/api/catalogo/producto/{id_producto}/aprobar` | superuser | Lo suma al catálogo compartido (409 si duplica nombre o código de uno aprobado) |
+| `POST` | `/api/catalogo/producto/{id_producto}/rechazar` | superuser | Queda privado de su creador |
+| `POST` | `/api/catalogo/producto/{id_producto}/fusionar` | superuser | Pasa gastos, consumos y tablas al `id_producto_destino` (aprobado) y elimina el duplicado |
 | `DELETE` | `/api/catalogo/producto/{id_producto}` | superuser | Desactiva producto |
 
 Payload create:
@@ -879,7 +931,9 @@ Payload create:
 
 Notas:
 
-- `codigo_barra` es único
+- `estado`: `pendiente`, `aprobado` o `rechazado`. Un pendiente o rechazado solo lo ve quien lo creó
+- `codigo_barra` es único dentro del catálogo aprobado; dos propuestas pueden repetirlo hasta que se revisen
+- no se acepta un producto con el mismo nombre (sin tildes ni mayúsculas) y marca que otro visible
 - `categoria` y `subcategoria` ahora son entidades separadas en base de datos:
   - `catalogo.categoria_producto`
   - `catalogo.subcategoria_producto`
@@ -917,143 +971,7 @@ Notas:
 - el nombre de subcategoría es único dentro de su categoría
 - no se puede eliminar una subcategoría si tiene productos asociados
 
-### 5. Compras
-Prefijo: `/api/compras`
-
-Submódulos:
-
-- `cadena`
-- `local`
-- `compra`
-- `compra-detalle`
-
-#### Cadenas
-
-| Método | Ruta | Auth | Descripción |
-|---|---|---|---|
-| `GET` | `/api/compras/cadena/` | usuario | Lista cadenas |
-| `GET` | `/api/compras/cadena/{id_cadena}` | usuario | Obtiene cadena |
-| `POST` | `/api/compras/cadena/` | superuser | Crea cadena |
-| `PATCH` | `/api/compras/cadena/{id_cadena}` | superuser | Edita cadena |
-| `DELETE` | `/api/compras/cadena/{id_cadena}` | superuser | Elimina cadena |
-
-Payload create:
-
-```json
-{
-  "nombre_cadena": "Lider"
-}
-```
-
-#### Locales
-
-| Método | Ruta | Auth | Descripción |
-|---|---|---|---|
-| `GET` | `/api/compras/local/` | usuario | Lista locales |
-| `GET` | `/api/compras/local/{id_local}` | usuario | Obtiene local |
-| `POST` | `/api/compras/local/` | superuser | Crea local |
-| `PATCH` | `/api/compras/local/{id_local}` | superuser | Edita local |
-| `DELETE` | `/api/compras/local/{id_local}` | superuser | Elimina local |
-
-Payload create:
-
-```json
-{
-  "id_cadena": 1,
-  "nombre_local": "Lider Nunoa",
-  "latitud": -33.456,
-  "longitud": -70.648,
-  "direccion": "Av. Ejemplo 123"
-}
-```
-
-Notas:
-
-- `id_cadena` ahora puede ser `null`
-- esto permite registrar locales de barrio o comercios independientes sin cadena
-
-#### Compras
-
-| Método | Ruta | Auth | Descripción |
-|---|---|---|---|
-| `GET` | `/api/compras/compra/` | usuario | Lista compras del usuario |
-| `GET` | `/api/compras/compra/{id_compra}` | usuario + ownership | Obtiene compra con local, total y movimientos vinculados si existen |
-| `POST` | `/api/compras/compra/` | usuario | Crea compra asociada al usuario autenticado |
-| `POST` | `/api/compras/compra/completa` | usuario | Crea compra, detalle y vínculo opcional a movimiento en una sola operación |
-| `POST` | `/api/compras/compra-completa/` | usuario | Alias del endpoint anterior; reutiliza la misma lógica |
-| `PATCH` | `/api/compras/compra/{id_compra}` | usuario + ownership | Edita compra |
-| `DELETE` | `/api/compras/compra/{id_compra}` | usuario + ownership | Elimina compra |
-
-Payload create:
-
-```json
-{
-  "id_local": 1,
-  "fecha_compra": "2026-04-18T16:30:00"
-}
-```
-
-Payload compra completa:
-
-```json
-{
-  "id_local": 1,
-  "fecha_compra": "2026-04-18T16:30:00",
-  "id_movimiento": 10,
-  "monto_asociado": 2980,
-  "detalles": [
-    {
-      "id_producto": 5,
-      "cantidad_comprada": 1,
-      "unidad_compra": "unidad",
-      "precio_unitario": 2980,
-      "precio_total": 2980,
-      "cantidad_unidades": 1
-    }
-  ]
-}
-```
-
-#### Vínculo movimiento-compra
-
-| Método | Ruta | Auth | Descripción |
-|---|---|---|---|
-| `GET` | `/api/compras/movimiento-compra/?id_movimiento={id}` | usuario + ownership | Lista vínculos de un movimiento |
-| `GET` | `/api/compras/movimiento-compra/?id_compra={id}` | usuario + ownership | Lista vínculos de una compra |
-| `POST` | `/api/compras/movimiento-compra/` | usuario + ownership | Vincula una compra existente con un movimiento gasto |
-| `DELETE` | `/api/compras/movimiento-compra/{id_movimiento_compra}` | usuario + ownership | Elimina el vínculo |
-
-Reglas:
-
-- solo se pueden vincular movimientos de tipo `gasto`
-- compra y movimiento deben pertenecer al mismo usuario
-- no se permite duplicar el mismo par `movimiento + compra`
-
-#### Detalle de compra
-
-| Método | Ruta | Auth | Descripción |
-|---|---|---|---|
-| `GET` | `/api/compras/compra-detalle/?id_compra={id_compra}` | usuario + ownership | Lista detalles de una compra |
-| `GET` | `/api/compras/compra-detalle/{id_detalle}` | usuario + ownership | Obtiene detalle por ID |
-| `POST` | `/api/compras/compra-detalle/` | usuario + ownership | Crea detalle |
-| `PATCH` | `/api/compras/compra-detalle/{id_detalle}` | usuario + ownership | Edita detalle |
-| `DELETE` | `/api/compras/compra-detalle/{id_detalle}` | usuario + ownership | Elimina detalle |
-
-Payload create:
-
-```json
-{
-  "id_compra": 1,
-  "id_producto": 10,
-  "cantidad_comprada": 2,
-  "unidad_compra": "unidad",
-  "precio_unitario": 1490,
-  "precio_total": 2980,
-  "cantidad_unidades": 2
-}
-```
-
-### 6. Nutrición
+### 5. Nutrición
 Prefijo: `/api/nutricion`
 
 Submódulos:
@@ -1174,7 +1092,7 @@ Payload create:
 }
 ```
 
-### 7. Lecturas
+### 6. Lecturas
 Prefijo: `/api/lecturas`
 
 Estado actual del módulo:
@@ -1340,29 +1258,6 @@ Notas:
 }
 ```
 
-### Compra create
-
-```json
-{
-  "id_local": 1,
-  "fecha_compra": "2026-04-18T10:15:00"
-}
-```
-
-### Compra detalle create
-
-```json
-{
-  "id_compra": 1,
-  "id_producto": 5,
-  "cantidad_comprada": 1,
-  "unidad_compra": "unidad",
-  "precio_unitario": 2390,
-  "precio_total": 2390,
-  "cantidad_unidades": 1
-}
-```
-
 ### Consumo create
 
 ```json
@@ -1458,7 +1353,7 @@ Notas recientes:
 Sugerencias para agentes o automatizaciones:
 
 - asumir que todos los recursos personales usan ownership, incluso si el `id` existe
-- no enviar `id_usuario` en compras, consumos, metas, peso, cuentas o movimientos cuando la API lo calcula desde el token
+- no enviar `id_usuario` en consumos, metas, peso, cuentas o movimientos cuando la API lo calcula desde el token
 - tratar `DELETE` de `producto`, `usuario` y algunas entidades financieras como desactivación lógica cuando el modelo lo indique
 - usar `PATCH` solo con los campos que realmente cambian
 - verificar duplicados antes de crear si el flujo depende de `codigo_barra`, `nombre_marca`, `nombre_cadena`, `nombre_banco`, `nombre_cuenta` o `username`
@@ -1471,7 +1366,6 @@ Sugerencias para agentes o automatizaciones:
 /api/finanzas
 /api/entrenamientos
 /api/catalogo
-/api/compras
 /api/nutricion
 /api/lecturas
 ```

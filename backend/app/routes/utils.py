@@ -1,14 +1,10 @@
-import unicodedata
-
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# Reexportadas: las rutas las importan desde aquí.
+from app.core.texto import normalize_search_text, normalize_sql_text  # noqa: F401
 from app.models import Usuario
-
-
-_ACCENTED_CHARS = "áéíóúàèìòùäëïöüâêîôûãõñÁÉÍÓÚÀÈÌÒÙÄËÏÖÜÂÊÎÔÛÃÕÑ"
-_PLAIN_CHARS = "aeiouaeiouaeiouaeiouaonAEIOUAEIOUAEIOUAEIOUAON"
 
 
 async def obtener_usuario_actual(user, db: AsyncSession) -> Usuario:
@@ -21,10 +17,6 @@ async def obtener_usuario_actual(user, db: AsyncSession) -> Usuario:
     return usuario
 
 
-def normalize_search_text(value: str) -> str:
-    normalized = unicodedata.normalize("NFKD", value.strip().lower())
-    return "".join(char for char in normalized if not unicodedata.combining(char))
-
-
-def normalize_sql_text(expression):
-    return func.lower(func.translate(expression, _ACCENTED_CHARS, _PLAIN_CHARS))
+def es_superusuario(user) -> bool:
+    """Si el usuario autenticado administra los catálogos compartidos."""
+    return bool(getattr(user, "is_superuser", False))

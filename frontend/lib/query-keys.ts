@@ -5,6 +5,8 @@ export const queryKeys = {
   finanzas: {
     bancos: ["finanzas", "bancos"] as const,
     categorias: ["finanzas", "categorias"] as const,
+    // Bajo el prefijo "categorias": se invalida junto con la lista que usa el formulario.
+    categoriasTodas: ["finanzas", "categorias", "todas"] as const,
     cuentas: ["finanzas", "cuentas"] as const,
     movimientos: ["finanzas", "movimientos"] as const,
     movimientosPage: (offset: number, limit: number) =>
@@ -51,15 +53,12 @@ export const queryKeys = {
     pesos: ["nutricion", "pesos"] as const,
     tablas: ["nutricion", "tablas"] as const,
   },
-  compras: {
-    cadenas: ["compras", "cadenas"] as const,
-    locales: ["compras", "locales"] as const,
-    compras: ["compras", "compras"] as const,
-  },
   catalogo: {
     marcas: ["catalogo", "marcas"] as const,
     productosRoot: ["catalogo", "productos"] as const,
     productos: (params?: { q?: string }) =>
       ["catalogo", "productos", params ?? {}] as const,
+    productosFrecuentes: ["catalogo", "productos", "frecuentes"] as const,
+    productosRevision: (estado: string) => ["catalogo", "productos", "revision", estado] as const,
   },
 }

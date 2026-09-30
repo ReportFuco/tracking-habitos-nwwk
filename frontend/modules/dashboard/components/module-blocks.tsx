@@ -2,11 +2,10 @@
 
 import Link from "next/link"
 import type { LucideIcon } from "lucide-react"
-import { Apple, ArrowUpRight, Dumbbell, ShoppingBag, Wallet } from "lucide-react"
+import { Apple, ArrowDownLeft, ArrowUpRight, Dumbbell, Wallet } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { datePart, formatMonth, formatShortDate, startOfWeek, toLocalIsoDate } from "@/lib/dates"
 import { formatCLP } from "@/lib/format"
-import { comprasQueryOptions } from "@/modules/compras/queries"
 import { entrenosFuerzaQueryOptions } from "@/modules/entrenamientos/queries"
 import { useAnaliticaResumen } from "@/modules/finanzas/hooks/useFinanzas"
 import { pesosQueryOptions } from "@/modules/nutricion/queries"
@@ -59,13 +58,11 @@ function ModuleBlock({ module, href, icon: Icon, title, value, detail }: BlockPr
  */
 export function ModuleBlocks() {
   const today = toLocalIsoDate()
-  const monthPrefix = today.slice(0, 7)
   const weekStart = startOfWeek(today)
 
   const resumenQuery = useAnaliticaResumen()
   const entrenosQuery = useQuery(entrenosFuerzaQueryOptions())
   const pesosQuery = useQuery(pesosQueryOptions())
-  const comprasQuery = useQuery(comprasQueryOptions())
 
   const resumen = resumenQuery.data
   const finanzas = resumenQuery.isError
@@ -106,12 +103,11 @@ export function ModuleBlocks() {
           : "Registra tu primer peso",
       }
 
-  const comprasMes = (comprasQuery.data ?? []).filter((compra) => datePart(compra.fecha_compra).startsWith(monthPrefix))
-  const compras = comprasQuery.isError
+  const ingresos = resumenQuery.isError
     ? { value: "—", detail: "Sin datos por ahora" }
     : {
-        value: comprasQuery.data ? formatCLP(comprasMes.reduce((sum, compra) => sum + compra.total_compra, 0)) : null,
-        detail: `${comprasMes.length} ${comprasMes.length === 1 ? "compra" : "compras"} este mes`,
+        value: resumen ? formatCLP(resumen.ingreso_total) : null,
+        detail: resumen ? `Balance ${formatCLP(resumen.balance_total)}` : "Cargando...",
       }
 
   return (
@@ -125,7 +121,8 @@ export function ModuleBlocks() {
         {...fuerza}
       />
       <ModuleBlock module="nutricion" href="/app/nutricion/peso" icon={Apple} title="Peso" {...nutricion} />
-      <ModuleBlock module="compras" href="/app/compras" icon={ShoppingBag} title="Compras" {...compras} />
+      {/* El cuarto bloque usa el cuarto color de la marca (antes era el del modulo Compras). */}
+      <ModuleBlock module="compras" href="/app/finanzas/movimientos" icon={ArrowDownLeft} title="Ingresos" {...ingresos} />
     </section>
   )
 }

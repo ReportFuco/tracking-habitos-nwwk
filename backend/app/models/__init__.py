@@ -9,7 +9,8 @@ from .finanzas import (
     CategoriaFinanza, 
     ProductoFinanciero,
     CuentaUsuario,
-    Movimiento
+    Movimiento,
+    MovimientoItem,
 )
 from .entrenamiento import (
     Ejercicios, 
@@ -24,8 +25,7 @@ from .entrenamiento import (
     EnumTipoEntrenamiento,
     EnumEstadoEntrenamiento
 )
-from .catalogo import CategoriaProducto, Marca, Producto, SubcategoriaProducto
-from .compras import Cadena, Local, Compra, CompraDetalle, MovimientoCompra
+from .catalogo import CategoriaProducto, EstadoProducto, Marca, Producto, SubcategoriaProducto
 from .nutricion import Consumo, ConsumoDetalle, TablaNutricional, MetaNutricional, PesoUsuario
 
 from .usuario_auth import User
@@ -54,11 +54,7 @@ __all__ = [
     "CategoriaProducto",
     "SubcategoriaProducto",
     "Producto",
-    "Cadena",
-    "Local",
-    "Compra",
-    "CompraDetalle",
-    "MovimientoCompra",
+    "EstadoProducto",
     "Consumo",
     "ConsumoDetalle",
     "TablaNutricional",
@@ -83,6 +79,7 @@ __all__ = [
     "ProductoFinanciero",
     "CuentaUsuario",
     "Movimiento",
+    "MovimientoItem",
     "Lectura",
     "RegistroLectura",
     "CategoriaHabito", 

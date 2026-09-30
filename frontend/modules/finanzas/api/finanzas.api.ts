@@ -27,6 +27,8 @@ import {
   CuentaPatch,
   CuentaResponse,
   MovimientoCreate,
+  MovimientoItemCreate,
+  MovimientoItemPatch,
   MovimientoPatch,
   MovimientoResponse,
   MovimientosPageResponse,
@@ -90,8 +92,8 @@ export const FinanzasAPI = {
     await api.delete(`/api/finanzas/producto-financiero/${idProducto}`)
   },
 
-  getCategorias: async (): Promise<CategoriaResponse[]> => {
-    const { data } = await api.get("/api/finanzas/categoria/")
+  getCategorias: async (params?: { incluir_archivadas?: boolean }): Promise<CategoriaResponse[]> => {
+    const { data } = await api.get("/api/finanzas/categoria/", { params })
     return data
   },
 
@@ -158,6 +160,26 @@ export const FinanzasAPI = {
 
   deleteMovimiento: async (idMovimiento: number): Promise<void> => {
     await api.delete(`/api/finanzas/movimientos/${idMovimiento}`)
+  },
+
+  // Los endpoints de productos del gasto devuelven el movimiento completo actualizado.
+  addMovimientoItem: async (idMovimiento: number, payload: MovimientoItemCreate): Promise<MovimientoResponse> => {
+    const { data } = await api.post(`/api/finanzas/movimientos/${idMovimiento}/items`, payload)
+    return parseApiResponse(movimientoResponseSchema, data, "POST /api/finanzas/movimientos/:id/items")
+  },
+
+  updateMovimientoItem: async (
+    idMovimiento: number,
+    idItem: number,
+    payload: MovimientoItemPatch,
+  ): Promise<MovimientoResponse> => {
+    const { data } = await api.patch(`/api/finanzas/movimientos/${idMovimiento}/items/${idItem}`, payload)
+    return parseApiResponse(movimientoResponseSchema, data, "PATCH /api/finanzas/movimientos/:id/items/:id")
+  },
+
+  deleteMovimientoItem: async (idMovimiento: number, idItem: number): Promise<MovimientoResponse> => {
+    const { data } = await api.delete(`/api/finanzas/movimientos/${idMovimiento}/items/${idItem}`)
+    return parseApiResponse(movimientoResponseSchema, data, "DELETE /api/finanzas/movimientos/:id/items/:id")
   },
 
   getAnaliticaDiaria: async (params?: { year?: number; month?: number }): Promise<AnaliticaDiariaResponse> => {

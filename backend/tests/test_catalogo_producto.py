@@ -19,7 +19,8 @@ async def test_producto_response_incluye_nombre_marca():
             db.add(marca)
             await db.flush()
 
-            user = SimpleNamespace(id=1)
+            # Superusuario sin perfil: crea directo en el catálogo aprobado.
+            user = SimpleNamespace(id=-1, is_superuser=True)
             creado = await crear_producto(
                 data=ProductoCreate(
                     id_marca=marca.id_marca,
@@ -57,7 +58,8 @@ async def test_producto_sin_marca_ni_codigo_barra():
         trans = await db.begin()
         try:
             seed = uuid4().hex[:8]
-            user = SimpleNamespace(id=1)
+            # Superusuario sin perfil: crea directo en el catálogo aprobado.
+            user = SimpleNamespace(id=-1, is_superuser=True)
 
             primero = await crear_producto(
                 data=ProductoCreate(nombre_producto=f"Producto A {seed}"),

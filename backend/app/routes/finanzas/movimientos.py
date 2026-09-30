@@ -1,5 +1,7 @@
 from app.schemas.finanzas import (
     MovimientoCreate,
+    MovimientoItemCreate,
+    MovimientoItemPatch,
     MovimientoListResponse,
     MovimientoResponse,
     MovimientoPatch
@@ -17,6 +19,7 @@ from app.db import get_db
 from app.auth.fastapi_users import current_user_or_api_key
 from app.models.finanzas import EnumTipoMovimiento
 from app.routes.finanzas._http import errores_http, obtener_usuario_actual
+from app.services.finanzas import items as servicio_items
 from app.services.finanzas import movimientos as servicio
 # Reexportados: los tests unitarios los importan desde este modulo.
 from app.services.finanzas.movimientos import (  # noqa: F401
@@ -150,3 +153,59 @@ async def eliminar_movimiento(
     with errores_http():
         await servicio.eliminar_movimiento(db, usuario, id_movimiento)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{id_movimiento}/items",
+    summary="Agregar producto a un gasto",
+    description=(
+        "Detalla un producto comprado en el gasto. El detalle puede ser parcial: no hace "
+        "falta cubrir todo el monto. Devuelve el movimiento completo."
+    ),
+    status_code=status.HTTP_201_CREATED,
+    response_model=MovimientoResponse,
+)
+async def agregar_item(
+    id_movimiento: int,
+    data: MovimientoItemCreate,
+    db: AsyncSession = Depends(get_db),
+    user = Depends(current_user_or_api_key),
+):
+    usuario = await obtener_usuario_actual(user, db)
+    with errores_http():
+        return await servicio_items.agregar_item(db, usuario, id_movimiento, data)
+
+
+@router.patch(
+    "/{id_movimiento}/items/{id_item}",
+    summary="Editar producto de un gasto",
+    response_model=MovimientoResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def editar_item(
+    id_movimiento: int,
+    id_item: int,
+    data: MovimientoItemPatch,
+    db: AsyncSession = Depends(get_db),
+    user = Depends(current_user_or_api_key),
+):
+    usuario = await obtener_usuario_actual(user, db)
+    with errores_http():
+        return await servicio_items.editar_item(db, usuario, id_movimiento, id_item, data)
+
+
+@router.delete(
+    "/{id_movimiento}/items/{id_item}",
+    summary="Quitar producto de un gasto",
+    response_model=MovimientoResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def eliminar_item(
+    id_movimiento: int,
+    id_item: int,
+    db: AsyncSession = Depends(get_db),
+    user = Depends(current_user_or_api_key),
+):
+    usuario = await obtener_usuario_actual(user, db)
+    with errores_http():
+        return await servicio_items.eliminar_item(db, usuario, id_movimiento, id_item)

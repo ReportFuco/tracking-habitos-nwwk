@@ -13,7 +13,7 @@ describe("MobileBottomNav", () => {
     expect(resolveVisibleItems(adminBottomNavItems)).toEqual(adminBottomNavItems)
   })
 
-  it("con el orden de usuario deja los 5 modulos y saca Perfil", () => {
+  it("con el orden de usuario deja los 4 modulos y saca Perfil", () => {
     const items = userNavSections.flatMap((section) => section.items)
     const visibles = resolveVisibleItems(items, userBottomNavOrder).map((item) => item.href)
 
@@ -23,7 +23,6 @@ describe("MobileBottomNav", () => {
   it.each([
     ["/administrador/productos", "Catalogo"],
     ["/administrador/tablas-nutricionales/3", "Catalogo"],
-    ["/administrador/locales", "Compras"],
     ["/administrador/finanzas/categorias", "Finanzas"],
     ["/administrador", "Resumen"],
   ])("%s activa %s", (pathname, label) => {

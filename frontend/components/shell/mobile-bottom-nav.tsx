@@ -16,7 +16,6 @@ export const userBottomNavOrder = [
   "/app/finanzas",
   "/app/entrenamientos",
   "/app/nutricion",
-  "/app/compras",
 ];
 
 export function isItemActive(item: NavItem, pathname: string): boolean {

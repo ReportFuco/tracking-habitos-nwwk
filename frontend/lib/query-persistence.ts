@@ -6,7 +6,7 @@ import { clear, createStore, del, get, set, type UseStore } from "idb-keyval"
 // Subir esta version descarta todo lo persistido. Hacerlo cuando cambie la forma de los
 // datos que devuelve la API: si no, la app rehidrata objetos con el shape viejo y los
 // componentes leen campos que ya no existen.
-export const QUERY_CACHE_SCHEMA_VERSION = "2026-07-28.1"
+export const QUERY_CACHE_SCHEMA_VERSION = "2026-09-28.1"
 
 const DB_NAME = "tcl-offline"
 const STORE_NAME = "query-cache"

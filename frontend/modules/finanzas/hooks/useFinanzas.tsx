@@ -18,9 +18,12 @@ import {
   BancoCreate,
   CategoriaCreate,
   CategoriaPatch,
+  CategoriaResponse,
   CuentaCreate,
   CuentaPatch,
   MovimientoCreate,
+  MovimientoItemCreate,
+  MovimientoItemPatch,
   MovimientoPatch,
   MovimientoResponse,
   MovimientosFiltros,
@@ -35,8 +38,9 @@ const ONE_WEEK = ONE_DAY * 7
 
 type FinanzasContextValue = ReturnType<typeof useFinanzasState>
 type ActionResult = Promise<
-  { ok: true; queued?: boolean } | { ok: false; message: string }
+  { ok: true; queued?: boolean; idMovimiento?: number } | { ok: false; message: string }
 >
+type ActionFailure = { ok: false; message: string }
 
 const FinanzasContext = createContext<FinanzasContextValue | null>(null)
 const persistMeta = { persist: true }
@@ -74,6 +78,53 @@ export function useMovimientosFiltrados(filtros: MovimientosFiltros, enabled = t
     staleTime: ONE_MINUTE,
     enabled,
   })
+}
+
+/** Categorias visibles incluidas las archivadas, para la pantalla que las administra. */
+export function useCategoriasTodas() {
+  return useQuery({
+    queryKey: queryKeys.finanzas.categoriasTodas,
+    queryFn: () => FinanzasAPI.getCategorias({ incluir_archivadas: true }),
+    staleTime: FIVE_MINUTES,
+  })
+}
+
+/**
+ * Productos detallados de un gasto. Cada respuesta trae el movimiento completo, que
+ * reemplaza al del cache del detalle; la lista se invalida porque muestra el total.
+ */
+export function useMovimientoItems(idMovimiento: number) {
+  const queryClient = useQueryClient()
+
+  const alGuardar = async (movimiento: MovimientoResponse) => {
+    queryClient.setQueryData(queryKeys.finanzas.movimiento(movimiento.id_transaccion), movimiento)
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.finanzas.movimientos }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.catalogo.productosFrecuentes }),
+    ])
+  }
+
+  const agregar = useMutation({
+    mutationFn: (payload: MovimientoItemCreate) => FinanzasAPI.addMovimientoItem(idMovimiento, payload),
+    onSuccess: alGuardar,
+  })
+  const editar = useMutation({
+    mutationFn: ({ idItem, payload }: { idItem: number; payload: MovimientoItemPatch }) =>
+      FinanzasAPI.updateMovimientoItem(idMovimiento, idItem, payload),
+    onSuccess: alGuardar,
+  })
+  const quitar = useMutation({
+    mutationFn: (idItem: number) => FinanzasAPI.deleteMovimientoItem(idMovimiento, idItem),
+    onSuccess: alGuardar,
+  })
+
+  return {
+    agregarItem: (payload: MovimientoItemCreate) => runOnlineOnlyAction(() => agregar.mutateAsync(payload)),
+    editarItem: (idItem: number, payload: MovimientoItemPatch) =>
+      runOnlineOnlyAction(() => editar.mutateAsync({ idItem, payload })),
+    quitarItem: (idItem: number) => runOnlineOnlyAction(() => quitar.mutateAsync(idItem)),
+    guardandoItem: agregar.isPending || editar.isPending || quitar.isPending,
+  }
 }
 
 export function useMovimiento(idMovimiento: number) {
@@ -117,7 +168,7 @@ const useFinanzasState = () => {
   })
   const categoriasQuery = useQuery({
     queryKey: queryKeys.finanzas.categorias,
-    queryFn: FinanzasAPI.getCategorias,
+    queryFn: () => FinanzasAPI.getCategorias(),
     staleTime: ONE_DAY,
     gcTime: ONE_WEEK,
     meta: persistMeta,
@@ -300,8 +351,16 @@ const useFinanzasState = () => {
     editarBanco: (idBanco: number, payload: BancoCreate) =>
       runOnlineOnlyAction(() => bancoUpdateMutation.mutateAsync({ idBanco, payload })),
     eliminarBanco: (idBanco: number) => runOnlineOnlyAction(() => bancoDeleteMutation.mutateAsync(idBanco)),
-    crearCategoria: (payload: CategoriaCreate) =>
-      runOnlineOnlyAction(() => categoriaCreateMutation.mutateAsync(payload)),
+    /** Devuelve la categoria creada para poder seleccionarla de inmediato. */
+    crearCategoria: async (
+      payload: CategoriaCreate,
+    ): Promise<{ ok: true; categoria: CategoriaResponse } | ActionFailure> => {
+      let categoria: CategoriaResponse | undefined
+      const result = await runOnlineOnlyAction(async () => {
+        categoria = await categoriaCreateMutation.mutateAsync(payload)
+      })
+      return result.ok && categoria ? { ok: true, categoria } : (result as ActionFailure)
+    },
     editarCategoria: (idCategoria: number, payload: CategoriaPatch) =>
       runOnlineOnlyAction(() => categoriaUpdateMutation.mutateAsync({ idCategoria, payload })),
     eliminarCategoria: (idCategoria: number) =>
@@ -316,7 +375,12 @@ const useFinanzasState = () => {
         return { ok: true, queued: true }
       }
 
-      return runOnlineOnlyAction(() => movimientoCreateMutation.mutateAsync(payload))
+      // El id del movimiento creado permite ofrecer "detallar productos" al confirmar.
+      let creado: MovimientoResponse | undefined
+      const result = await runOnlineOnlyAction(async () => {
+        creado = await movimientoCreateMutation.mutateAsync(payload)
+      })
+      return result.ok ? { ok: true, idMovimiento: creado?.id_transaccion } : result
     },
     editarMovimiento: (idMovimiento: number, payload: MovimientoPatch) =>
       runOnlineOnlyAction(() => movimientoUpdateMutation.mutateAsync({ idMovimiento, payload })),

@@ -17,6 +17,7 @@ const TABS = [
     label: "Cuentas",
     match: (p: string) => p === "/app/finanzas/cuentas" || p === "/app/finanzas/registrar-cuenta",
   },
+  { href: "/app/finanzas/categorias", label: "Categorias", match: (p: string) => p === "/app/finanzas/categorias" },
 ]
 
 /**

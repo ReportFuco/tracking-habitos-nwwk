@@ -26,9 +26,9 @@ export function AppShell({ children, variant = "user", sections }: AppShellProps
   const isUser = variant === "user"
   const isAdmin = variant === "admin"
   const asideClassName = isUser
-    ? "hidden w-72 shrink-0 bg-[color:var(--sidebar)] text-[color:var(--sidebar-foreground)] lg:sticky lg:top-0 lg:z-10 lg:flex lg:h-screen lg:flex-col"
+    ? "hidden w-72 shrink-0 bg-[color:var(--sidebar)] text-[color:var(--sidebar-foreground)] pt-[env(safe-area-inset-top)] lg:sticky lg:top-0 lg:z-10 lg:flex lg:h-screen lg:flex-col"
     : cn(
-        "fixed inset-y-0 left-0 z-40 w-72 shrink-0 bg-[color:var(--sidebar)] text-[color:var(--sidebar-foreground)] transition-transform duration-200 md:sticky md:top-0 md:z-10 md:flex md:h-screen md:flex-col md:translate-x-0",
+        "fixed inset-y-0 left-0 z-40 w-72 shrink-0 bg-[color:var(--sidebar)] text-[color:var(--sidebar-foreground)] pt-[env(safe-area-inset-top)] transition-transform duration-200 md:sticky md:top-0 md:z-10 md:flex md:h-screen md:flex-col md:translate-x-0",
         open ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )
   const usesMobileBottomNav = isUser

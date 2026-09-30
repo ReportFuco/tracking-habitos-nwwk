@@ -26,6 +26,9 @@ export const productoResponseSchema = z.object({
   contenido_neto: z.number().nullable(),
   unidad_contenido: z.string().nullable(),
   activo: z.boolean(),
+  estado: z.enum(["pendiente", "aprobado", "rechazado"]),
+  id_usuario_creador: z.number().int().nullish(),
+  username_creador: z.string().nullish(),
   created_at: z.string(),
 })
 

@@ -2,12 +2,14 @@
 
 import Link from "next/link"
 import { useEffect, type CSSProperties } from "react"
-import { CloudOff, Plus } from "lucide-react"
+import { CloudOff, Plus, ShoppingBasket } from "lucide-react"
 import { formatCLP } from "@/lib/format"
 import type { TipoMovimiento } from "@/modules/finanzas/types/finanzas"
 
 export interface MovimientoRegistradoInfo {
   id: string
+  /** Id del movimiento en el backend; no existe si quedo en la cola offline. */
+  idMovimiento?: number
   tipo: TipoMovimiento
   monto: number
   categoria?: string
@@ -142,6 +144,15 @@ export function MovimientoRegistrado({ info, onClose, onAnother }: MovimientoReg
             Ver movimientos
           </Link>
         </div>
+        {!esIngreso && info.idMovimiento ? (
+          <Link
+            href={`/app/finanzas/movimientos/${info.idMovimiento}`}
+            className="mt-2 flex min-h-11 items-center justify-center gap-1.5 rounded-md text-sm font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            <ShoppingBasket className="size-4" aria-hidden />
+            Detallar productos
+          </Link>
+        ) : null}
 
         {/* Cuenta regresiva del cierre automatico. */}
         <span

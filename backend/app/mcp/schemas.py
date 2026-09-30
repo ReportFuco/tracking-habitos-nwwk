@@ -1,13 +1,13 @@
 """Salidas compactas de las herramientas MCP.
 
-Las respuestas REST traen campos que al LLM no le sirven (ubicacion, compras vinculadas,
-timestamps de creacion) y le gastan contexto; aqui va solo lo necesario para razonar.
+Las respuestas REST traen campos que al LLM no le sirven (ubicacion, timestamps de
+creacion) y le gastan contexto; aqui va solo lo necesario para razonar.
 """
 from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from app.models import CategoriaFinanza, CuentaUsuario, Movimiento
+from app.models import CategoriaFinanza, CuentaUsuario, Movimiento, MovimientoItem, Producto
 
 
 class CuentaMCP(BaseModel):
@@ -34,14 +34,65 @@ class CuentasMCP(BaseModel):
 class CategoriaMCP(BaseModel):
     id_categoria: int
     nombre: str
+    es_propia: bool = Field(description="True si la creó el usuario; false si es por defecto.")
 
     @classmethod
     def desde_modelo(cls, categoria: CategoriaFinanza) -> "CategoriaMCP":
-        return cls(id_categoria=categoria.id_categoria, nombre=categoria.nombre)
+        return cls(
+            id_categoria=categoria.id_categoria,
+            nombre=categoria.nombre,
+            es_propia=categoria.es_propia,
+        )
 
 
 class CategoriasMCP(BaseModel):
     items: list[CategoriaMCP]
+
+
+class ProductoMCP(BaseModel):
+    id_producto: int
+    nombre: str
+    marca: str | None = None
+    contenido: str | None = Field(None, description="Contenido neto y formato, ej. '1 L · Botella'.")
+    estado: str = Field(description="'aprobado', o 'pendiente'/'rechazado' si lo propuso el usuario.")
+
+    @classmethod
+    def desde_modelo(cls, producto: Producto) -> "ProductoMCP":
+        contenido = None
+        if producto.contenido_neto is not None:
+            contenido = f"{producto.contenido_neto.normalize():f} {producto.unidad_contenido or ''}".strip()
+        detalle = " · ".join(parte for parte in (contenido, producto.formato, producto.sabor) if parte)
+        return cls(
+            id_producto=producto.id_producto,
+            nombre=producto.nombre_producto,
+            marca=producto.nombre_marca,
+            contenido=detalle or None,
+            estado=producto.estado,
+        )
+
+
+class ProductosMCP(BaseModel):
+    items: list[ProductoMCP]
+
+
+class ItemMCP(BaseModel):
+    id_item: int
+    id_producto: int
+    producto: str
+    cantidad: float
+    precio_total: int | None = Field(None, description="CLP pagados por la línea completa.")
+
+    @classmethod
+    def desde_modelo(cls, item: MovimientoItem) -> "ItemMCP":
+        marca = item.producto.nombre_marca
+        nombre = item.producto.nombre_producto
+        return cls(
+            id_item=item.id_item,
+            id_producto=item.id_producto,
+            producto=f"{nombre} ({marca})" if marca else nombre,
+            cantidad=float(item.cantidad),
+            precio_total=item.precio_total,
+        )
 
 
 class MovimientoMCP(BaseModel):
@@ -55,6 +106,10 @@ class MovimientoMCP(BaseModel):
     cuenta: str | None = None
     id_cuenta: int
     descripcion: str | None = None
+    productos: list[ItemMCP] = Field(
+        default_factory=list,
+        description="Productos detallados del gasto; puede cubrir solo parte del monto.",
+    )
 
     @classmethod
     def desde_modelo(cls, movimiento: Movimiento) -> "MovimientoMCP":
@@ -69,6 +124,7 @@ class MovimientoMCP(BaseModel):
             cuenta=movimiento.cuenta.nombre_cuenta if movimiento.cuenta else None,
             id_cuenta=movimiento.id_cuenta,
             descripcion=movimiento.descripcion,
+            productos=[ItemMCP.desde_modelo(item) for item in movimiento.items],
         )
 
 

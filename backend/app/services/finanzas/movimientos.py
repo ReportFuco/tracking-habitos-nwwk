@@ -7,33 +7,30 @@ from sqlalchemy.orm import selectinload
 
 from app.models import (
     CategoriaFinanza,
-    Compra,
     CuentaUsuario,
-    Local,
     Movimiento,
-    MovimientoCompra,
+    MovimientoItem,
+    Producto,
     Usuario,
 )
 from app.models.finanzas import EnumTipoMovimiento
 from app.schemas.finanzas import MovimientoCreate, MovimientoPatch
+from app.services.catalogo import productos
 from app.services.errores import Conflicto, NoEncontrado
+from app.services.finanzas import categorias
 
 
 CHILE_TZ = ZoneInfo("America/Santiago")
 
 
 def _opciones_detalle() -> tuple:
-    """Relaciones que necesita MovimientoResponse (categoria, cuenta y compras vinculadas)."""
+    """Relaciones que necesita MovimientoResponse (categoria, cuenta y productos)."""
     return (
         selectinload(Movimiento.categoria),
         selectinload(Movimiento.cuenta),
-        selectinload(Movimiento.vinculos_compra)
-        .selectinload(MovimientoCompra.compra)
-        .selectinload(Compra.local)
-        .selectinload(Local.cadena),
-        selectinload(Movimiento.vinculos_compra)
-        .selectinload(MovimientoCompra.compra)
-        .selectinload(Compra.detalles),
+        selectinload(Movimiento.items)
+        .selectinload(MovimientoItem.producto)
+        .selectinload(Producto.marca),
     )
 
 
@@ -194,12 +191,11 @@ async def obtener_movimiento(db: AsyncSession, usuario: Usuario, id_movimiento: 
     return transaccion
 
 
-async def _validar_categoria(db: AsyncSession, id_categoria: int) -> None:
-    categoria = await db.scalar(
-        select(CategoriaFinanza).where(CategoriaFinanza.id_categoria == id_categoria)
-    )
-    if not categoria:
-        raise NoEncontrado("Categoría no encontrada.")
+async def _validar_categoria(db: AsyncSession, usuario: Usuario, id_categoria: int) -> None:
+    """La categoría debe ser por defecto o del usuario, y no estar archivada."""
+    categoria = await categorias.obtener_categoria(db, usuario, id_categoria)
+    if not categoria.activo:
+        raise Conflicto(f"La categoría «{categoria.nombre}» está archivada.")
 
 
 async def _validar_cuenta_activa(db: AsyncSession, usuario: Usuario, id_cuenta: int) -> None:
@@ -229,21 +225,31 @@ async def crear_movimiento(db: AsyncSession, usuario: Usuario, data: MovimientoC
                 raise Conflicto("El identificador de la solicitud ya fue utilizado.")
             return movimiento_existente
 
-    await _validar_categoria(db, data.id_categoria)
+    await _validar_categoria(db, usuario, data.id_categoria)
     await _validar_cuenta_activa(db, usuario, data.id_cuenta)
+    for item in data.items:
+        await validar_producto_activo(db, usuario, item.id_producto)
 
     movimiento = Movimiento(
-        **data.model_dump(exclude_none=True)
+        **data.model_dump(exclude_none=True, exclude={"items"})
     )
 
     db.add(movimiento)
     await db.flush()
-    await db.refresh(
-        movimiento,
-        attribute_names=["categoria", "cuenta", "vinculos_compra"]
-    )
-
+    # Los productos se crean en la misma transaccion: o queda el gasto con su detalle,
+    # o no queda nada.
+    for item in data.items:
+        db.add(MovimientoItem(id_movimiento=movimiento.id_transaccion, **item.model_dump()))
+    if data.items:
+        await db.flush()
     return await _recargar_con_detalle(db, movimiento.id_transaccion)
+
+
+async def validar_producto_activo(db: AsyncSession, usuario: Usuario, id_producto: int) -> None:
+    """El producto debe ser visible para el usuario y seguir en el catalogo."""
+    producto = await productos.obtener_producto(db, usuario, id_producto)
+    if not producto.activo:
+        raise Conflicto(f"El producto «{producto.nombre_producto}» fue dado de baja del catálogo.")
 
 
 async def editar_movimiento(
@@ -265,19 +271,21 @@ async def editar_movimiento(
 
     update_data = data.model_dump(exclude_unset=True)
 
-    if "id_categoria" in update_data:
-        await _validar_categoria(db, update_data["id_categoria"])
+    # Mantener la categoría que ya tenía es válido aunque después se haya archivado.
+    if "id_categoria" in update_data and update_data["id_categoria"] != movimiento.id_categoria:
+        await _validar_categoria(db, usuario, update_data["id_categoria"])
     if "id_cuenta" in update_data:
         await _validar_cuenta_activa(db, usuario, update_data["id_cuenta"])
+    if update_data.get("tipo_movimiento") == EnumTipoMovimiento.INGRESO:
+        tiene_items = await db.scalar(
+            select(MovimientoItem.id_item).where(MovimientoItem.id_movimiento == movimiento.id_transaccion).limit(1)
+        )
+        if tiene_items is not None:
+            raise Conflicto("Quita los productos del gasto antes de convertirlo en ingreso.")
 
     aplicar_patch_movimiento(movimiento, update_data)
 
     await db.commit()
-
-    await db.refresh(
-        movimiento,
-        attribute_names=["categoria", "cuenta", "vinculos_compra"]
-    )
 
     return await _recargar_con_detalle(db, id_movimiento)
 
@@ -290,11 +298,10 @@ async def eliminar_movimiento(db: AsyncSession, usuario: Usuario, id_movimiento:
             Movimiento.id_transaccion == id_movimiento,
             CuentaUsuario.id_usuario == usuario.id_usuario,
         )
-        .options(selectinload(Movimiento.vinculos_compra))
     )
     if not movimiento:
         raise NoEncontrado("Movimiento no encontrado.")
 
-    # Los vinculos con compras se borran en cascada; las compras quedan intactas.
+    # Sus productos detallados se borran en cascada (ON DELETE CASCADE).
     await db.delete(movimiento)
     await db.commit()

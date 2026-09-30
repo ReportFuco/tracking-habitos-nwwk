@@ -3,6 +3,7 @@
 // re-exportan) porque este archivo tambien los usa mas abajo.
 import type {
   CuentaResponse,
+  MovimientoItemResponse,
   MovimientoResponse,
   MovimientosPageResponse,
   TipoGasto,
@@ -20,6 +21,7 @@ export type {
 
 export type {
   CuentaResponse,
+  MovimientoItemResponse,
   MovimientoResponse,
   MovimientosPageResponse,
   TipoGasto,
@@ -60,15 +62,23 @@ export interface ProductoFinancieroResponse {
 
 export interface CategoriaCreate {
   nombre: string
+  /** Solo superusuarios: categoria por defecto, visible para todos. */
+  por_defecto?: boolean
 }
 
 export interface CategoriaPatch {
-  nombre: string | null
+  nombre?: string
+  /** true desarchiva. */
+  activo?: boolean
 }
 
 export interface CategoriaResponse {
   id_categoria: number
   nombre: string
+  /** true si la creo el usuario; false si es una categoria por defecto. */
+  es_propia: boolean
+  /** false si esta archivada (tiene movimientos, pero ya no se ofrece al registrar). */
+  activo: boolean
   created_at: string
 }
 
@@ -94,6 +104,8 @@ export interface MovimientoCreate {
   longitud?: number | null
   precision_ubicacion?: number | null
   created_at?: string
+  /** Productos del gasto, creados junto con el. */
+  items?: MovimientoItemCreate[]
 }
 
 // El backend rechaza null explicito en estos campos (columnas NOT NULL): omitir = no cambiar.
@@ -107,6 +119,19 @@ export interface MovimientoPatch {
   descripcion?: string | null
   /** YYYY-MM-DDTHH:mm:ss, hora de Chile. */
   created_at?: string
+}
+
+export interface MovimientoItemCreate {
+  id_producto: number
+  cantidad?: number
+  precio_total?: number | null
+}
+
+export interface MovimientoItemPatch {
+  id_producto?: number
+  cantidad?: number
+  /** null borra el precio. */
+  precio_total?: number | null
 }
 
 export interface MovimientosFiltros {

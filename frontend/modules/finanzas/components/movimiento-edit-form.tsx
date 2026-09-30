@@ -27,14 +27,24 @@ export function MovimientoEditForm({ movimiento, onDone }: Props) {
       tipo_movimiento: movimiento.tipo_movimiento,
       tipo_gasto: movimiento.tipo_gasto,
       monto: String(movimiento.monto),
-      id_categoria: String(porNombre(categorias.map((c) => ({ id: c.id_categoria, nombre: c.nombre })), movimiento.categoria) ?? ""),
+      id_categoria: String(movimiento.id_categoria),
       id_cuenta: String(porNombre(cuentas.map((c) => ({ id: c.id_cuenta, nombre: c.nombre_cuenta })), movimiento.nombre_cuenta) ?? ""),
       descripcion: movimiento.descripcion ?? "",
       created_at: movimiento.created_at.slice(0, 16),
     }),
-    [movimiento, categorias, cuentas],
+    [movimiento, cuentas],
   )
   const [form, setForm] = useState(original)
+
+  // Una categoria archivada ya no se ofrece, pero el movimiento que la usa debe poder
+  // conservarla al editar otros campos.
+  const categoriaOptions = useMemo(() => {
+    const opciones = categorias.map((c) => ({ value: String(c.id_categoria), label: c.nombre }))
+    if (!categorias.some((c) => c.id_categoria === movimiento.id_categoria)) {
+      opciones.unshift({ value: String(movimiento.id_categoria), label: movimiento.categoria ?? "Categoria archivada" })
+    }
+    return opciones
+  }, [categorias, movimiento.id_categoria, movimiento.categoria])
   const [error, setError] = useState<string | null>(null)
 
   const cambios = useMemo(() => {
@@ -118,7 +128,7 @@ export function MovimientoEditForm({ movimiento, onDone }: Props) {
           label="Categoria"
           value={form.id_categoria}
           onChange={(value) => setForm((prev) => ({ ...prev, id_categoria: value }))}
-          options={categorias.map((c) => ({ value: String(c.id_categoria), label: c.nombre }))}
+          options={categoriaOptions}
         />
       </Campo>
 

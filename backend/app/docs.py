@@ -31,14 +31,8 @@ DOC_MODULES = [
     {
         "slug": "finanzas",
         "title": "Finanzas",
-        "description": "Bancos, cuentas, categorias y movimientos.",
+        "description": "Bancos, cuentas, categorias, movimientos y sus productos.",
         "prefixes": ("/api/finanzas",),
-    },
-    {
-        "slug": "compras",
-        "title": "Compras",
-        "description": "Compras, detalles, locales y vinculos con movimientos.",
-        "prefixes": ("/api/compras",),
     },
     {
         "slug": "catalogo",
@@ -71,7 +65,6 @@ OPENAPI_TAGS = [
     {"name": "Auth", "description": "Autenticacion y registro."},
     {"name": "Usuario", "description": "Perfil y administracion de usuarios."},
     {"name": "Finanzas", "description": "Operaciones del dominio de finanzas."},
-    {"name": "Compras", "description": "Operaciones del dominio de compras."},
     {"name": "Catalogo", "description": "Operaciones del dominio de catalogo."},
     {"name": "Nutricion", "description": "Operaciones del dominio de nutricion."},
     {"name": "Entrenamientos", "description": "Operaciones del dominio de entrenamientos."},
@@ -171,7 +164,7 @@ def use_custom_openapi(app: FastAPI) -> None:
             version=settings.VERSION_API,
             description=(
                 "API encargada de realizar registros a areas como finanzas, "
-                "deportes, habitos, compras y mas."
+                "deportes, habitos, nutricion y mas."
             ),
             routes=app.routes,
             tags=OPENAPI_TAGS,

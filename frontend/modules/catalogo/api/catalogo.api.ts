@@ -35,11 +35,40 @@ export const CatalogoAPI = {
     await api.delete(`/api/catalogo/marca/${idMarca}`)
   },
 
-  getProductos: async (params?: { q?: string }): Promise<ProductoResponse[]> => {
+  getProductos: async (params?: { q?: string; limit?: number }): Promise<ProductoResponse[]> => {
     const { data } = await api.get("/api/catalogo/producto/", {
-      params: params?.q ? params : undefined,
+      params: params?.q || params?.limit ? params : undefined,
     })
     return parseApiResponse(productosListResponseSchema, data, "GET /api/catalogo/producto/")
+  },
+
+  /** Los que mas compra el usuario, para elegirlos con un toque. */
+  getProductosFrecuentes: async (): Promise<ProductoResponse[]> => {
+    const { data } = await api.get("/api/catalogo/producto/frecuentes")
+    return parseApiResponse(productosListResponseSchema, data, "GET /api/catalogo/producto/frecuentes")
+  },
+
+  /** Cola de revision del administrador. */
+  getProductosEnRevision: async (estado: "pendiente" | "rechazado" = "pendiente"): Promise<ProductoResponse[]> => {
+    const { data } = await api.get("/api/catalogo/producto/revision", { params: { estado } })
+    return parseApiResponse(productosListResponseSchema, data, "GET /api/catalogo/producto/revision")
+  },
+
+  aprobarProducto: async (idProducto: number): Promise<ProductoResponse> => {
+    const { data } = await api.post(`/api/catalogo/producto/${idProducto}/aprobar`)
+    return parseApiResponse(productoResponseSchema, data, "POST /api/catalogo/producto/{id}/aprobar")
+  },
+
+  rechazarProducto: async (idProducto: number): Promise<ProductoResponse> => {
+    const { data } = await api.post(`/api/catalogo/producto/${idProducto}/rechazar`)
+    return parseApiResponse(productoResponseSchema, data, "POST /api/catalogo/producto/{id}/rechazar")
+  },
+
+  fusionarProducto: async (idProducto: number, idProductoDestino: number): Promise<ProductoResponse> => {
+    const { data } = await api.post(`/api/catalogo/producto/${idProducto}/fusionar`, {
+      id_producto_destino: idProductoDestino,
+    })
+    return parseApiResponse(productoResponseSchema, data, "POST /api/catalogo/producto/{id}/fusionar")
   },
 
   createProducto: async (payload: ProductoCreate): Promise<ProductoResponse> => {

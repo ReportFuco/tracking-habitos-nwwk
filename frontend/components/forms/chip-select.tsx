@@ -25,7 +25,7 @@ interface ChipSelectProps {
 }
 
 /**
- * Seleccion de una opcion con chips en una fila desplazable: un toque en lugar de abrir
+ * Seleccion de una opcion con chips (fila desplazable en movil): un toque en lugar de abrir
  * un combobox. Es un radiogroup: flechas para moverse, Tab entra y sale del grupo.
  */
 export function ChipSelect({
@@ -72,7 +72,9 @@ export function ChipSelect({
       aria-invalid={invalid || undefined}
       aria-describedby={errorId}
       className={cn(
-        "-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-6 sm:px-6 [&::-webkit-scrollbar]:hidden",
+        // En movil una fila desplazable que sangra hasta el borde; desde sm los chips se
+        // envuelven, porque con mouse no hay gesto natural para desplazar en horizontal.
+        "-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden",
         className,
       )}
     >

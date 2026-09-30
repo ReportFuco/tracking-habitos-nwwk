@@ -28,6 +28,8 @@ from app.mcp.schemas import (
     MovimientoEliminadoMCP,
     MovimientoMCP,
     MovimientosMCP,
+    ProductoMCP,
+    ProductosMCP,
 )
 from app.models import Usuario
 from app.models.finanzas import EnumTipoMovimiento
@@ -37,11 +39,15 @@ from app.schemas.finanzas import (
     AnaliticaDistribucionCuentasResponse,
     AnaliticaResumenResponse,
     AnaliticaTendenciaMensualResponse,
+    CategoriaCreate,
     MovimientoCreate,
+    MovimientoItemCreate,
     MovimientoPatch,
 )
+from app.schemas.catalogo import ProductoCreate
+from app.services.catalogo import productos
 from app.services.errores import ErrorDominio
-from app.services.finanzas import analitica, categorias, cuentas, movimientos
+from app.services.finanzas import analitica, categorias, cuentas, items, movimientos
 from app.services.usuarios import obtener_perfil
 
 
@@ -135,10 +141,100 @@ async def listar_cuentas(ctx: Context) -> CuentasMCP:
 
 
 async def listar_categorias(ctx: Context) -> CategoriasMCP:
-    """Categorías de movimientos disponibles (id y nombre). Son compartidas entre usuarios."""
-    async with sesion_usuario(ctx) as (db, _usuario):
-        items = await categorias.listar_categorias(db)
-        return CategoriasMCP(items=[CategoriaMCP.desde_modelo(categoria) for categoria in items])
+    """Categorías que el usuario puede usar: las por defecto y las que creó él (es_propia).
+
+    Si ninguna calza con lo que el usuario describe, propónle crear una con crear_categoria.
+    """
+    async with sesion_usuario(ctx) as (db, usuario):
+        lista = await categorias.listar_categorias(db, usuario)
+        return CategoriasMCP(items=[CategoriaMCP.desde_modelo(categoria) for categoria in lista])
+
+
+async def crear_categoria(
+    ctx: Context,
+    nombre: Annotated[str, Field(min_length=1, max_length=100, description="Ej. 'Mascotas'.")],
+) -> CategoriaMCP:
+    """Crea una categoría propia del usuario (solo él la ve). Falla si ya existe una con el
+    mismo nombre entre las por defecto o las suyas. Confírmala con el usuario antes."""
+    data = _validar(CategoriaCreate, nombre=nombre)
+    async with sesion_usuario(ctx, FINANZAS_WRITE) as (db, usuario):
+        categoria = await categorias.crear_categoria(db, usuario, data)
+        return CategoriaMCP.desde_modelo(categoria)
+
+
+async def buscar_productos(
+    ctx: Context,
+    texto: Annotated[
+        str | None,
+        Field(max_length=100, description="Nombre, marca o código de barra. Sin texto: los que más compra el usuario."),
+    ] = None,
+    limit: Annotated[int, Field(ge=1, le=50)] = 15,
+) -> ProductosMCP:
+    """Busca productos del catálogo (aprobados y los que propuso el usuario) para
+    detallarlos en un gasto con agregar_producto_a_gasto."""
+    async with sesion_usuario(ctx) as (db, usuario):
+        if texto and texto.strip():
+            lista = await productos.buscar_productos(db, usuario, q=texto, limit=limit)
+        else:
+            lista = await productos.productos_frecuentes(db, usuario, limit)
+        return ProductosMCP(items=[ProductoMCP.desde_modelo(producto) for producto in lista])
+
+
+async def crear_producto(
+    ctx: Context,
+    nombre: Annotated[str, Field(min_length=1, max_length=160, description="Ej. 'Leche entera Colun'.")],
+    contenido_neto: Annotated[float | None, Field(gt=0, description="Ej. 1 para 1 L.")] = None,
+    unidad_contenido: Annotated[str | None, Field(max_length=30, description="g, kg, ml, L, unidades...")] = None,
+    formato: Annotated[str | None, Field(max_length=100, description="Ej. 'Caja', 'Botella'.")] = None,
+    codigo_barra: Annotated[str | None, Field(max_length=64)] = None,
+) -> ProductoMCP:
+    """Propone un producto nuevo cuando buscar_productos no lo encuentra. Queda pendiente
+    de revisión: el usuario lo puede usar de inmediato, el resto solo cuando se apruebe."""
+    data = _validar(
+        ProductoCreate,
+        nombre_producto=nombre,
+        contenido_neto=contenido_neto,
+        unidad_contenido=unidad_contenido,
+        formato=formato,
+        codigo_barra=codigo_barra,
+    )
+    async with sesion_usuario(ctx, FINANZAS_WRITE) as (db, usuario):
+        producto = await productos.crear_producto(db, usuario, data)
+        return ProductoMCP.desde_modelo(producto)
+
+
+async def agregar_producto_a_gasto(
+    ctx: Context,
+    id_movimiento: Annotated[int, Field(ge=1, description="Gasto al que se agrega el producto.")],
+    id_producto: Annotated[int, Field(ge=1, description="Ver buscar_productos.")],
+    cantidad: Annotated[float, Field(gt=0, description="Unidades, o kilos/litros a granel (ej. 0.75).")] = 1,
+    precio_total: Annotated[
+        int | None,
+        Field(ge=0, description="CLP pagados por la línea completa (cantidad × precio unitario)."),
+    ] = None,
+) -> MovimientoMCP:
+    """Detalla un producto comprado dentro de un gasto. El detalle puede ser parcial: no hace
+    falta que los productos sumen el monto del gasto."""
+    data = _validar(
+        MovimientoItemCreate,
+        id_producto=id_producto,
+        cantidad=str(cantidad),
+        precio_total=precio_total,
+    )
+    async with sesion_usuario(ctx, FINANZAS_WRITE) as (db, usuario):
+        movimiento = await items.agregar_item(db, usuario, id_movimiento, data)
+        return MovimientoMCP.desde_modelo(movimiento)
+
+
+async def quitar_producto_de_gasto(
+    ctx: Context,
+    id_movimiento: Annotated[int, Field(ge=1)],
+    id_item: Annotated[int, Field(ge=1, description="id_item dentro de productos del movimiento.")],
+) -> MovimientoMCP:
+    """Quita un producto detallado de un gasto. El gasto no cambia."""
+    async with sesion_usuario(ctx, FINANZAS_WRITE) as (db, usuario):
+        movimiento = await items.eliminar_item(db, usuario, id_movimiento, id_item)
+        return MovimientoMCP.desde_modelo(movimiento)
 
 
 async def buscar_movimientos(
@@ -332,6 +428,7 @@ HERRAMIENTAS = (
     (listar_cuentas, "Listar cuentas", SOLO_LECTURA),
     (listar_categorias, "Listar categorías", SOLO_LECTURA),
     (buscar_movimientos, "Buscar movimientos", SOLO_LECTURA),
+    (buscar_productos, "Buscar productos", SOLO_LECTURA),
     (resumen_mes, "Resumen del mes", SOLO_LECTURA),
     (tendencia_mensual, "Tendencia mensual", SOLO_LECTURA),
     (distribucion_por_categoria, "Gasto por categoría", SOLO_LECTURA),
@@ -340,6 +437,10 @@ HERRAMIENTAS = (
     (registrar_movimiento, "Registrar movimiento", CREA),
     (editar_movimiento, "Editar movimiento", MODIFICA),
     (eliminar_movimiento, "Eliminar movimiento", MODIFICA),
+    (crear_categoria, "Crear categoría", CREA),
+    (crear_producto, "Proponer producto", CREA),
+    (agregar_producto_a_gasto, "Agregar producto a un gasto", CREA),
+    (quitar_producto_de_gasto, "Quitar producto de un gasto", MODIFICA),
 )
 
 

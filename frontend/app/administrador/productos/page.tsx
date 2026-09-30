@@ -14,7 +14,7 @@ export default function ProductosPage() {
       <PageHeader
         eyebrow="Catalogo maestro"
         title="Productos"
-        description="Crea, edita y desactiva productos del catalogo maestro."
+        description="Revisa lo que proponen los usuarios y cuida el catalogo compartido."
       />
       <ProductosManager />
     </div>

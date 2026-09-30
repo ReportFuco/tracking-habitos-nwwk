@@ -15,7 +15,7 @@ export default function CategoriasPage() {
       <PageHeader
         eyebrow="Finanzas maestras"
         title="Categorias"
-        description="Crea, edita y elimina las categorias de movimientos."
+        description="Las que ven todos los usuarios. Cada usuario puede sumar las suyas desde Finanzas."
       />
 
       <FinanzasProvider>

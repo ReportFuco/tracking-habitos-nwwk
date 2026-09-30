@@ -30,7 +30,7 @@ const MODULE_BLOCKS = [
   { label: "Finanzas", detail: "Cuentas y gastos", fill: "--module-finanzas-fill", on: "--module-finanzas-on" },
   { label: "Fuerza", detail: "Series y cargas", fill: "--module-entrenamientos-fill", on: "--module-entrenamientos-on" },
   { label: "Nutricion", detail: "Comidas y peso", fill: "--module-nutricion-fill", on: "--module-nutricion-on" },
-  { label: "Compras", detail: "Tickets y locales", fill: "--module-compras-fill", on: "--module-compras-on" },
+  { label: "Compras", detail: "Productos y precios", fill: "--module-compras-fill", on: "--module-compras-on" },
 ]
 
 export function AuthShell({
@@ -44,7 +44,7 @@ export function AuthShell({
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="lg:hidden">
-        <div className="flex items-center justify-between px-4 pt-5 pb-3 sm:px-6">
+        <div className="flex items-center justify-between px-4 pt-[calc(env(safe-area-inset-top)+1.25rem)] pb-3 sm:px-6">
           <Link href="/" aria-label="Volver al inicio">
             <BrandMark size="sm" />
           </Link>

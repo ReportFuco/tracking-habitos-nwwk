@@ -1,7 +1,7 @@
 "use client"
 
 import { FormEvent, useCallback, useMemo, useRef, useState } from "react"
-import { ArrowDownLeft, ArrowUpRight, CalendarClock, Check, LoaderCircle, MapPin, Repeat, X } from "lucide-react"
+import { ArrowDownLeft, ArrowUpRight, CalendarClock, Check, LoaderCircle, MapPin, Plus, Repeat, ShoppingBasket, X } from "lucide-react"
 import { toast } from "sonner"
 import { ChipSelect, type ChipOption } from "@/components/forms/chip-select"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ import { useFinanzas } from "@/modules/finanzas/hooks/useFinanzas"
 import { movimientoCreateSchema } from "@/modules/finanzas/schemas/finanzas.schema"
 import type { TipoGasto, TipoMovimiento } from "@/modules/finanzas/types/finanzas"
 import { MovimientoRegistrado, type MovimientoRegistradoInfo } from "./movimiento-registrado"
+import { aItemsCreate, ProductosNuevoGasto, type ProductoPorGuardar } from "./productos-nuevo-gasto"
 
 type Campo = "monto" | "id_categoria" | "id_cuenta" | "created_at"
 
@@ -47,16 +48,20 @@ function contarPorNombre(nombres: (string | null | undefined)[]) {
   return conteo
 }
 
-export function MovimientoFormCard() {
-  const { categorias, cuentas, movimientos, loadingCatalogos, submittingMovimiento, crearMovimiento } =
+export function MovimientoFormCard({ tipoInicial = "gasto" }: { tipoInicial?: TipoMovimiento }) {
+  const { categorias, cuentas, movimientos, loadingCatalogos, submittingMovimiento, crearMovimiento, crearCategoria } =
     useFinanzas()
 
-  const [form, setForm] = useState(initialForm)
+  const [form, setForm] = useState(() => ({ ...initialForm, tipo_movimiento: tipoInicial }))
+  const [nuevaCategoria, setNuevaCategoria] = useState<string | null>(null)
+  const [creandoCategoria, setCreandoCategoria] = useState(false)
   const [errores, setErrores] = useState<Partial<Record<Campo, string>>>({})
   const [ubicacion, setUbicacion] = useState<UbicacionUsuario | null>(null)
   const [capturandoUbicacion, setCapturandoUbicacion] = useState(false)
   const [mostrarFecha, setMostrarFecha] = useState(false)
   const [registrado, setRegistrado] = useState<MovimientoRegistradoInfo | null>(null)
+  const [productos, setProductos] = useState<ProductoPorGuardar[]>([])
+  const [agregandoProducto, setAgregandoProducto] = useState(false)
   const montoRef = useRef<HTMLInputElement>(null)
 
   const esIngreso = form.tipo_movimiento === "ingreso"
@@ -125,6 +130,21 @@ export function MovimientoFormCard() {
     }
   }
 
+  // Crear una categoria propia sin salir del registro: queda seleccionada al instante.
+  const crearCategoriaEnLinea = async () => {
+    const nombre = nuevaCategoria?.trim()
+    if (!nombre) return
+    setCreandoCategoria(true)
+    const result = await crearCategoria({ nombre })
+    setCreandoCategoria(false)
+    if (!result.ok) {
+      toast.error("No pudimos crear la categoria", { description: result.message })
+      return
+    }
+    actualizar("id_categoria", String(result.categoria.id_categoria))
+    setNuevaCategoria(null)
+  }
+
   const resetParaOtro = useCallback(() => {
     setRegistrado(null)
     window.requestAnimationFrame(() => montoRef.current?.focus())
@@ -171,6 +191,8 @@ export function MovimientoFormCard() {
       client_request_id: crypto.randomUUID(),
       descripcion: parsed.data.descripcion || null,
       created_at: parsed.data.created_at ? ensureSeconds(parsed.data.created_at) : undefined,
+      // Los productos quedan guardados si se cambia a ingreso, pero solo viajan con un gasto.
+      items: !esIngreso && productos.length > 0 ? aItemsCreate(productos) : undefined,
     })
 
     if (!result.ok) {
@@ -180,6 +202,7 @@ export function MovimientoFormCard() {
 
     setRegistrado({
       id: crypto.randomUUID(),
+      idMovimiento: result.idMovimiento,
       tipo: form.tipo_movimiento,
       monto: montoNumero,
       categoria: categoriaOptions.find((option) => option.value === form.id_categoria)?.label,
@@ -194,6 +217,7 @@ export function MovimientoFormCard() {
     }))
     setUbicacion(null)
     setMostrarFecha(false)
+    setProductos([])
     setErrores({})
   }
 
@@ -277,8 +301,52 @@ export function MovimientoFormCard() {
             loading={loadingCatalogos && categoriaOptions.length === 0}
             invalid={Boolean(errores.id_categoria)}
             errorId={errores.id_categoria ? "categoria-error" : undefined}
-            emptyMessage="Aun no hay categorias. Pide que las creen en administracion."
+            emptyMessage="Aun no hay categorias: crea la primera."
           />
+          {nuevaCategoria === null ? (
+            <button
+              type="button"
+              onClick={() => setNuevaCategoria("")}
+              className="inline-flex items-center gap-1 self-start text-xs font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              <Plus className="size-3.5" aria-hidden />
+              Nueva categoria
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <label htmlFor="nueva-categoria" className="sr-only">
+                Nombre de la nueva categoria
+              </label>
+              <input
+                id="nueva-categoria"
+                autoFocus
+                maxLength={100}
+                placeholder="Ej: Mascotas"
+                value={nuevaCategoria}
+                onChange={(event) => setNuevaCategoria(event.target.value)}
+                onKeyDown={(event) => {
+                  // Enter crea la categoria en vez de enviar el movimiento.
+                  if (event.key === "Enter") {
+                    event.preventDefault()
+                    void crearCategoriaEnLinea()
+                  }
+                  if (event.key === "Escape") setNuevaCategoria(null)
+                }}
+                className="h-10 min-w-0 flex-1 rounded-md border border-border bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground"
+              />
+              <Button
+                type="button"
+                className="h-10"
+                disabled={creandoCategoria || !nuevaCategoria.trim()}
+                onClick={() => void crearCategoriaEnLinea()}
+              >
+                {creandoCategoria ? "Creando..." : "Crear"}
+              </Button>
+              <Button type="button" variant="ghost" size="icon-lg" aria-label="Cancelar" onClick={() => setNuevaCategoria(null)}>
+                <X className="size-4" />
+              </Button>
+            </div>
+          )}
         </Grupo>
 
         <Grupo titulo="Cuenta" error={errores.id_cuenta} errorId="cuenta-error">
@@ -320,6 +388,13 @@ export function MovimientoFormCard() {
                 }
                 label={ubicacion ? `En el local · ±${Math.round(ubicacion.precision)} m` : "En el local"}
                 title="Guarda la ubicacion del local. Solo para compras presenciales."
+              />
+              <Toggle
+                pressed={productos.length > 0}
+                onClick={() => setAgregandoProducto(true)}
+                icon={<ShoppingBasket className="size-4" aria-hidden />}
+                label={productos.length > 0 ? `Productos · ${productos.length}` : "Productos"}
+                title="Anota que compraste en este gasto (opcional)."
               />
             </>
           )}
@@ -367,6 +442,16 @@ export function MovimientoFormCard() {
             {errores.created_at ? <p className="mt-1.5 text-xs font-medium text-destructive">{errores.created_at}</p> : null}
           </div>
         ) : null}
+
+        {esIngreso ? null : (
+          <ProductosNuevoGasto
+            items={productos}
+            onChange={setProductos}
+            monto={montoNumero}
+            agregando={agregandoProducto}
+            onAgregandoChange={setAgregandoProducto}
+          />
+        )}
 
         <div>
           <label htmlFor="nota" className="sr-only">

@@ -27,13 +27,22 @@ LECTURA = {
     "listar_cuentas",
     "listar_categorias",
     "buscar_movimientos",
+    "buscar_productos",
     "resumen_mes",
     "tendencia_mensual",
     "distribucion_por_categoria",
     "distribucion_por_cuenta",
     "gasto_diario",
 }
-ESCRITURA = {"registrar_movimiento", "editar_movimiento", "eliminar_movimiento"}
+ESCRITURA = {
+    "registrar_movimiento",
+    "editar_movimiento",
+    "eliminar_movimiento",
+    "crear_categoria",
+    "crear_producto",
+    "agregar_producto_a_gasto",
+    "quitar_producto_de_gasto",
+}
 
 
 @asynccontextmanager
@@ -71,7 +80,7 @@ if RUN_DB:
 
     from app.auth.api_key import generate_api_key
     from app.db.session import AsyncSessionLocal, engine
-    from app.models import ApiKey, Banco, CategoriaFinanza, CuentaUsuario, Movimiento, ProductoFinanciero, Usuario
+    from app.models import ApiKey, Banco, CategoriaFinanza, CuentaUsuario, Movimiento, Producto, ProductoFinanciero, Usuario
     from app.models.finanzas import EnumTipoGasto, EnumTipoMovimiento
     from app.models.usuario_auth import User
 
@@ -306,3 +315,53 @@ async def test_escritura_no_toca_datos_de_otro_usuario(escenario):
     assert "Cuenta no encontrada" in en_cuenta_ajena.content[0].text
     assert ajeno.structured_content["items"] == []
     assert monto_invalido.is_error
+
+
+@requiere_db
+async def test_categoria_propia_y_productos_en_un_gasto(escenario):
+    sufijo = uuid.uuid4().hex[:6]
+    async with cliente_mcp(escenario["key_escritura"]) as cliente:
+        categoria = await cliente.call_tool("crear_categoria", {"nombre": f"Mascotas {sufijo}"})
+        repetida = await cliente.call_tool("crear_categoria", {"nombre": f"mascotas {sufijo}"})
+        listadas = await cliente.call_tool("listar_categorias", {})
+        gasto = await cliente.call_tool("registrar_movimiento", {
+            "tipo_movimiento": "gasto", "monto": 4500,
+            "id_categoria": categoria.structured_content["id_categoria"], "id_cuenta": escenario["rut"],
+        })
+        producto = await cliente.call_tool("crear_producto", {
+            "nombre": f"Alimento gato {sufijo}", "contenido_neto": 1.5, "unidad_contenido": "kg",
+        })
+        encontrados = await cliente.call_tool("buscar_productos", {"texto": f"gato {sufijo}"})
+        id_mov = gasto.structured_content["id_movimiento"]
+        con_producto = await cliente.call_tool("agregar_producto_a_gasto", {
+            "id_movimiento": id_mov,
+            "id_producto": producto.structured_content["id_producto"],
+            "cantidad": 1, "precio_total": 4500,
+        })
+        frecuentes = await cliente.call_tool("buscar_productos", {})
+        id_item = con_producto.structured_content["productos"][0]["id_item"]
+        sin_producto = await cliente.call_tool("quitar_producto_de_gasto", {"id_movimiento": id_mov, "id_item": id_item})
+
+    try:
+        assert not categoria.is_error, categoria.content
+        assert categoria.structured_content["es_propia"] is True
+        assert repetida.is_error
+        nombres = {c["nombre"] for c in listadas.structured_content["items"]}
+        assert f"Mascotas {sufijo}" in nombres
+        assert producto.structured_content["estado"] == "pendiente"
+        assert producto.structured_content["contenido"] == "1.5 kg"
+        assert [p["id_producto"] for p in encontrados.structured_content["items"]] == [
+            producto.structured_content["id_producto"]
+        ]
+        assert con_producto.structured_content["productos"][0]["precio_total"] == 4500
+        assert producto.structured_content["id_producto"] in {
+            p["id_producto"] for p in frecuentes.structured_content["items"]
+        }
+        assert sin_producto.structured_content["productos"] == []
+    finally:
+        async with AsyncSessionLocal() as db:
+            await db.execute(delete(Movimiento).where(Movimiento.id_transaccion == id_mov))
+            await db.execute(
+                delete(Producto).where(Producto.id_producto == producto.structured_content["id_producto"])
+            )
+            await db.commit()

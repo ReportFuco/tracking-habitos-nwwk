@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: BRAND.name,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "black",
   },
   formatDetection: {
     telephone: false,
