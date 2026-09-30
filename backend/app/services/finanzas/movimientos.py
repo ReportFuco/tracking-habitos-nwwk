@@ -17,17 +17,18 @@ from app.models.finanzas import EnumTipoMovimiento
 from app.schemas.finanzas import MovimientoCreate, MovimientoPatch
 from app.services.catalogo import productos
 from app.services.errores import Conflicto, NoEncontrado
-from app.services.finanzas import categorias
+from app.services.finanzas import categorias, deudas
 
 
 CHILE_TZ = ZoneInfo("America/Santiago")
 
 
 def _opciones_detalle() -> tuple:
-    """Relaciones que necesita MovimientoResponse (categoria, cuenta y productos)."""
+    """Relaciones que necesita MovimientoResponse (categoria, cuenta, deuda y productos)."""
     return (
         selectinload(Movimiento.categoria),
         selectinload(Movimiento.cuenta),
+        selectinload(Movimiento.deuda),
         selectinload(Movimiento.items)
         .selectinload(MovimientoItem.producto)
         .selectinload(Producto.marca),
@@ -58,6 +59,7 @@ def filtros_listado_movimientos(
     id_categoria: int | None,
     id_cuenta: int | None,
     q: str | None,
+    id_deuda: int | None = None,
 ) -> list:
     """Condiciones WHERE del listado. Un mes sin año usa el año actual de Chile."""
     filtros = []
@@ -76,6 +78,8 @@ def filtros_listado_movimientos(
         filtros.append(Movimiento.id_categoria == id_categoria)
     if id_cuenta is not None:
         filtros.append(Movimiento.id_cuenta == id_cuenta)
+    if id_deuda is not None:
+        filtros.append(Movimiento.id_deuda == id_deuda)
     if q:
         patron = f"%{q.strip()}%"
         filtros.append(or_(Movimiento.descripcion.ilike(patron), CategoriaFinanza.nombre.ilike(patron)))
@@ -126,6 +130,7 @@ async def listar_movimientos(
     id_categoria: int | None = None,
     id_cuenta: int | None = None,
     q: str | None = None,
+    id_deuda: int | None = None,
 ) -> list[Movimiento]:
     """Movimientos del usuario, más recientes primero. Sin resultados es una lista vacía."""
     filtros = filtros_listado_movimientos(
@@ -135,6 +140,7 @@ async def listar_movimientos(
         id_categoria=id_categoria,
         id_cuenta=id_cuenta,
         q=q,
+        id_deuda=id_deuda,
     )
 
     consulta = (
@@ -191,14 +197,14 @@ async def obtener_movimiento(db: AsyncSession, usuario: Usuario, id_movimiento: 
     return transaccion
 
 
-async def _validar_categoria(db: AsyncSession, usuario: Usuario, id_categoria: int) -> None:
+async def validar_categoria(db: AsyncSession, usuario: Usuario, id_categoria: int) -> None:
     """La categoría debe ser por defecto o del usuario, y no estar archivada."""
     categoria = await categorias.obtener_categoria(db, usuario, id_categoria)
     if not categoria.activo:
         raise Conflicto(f"La categoría «{categoria.nombre}» está archivada.")
 
 
-async def _validar_cuenta_activa(db: AsyncSession, usuario: Usuario, id_cuenta: int) -> None:
+async def validar_cuenta_activa(db: AsyncSession, usuario: Usuario, id_cuenta: int) -> None:
     cuenta = await db.scalar(
         select(CuentaUsuario).where(
             CuentaUsuario.id_cuenta == id_cuenta,
@@ -225,10 +231,14 @@ async def crear_movimiento(db: AsyncSession, usuario: Usuario, data: MovimientoC
                 raise Conflicto("El identificador de la solicitud ya fue utilizado.")
             return movimiento_existente
 
-    await _validar_categoria(db, usuario, data.id_categoria)
-    await _validar_cuenta_activa(db, usuario, data.id_cuenta)
+    await validar_categoria(db, usuario, data.id_categoria)
+    await validar_cuenta_activa(db, usuario, data.id_cuenta)
     for item in data.items:
         await validar_producto_activo(db, usuario, item.id_producto)
+    if data.id_deuda is not None:
+        await deudas.validar_abono(
+            db, usuario, data.id_deuda, tipo_movimiento=data.tipo_movimiento, monto=data.monto
+        )
 
     movimiento = Movimiento(
         **data.model_dump(exclude_none=True, exclude={"items"})
@@ -273,15 +283,28 @@ async def editar_movimiento(
 
     # Mantener la categoría que ya tenía es válido aunque después se haya archivado.
     if "id_categoria" in update_data and update_data["id_categoria"] != movimiento.id_categoria:
-        await _validar_categoria(db, usuario, update_data["id_categoria"])
+        await validar_categoria(db, usuario, update_data["id_categoria"])
     if "id_cuenta" in update_data:
-        await _validar_cuenta_activa(db, usuario, update_data["id_cuenta"])
+        await validar_cuenta_activa(db, usuario, update_data["id_cuenta"])
     if update_data.get("tipo_movimiento") == EnumTipoMovimiento.INGRESO:
         tiene_items = await db.scalar(
             select(MovimientoItem.id_item).where(MovimientoItem.id_movimiento == movimiento.id_transaccion).limit(1)
         )
         if tiene_items is not None:
             raise Conflicto("Quita los productos del gasto antes de convertirlo en ingreso.")
+
+    # El abono resultante debe seguir siendo válido: cambiar de deuda, de tipo o subir el
+    # monto puede romper el tipo esperado o superar el saldo.
+    id_deuda = update_data.get("id_deuda", movimiento.id_deuda)
+    if id_deuda is not None and any(campo in update_data for campo in ("id_deuda", "tipo_movimiento", "monto")):
+        await deudas.validar_abono(
+            db,
+            usuario,
+            id_deuda,
+            tipo_movimiento=update_data.get("tipo_movimiento", movimiento.tipo_movimiento),
+            monto=update_data.get("monto", movimiento.monto),
+            excluir_movimiento=movimiento.id_transaccion,
+        )
 
     aplicar_patch_movimiento(movimiento, update_data)
 

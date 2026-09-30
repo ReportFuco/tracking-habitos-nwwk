@@ -6,12 +6,14 @@ from .movimientos import router as movimientos_router
 from .categoria import router as categoria_router
 from .producto_financiero import router as producto_financiero_router
 from .analitica import router as analitica_router
+from .deudas import router as deudas_router
 
 router = APIRouter(prefix="/finanzas")
 
 router.include_router(cuentas_router)
 router.include_router(movimientos_router)
 router.include_router(analitica_router)
+router.include_router(deudas_router)
 router.include_router(banco_router)
 router.include_router(categoria_router)
 router.include_router(producto_financiero_router)

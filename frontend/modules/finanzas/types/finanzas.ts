@@ -3,9 +3,12 @@
 // re-exportan) porque este archivo tambien los usa mas abajo.
 import type {
   CuentaResponse,
+  DeudaResponse,
+  DeudasListResponse,
   MovimientoItemResponse,
   MovimientoResponse,
   MovimientosPageResponse,
+  TipoDeuda,
   TipoGasto,
   TipoMovimiento,
 } from "@/modules/finanzas/schemas/finanzas.schema"
@@ -21,11 +24,32 @@ export type {
 
 export type {
   CuentaResponse,
+  DeudaResponse,
+  DeudasListResponse,
   MovimientoItemResponse,
   MovimientoResponse,
   MovimientosPageResponse,
+  TipoDeuda,
   TipoGasto,
   TipoMovimiento,
+}
+
+export interface DeudaCreate {
+  tipo: TipoDeuda
+  nombre: string
+  contraparte?: string | null
+  monto_total: number
+  descripcion?: string | null
+}
+
+// El tipo no se edita: sus abonos dependen de el.
+export interface DeudaPatch {
+  nombre?: string
+  /** null borra la contraparte. */
+  contraparte?: string | null
+  monto_total?: number
+  /** null borra la nota. */
+  descripcion?: string | null
 }
 
 export interface BancoCreate {
@@ -104,6 +128,8 @@ export interface MovimientoCreate {
   longitud?: number | null
   precision_ubicacion?: number | null
   created_at?: string
+  /** Abono a una deuda: gasto para "debo", ingreso para "me_deben". */
+  id_deuda?: number | null
   /** Productos del gasto, creados junto con el. */
   items?: MovimientoItemCreate[]
 }
@@ -119,6 +145,8 @@ export interface MovimientoPatch {
   descripcion?: string | null
   /** YYYY-MM-DDTHH:mm:ss, hora de Chile. */
   created_at?: string
+  /** null desvincula el movimiento de su deuda. */
+  id_deuda?: number | null
 }
 
 export interface MovimientoItemCreate {
@@ -141,5 +169,6 @@ export interface MovimientosFiltros {
   id_categoria?: number
   id_cuenta?: number
   q?: string
+  id_deuda?: number
 }
 

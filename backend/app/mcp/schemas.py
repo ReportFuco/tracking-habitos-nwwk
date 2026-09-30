@@ -106,6 +106,8 @@ class MovimientoMCP(BaseModel):
     cuenta: str | None = None
     id_cuenta: int
     descripcion: str | None = None
+    id_deuda: int | None = Field(None, description="Deuda que abona este movimiento.")
+    deuda: str | None = None
     productos: list[ItemMCP] = Field(
         default_factory=list,
         description="Productos detallados del gasto; puede cubrir solo parte del monto.",
@@ -124,6 +126,8 @@ class MovimientoMCP(BaseModel):
             cuenta=movimiento.cuenta.nombre_cuenta if movimiento.cuenta else None,
             id_cuenta=movimiento.id_cuenta,
             descripcion=movimiento.descripcion,
+            id_deuda=movimiento.id_deuda,
+            deuda=movimiento.deuda.nombre if movimiento.deuda else None,
             productos=[ItemMCP.desde_modelo(item) for item in movimiento.items],
         )
 
@@ -138,3 +142,13 @@ class MovimientosMCP(BaseModel):
 class MovimientoEliminadoMCP(BaseModel):
     id_movimiento: int
     eliminado: bool = True
+
+
+class DeudaEliminadaMCP(BaseModel):
+    id_deuda: int
+    eliminada: bool = True
+
+
+class ImportacionDeshechaMCP(BaseModel):
+    id_importacion: int
+    movimientos_eliminados: int

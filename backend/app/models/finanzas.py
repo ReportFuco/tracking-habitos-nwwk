@@ -40,6 +40,12 @@ class EnumTipoGasto(enum.Enum):
     FIJO = "fijo"
 
 
+class EnumTipoDeuda(enum.Enum):
+    """``debo`` se abona con gastos; ``me_deben`` con ingresos."""
+    DEBO = "debo"
+    ME_DEBEN = "me_deben"
+
+
 class Banco(Base):
     __tablename__ = "banco"
     __table_args__ = {"schema": FINANZAS_SCHEMA}
@@ -186,6 +192,18 @@ class Movimiento(Base):
     client_request_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
     id_categoria: Mapped[int] = mapped_column(ForeignKey(table_ref(FINANZAS_SCHEMA, "categoria_finanza.id_categoria")))
     id_cuenta: Mapped[int] = mapped_column(ForeignKey(table_ref(FINANZAS_SCHEMA, "cuenta_usuario.id_cuenta")))
+    # Abono a una deuda. Borrar la deuda no borra el movimiento: solo lo desvincula.
+    id_deuda: Mapped[int | None] = mapped_column(
+        ForeignKey(table_ref(FINANZAS_SCHEMA, "deuda.id_deuda"), ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    # Carga masiva que lo creó (solo MCP). Permite deshacer la importación completa.
+    id_importacion: Mapped[int | None] = mapped_column(
+        ForeignKey(table_ref(FINANZAS_SCHEMA, "importacion.id_importacion"), ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     tipo_movimiento: Mapped[EnumTipoMovimiento] = mapped_column(
         SQLEnum(
             EnumTipoMovimiento,
@@ -227,6 +245,7 @@ class Movimiento(Base):
 
     categoria: Mapped["CategoriaFinanza"] = relationship(back_populates="transacciones")
     cuenta: Mapped["CuentaUsuario"] = relationship(back_populates="transacciones")
+    deuda: Mapped["Deuda | None"] = relationship(back_populates="abonos")
     items: Mapped[list["MovimientoItem"]] = relationship(
         back_populates="movimiento",
         cascade="all, delete-orphan",
@@ -278,3 +297,74 @@ class MovimientoItem(Base):
 
     movimiento: Mapped["Movimiento"] = relationship(back_populates="items")
     producto: Mapped["Producto"] = relationship(back_populates="items_movimiento")
+
+
+class Deuda(Base):
+    """Plata que el usuario debe (``debo``) o que le deben (``me_deben``).
+
+    El saldo no se guarda: es ``monto_total`` menos la suma de los movimientos que la
+    abonan (``Movimiento.id_deuda``). Los gastos abonan lo que se debe y los ingresos lo
+    que le deben; el servicio impide abonar más que el saldo pendiente.
+    """
+
+    __tablename__ = "deuda"
+    __table_args__ = (
+        CheckConstraint("monto_total > 0", name="ck_deuda_monto_total_positivo"),
+        {"schema": FINANZAS_SCHEMA},
+    )
+
+    id_deuda: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id_usuario: Mapped[int] = mapped_column(
+        ForeignKey(table_ref(USUARIOS_SCHEMA, "usuario.id_usuario"), ondelete="CASCADE"),
+        index=True,
+    )
+    tipo: Mapped[EnumTipoDeuda] = mapped_column(
+        SQLEnum(
+            EnumTipoDeuda,
+            name="tipo_deuda",
+            schema=FINANZAS_SCHEMA,
+            create_type=True,
+            values_callable=lambda enum_cls: [e.value for e in enum_cls]
+        ),
+        nullable=False,
+    )
+    nombre: Mapped[str] = mapped_column(String(120))
+    contraparte: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    monto_total: Mapped[int] = mapped_column(Integer, nullable=False)
+    descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.now,
+        server_default=text("now()"),
+    )
+
+    abonos: Mapped[list["Movimiento"]] = relationship(
+        back_populates="deuda",
+        # La FK pone NULL en los abonos al borrar la deuda, sin cargarlos antes.
+        passive_deletes=True,
+    )
+
+
+class Importacion(Base):
+    """Carga masiva de movimientos desde una cartola (solo por MCP)."""
+
+    __tablename__ = "importacion"
+    __table_args__ = {"schema": FINANZAS_SCHEMA}
+
+    id_importacion: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id_usuario: Mapped[int] = mapped_column(
+        ForeignKey(table_ref(USUARIOS_SCHEMA, "usuario.id_usuario"), ondelete="CASCADE"),
+        index=True,
+    )
+    id_cuenta: Mapped[int] = mapped_column(
+        ForeignKey(table_ref(FINANZAS_SCHEMA, "cuenta_usuario.id_cuenta"))
+    )
+    nombre: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    cantidad: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.now,
+        server_default=text("now()"),
+    )
+
+    cuenta: Mapped["CuentaUsuario"] = relationship()

@@ -27,6 +27,16 @@ from .categoria import (
     CategoriaPatch, 
     CategoriaCreate
 )
+from .deudas import DeudaCreate, DeudaListResponse, DeudaPatch, DeudaResponse
+from .importacion import (
+    MAX_FILAS_IMPORTACION,
+    FilaImportacion,
+    FilaPrevisualizada,
+    ImportacionesLista,
+    ImportacionResumen,
+    PrevisualizacionImportacion,
+    ResultadoImportacion,
+)
 from .analitica import (
     AnaliticaResumenResponse,
     AnaliticaTendenciaMensualItem,
@@ -55,6 +65,21 @@ __all__ = [
     "MovimientoItemCreate",
     "MovimientoItemPatch",
     "MovimientoItemResponse",
+
+    # Deudas
+    "DeudaCreate",
+    "DeudaListResponse",
+    "DeudaPatch",
+    "DeudaResponse",
+
+    # Importación (MCP)
+    "MAX_FILAS_IMPORTACION",
+    "FilaImportacion",
+    "FilaPrevisualizada",
+    "ImportacionesLista",
+    "ImportacionResumen",
+    "PrevisualizacionImportacion",
+    "ResultadoImportacion",
 
     # Cuentas
     "CuentaUsuarioResponse",

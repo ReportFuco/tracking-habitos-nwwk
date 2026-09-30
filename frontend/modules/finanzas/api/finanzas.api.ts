@@ -8,6 +8,8 @@ import {
   analiticaTendenciaMensualResponseSchema,
   cuentaResponseSchema,
   cuentasListResponseSchema,
+  deudaResponseSchema,
+  deudasListResponseSchema,
   movimientoResponseSchema,
   movimientosPageResponseSchema,
 } from "@/modules/finanzas/schemas/finanzas.schema"
@@ -26,6 +28,10 @@ import {
   CuentaCreate,
   CuentaPatch,
   CuentaResponse,
+  DeudaCreate,
+  DeudaPatch,
+  DeudaResponse,
+  DeudasListResponse,
   MovimientoCreate,
   MovimientoItemCreate,
   MovimientoItemPatch,
@@ -128,6 +134,30 @@ export const FinanzasAPI = {
 
   deleteCuenta: async (idCuenta: number): Promise<void> => {
     await api.delete(`/api/finanzas/cuentas/${idCuenta}`)
+  },
+
+  getDeudas: async (): Promise<DeudasListResponse> => {
+    const { data } = await api.get("/api/finanzas/deudas/")
+    return parseApiResponse(deudasListResponseSchema, data, "GET /api/finanzas/deudas/")
+  },
+
+  getDeuda: async (idDeuda: number): Promise<DeudaResponse> => {
+    const { data } = await api.get(`/api/finanzas/deudas/${idDeuda}`)
+    return parseApiResponse(deudaResponseSchema, data, "GET /api/finanzas/deudas/:id")
+  },
+
+  createDeuda: async (payload: DeudaCreate): Promise<DeudaResponse> => {
+    const { data } = await api.post("/api/finanzas/deudas/", payload)
+    return parseApiResponse(deudaResponseSchema, data, "POST /api/finanzas/deudas/")
+  },
+
+  updateDeuda: async (idDeuda: number, payload: DeudaPatch): Promise<DeudaResponse> => {
+    const { data } = await api.patch(`/api/finanzas/deudas/${idDeuda}`, payload)
+    return parseApiResponse(deudaResponseSchema, data, "PATCH /api/finanzas/deudas/:id")
+  },
+
+  deleteDeuda: async (idDeuda: number): Promise<void> => {
+    await api.delete(`/api/finanzas/deudas/${idDeuda}`)
   },
 
   getMovimientos: async (

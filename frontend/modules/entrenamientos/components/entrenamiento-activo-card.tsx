@@ -1,5 +1,6 @@
 "use client"
 
+import { randomUUID } from "@/lib/uuid"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -198,7 +199,7 @@ export function EntrenamientoActivoCard() {
 
       const resultado = await agregarSerieFuerza({
         ...validado.data,
-        client_request_id: crypto.randomUUID(),
+        client_request_id: randomUUID(),
       })
 
       if (!resultado.ok) {

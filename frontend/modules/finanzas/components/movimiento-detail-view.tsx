@@ -91,6 +91,18 @@ export function MovimientoDetailView({ idMovimiento }: { idMovimiento: number })
     { etiqueta: "Fecha", valor: formatFecha(movimiento.created_at) },
     { etiqueta: "Categoria", valor: <span className="capitalize">{movimiento.categoria ?? "Sin categoria"}</span> },
     { etiqueta: "Cuenta", valor: movimiento.nombre_cuenta ?? "—" },
+    ...(movimiento.id_deuda
+      ? [
+          {
+            etiqueta: esIngreso ? "Cobro de" : "Pago de",
+            valor: (
+              <Link href={`/app/finanzas/deudas/${movimiento.id_deuda}`} className="font-semibold underline underline-offset-4">
+                {movimiento.deuda ?? "Deuda"}
+              </Link>
+            ),
+          },
+        ]
+      : []),
     ...(!esIngreso ? [{ etiqueta: "Tipo de gasto", valor: movimiento.tipo_gasto === "fijo" ? "Fijo (se repite)" : "Variable" }] : []),
     ...(movimiento.en_lugar_compra && movimiento.latitud != null && movimiento.longitud != null
       ? [

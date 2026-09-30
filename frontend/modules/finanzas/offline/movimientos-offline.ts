@@ -83,6 +83,7 @@ const buildOptimisticMovimiento = (
     latitud: payload.latitud ?? null,
     longitud: payload.longitud ?? null,
     precision_ubicacion: payload.precision_ubicacion ?? null,
+    id_deuda: payload.id_deuda ?? null,
     created_at: payload.created_at ?? getLocalDateTime(),
     pendiente_sincronizacion: true,
   }
@@ -180,6 +181,7 @@ export const registerFinanzasMutationDefaults = (queryClient: QueryClient) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: movimientosKey }),
         queryClient.invalidateQueries({ queryKey: queryKeys.finanzas.analitica }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.finanzas.deudas }),
       ])
     },
   })

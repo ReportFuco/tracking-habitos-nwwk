@@ -33,6 +33,9 @@ LECTURA = {
     "distribucion_por_categoria",
     "distribucion_por_cuenta",
     "gasto_diario",
+    "listar_deudas",
+    "previsualizar_importacion",
+    "listar_importaciones",
 }
 ESCRITURA = {
     "registrar_movimiento",
@@ -42,6 +45,11 @@ ESCRITURA = {
     "crear_producto",
     "agregar_producto_a_gasto",
     "quitar_producto_de_gasto",
+    "crear_deuda",
+    "editar_deuda",
+    "eliminar_deuda",
+    "importar_movimientos",
+    "deshacer_importacion",
 }
 
 
@@ -80,7 +88,9 @@ if RUN_DB:
 
     from app.auth.api_key import generate_api_key
     from app.db.session import AsyncSessionLocal, engine
-    from app.models import ApiKey, Banco, CategoriaFinanza, CuentaUsuario, Movimiento, Producto, ProductoFinanciero, Usuario
+    from app.models import (
+        ApiKey, Banco, CategoriaFinanza, CuentaUsuario, Importacion, Movimiento, Producto, ProductoFinanciero, Usuario,
+    )
     from app.models.finanzas import EnumTipoGasto, EnumTipoMovimiento
     from app.models.usuario_auth import User
 
@@ -167,6 +177,7 @@ async def escenario():
 
     async with AsyncSessionLocal() as db:
         await db.execute(delete(Movimiento).where(Movimiento.id_cuenta.in_(datos["cuentas"])))
+        await db.execute(delete(Importacion).where(Importacion.id_cuenta.in_(datos["cuentas"])))
         await db.execute(delete(CuentaUsuario).where(CuentaUsuario.id_cuenta.in_(datos["cuentas"])))
         await db.execute(delete(CategoriaFinanza).where(CategoriaFinanza.id_categoria.in_(datos["categorias"])))
         await db.execute(delete(ProductoFinanciero).where(ProductoFinanciero.id_producto_financiero == datos["producto"]))
@@ -370,3 +381,135 @@ async def test_categoria_propia_y_productos_en_un_gasto(escenario):
                 delete(Producto).where(Producto.id_producto == producto.structured_content["id_producto"])
             )
             await db.commit()
+
+
+@requiere_db
+async def test_deudas_por_mcp(escenario):
+    async with cliente_mcp(escenario["key_escritura"]) as cliente:
+        deuda = await cliente.call_tool("crear_deuda", {
+            "tipo": "debo", "nombre": "Notebook en cuotas", "monto_total": 60000, "contraparte": "Tienda",
+        })
+        id_deuda = deuda.structured_content["id_deuda"]
+        abono = await cliente.call_tool("registrar_movimiento", {
+            "tipo_movimiento": "gasto", "monto": 20000, "id_categoria": escenario["comida"],
+            "id_cuenta": escenario["rut"], "id_deuda": id_deuda,
+        })
+        excede = await cliente.call_tool("registrar_movimiento", {
+            "tipo_movimiento": "gasto", "monto": 50000, "id_categoria": escenario["comida"],
+            "id_cuenta": escenario["rut"], "id_deuda": id_deuda,
+        })
+        lista = await cliente.call_tool("listar_deudas", {"estado": "activa"})
+        abonos = await cliente.call_tool("buscar_movimientos", {"id_deuda": id_deuda})
+        id_abono = abono.structured_content["id_movimiento"]
+        sin_deuda = await cliente.call_tool("editar_movimiento", {"id_movimiento": id_abono, "quitar_deuda": True})
+        editada = await cliente.call_tool("editar_deuda", {"id_deuda": id_deuda, "contraparte": ""})
+        eliminada = await cliente.call_tool("eliminar_deuda", {"id_deuda": id_deuda})
+
+    assert not abono.is_error, abono.content
+    assert abono.structured_content["deuda"] == "Notebook en cuotas"
+    assert excede.is_error and "supera el saldo" in excede.content[0].text
+    [item] = lista.structured_content["items"]
+    assert (item["abonado"], item["saldo"]) == (20000, 40000)
+    assert lista.structured_content["total_debo"] == 40000
+    assert [m["id_movimiento"] for m in abonos.structured_content["items"]] == [id_abono]
+    assert sin_deuda.structured_content["id_deuda"] is None
+    assert editada.structured_content["contraparte"] is None
+    assert editada.structured_content["saldo"] == 60000
+    assert eliminada.structured_content == {"id_deuda": id_deuda, "eliminada": True}
+
+
+@requiere_db
+async def test_importar_cartola_omite_duplicados_y_se_puede_deshacer(escenario):
+    comida = escenario["comida"]
+
+    def fila(fecha, glosa, monto, tipo="gasto", **extra):
+        return {
+            "fecha": fecha, "descripcion_original": glosa, "monto": monto,
+            "tipo_movimiento": tipo, "id_categoria": comida, **extra,
+        }
+
+    cartola = [
+        # Parecido al "Almuerzo" de 8.500 registrado a mano el 25-09 en la misma cuenta.
+        fila("2026-09-26", "COMPRA NAC RESTAURANT", 8500, descripcion="Restaurant"),
+        # Dos pasajes identicos el mismo dia son dos movimientos distintos.
+        fila("2026-09-10", "PASAJE METRO", 800),
+        fila("2026-09-10", "PASAJE  metro", 800),
+        # El ingreso manual del 01-09 esta a mas de 3 dias: no es duplicado.
+        fila("2026-09-15T09:00:00", "TRANSF DE EMPLEADOR", 850000, "ingreso"),
+    ]
+    invalida = fila("2026-09-11", "OTRA", 1000)
+    invalida["id_categoria"] = 999999999
+
+    async with cliente_mcp(escenario["key_escritura"]) as cliente:
+        previa = await cliente.call_tool("previsualizar_importacion", {
+            "id_cuenta": escenario["rut"], "filas": [*cartola, invalida],
+        })
+        rechazada = await cliente.call_tool("importar_movimientos", {
+            "id_cuenta": escenario["rut"], "filas": [*cartola, invalida],
+        })
+        metro_antes = await cliente.call_tool("buscar_movimientos", {"texto": "metro"})
+        primera = await cliente.call_tool("importar_movimientos", {
+            "id_cuenta": escenario["rut"], "filas": cartola, "nombre": "Cartola sept",
+        })
+        repetida = await cliente.call_tool("importar_movimientos", {"id_cuenta": escenario["rut"], "filas": cartola})
+        confirmada = await cliente.call_tool("importar_movimientos", {
+            "id_cuenta": escenario["rut"], "filas": cartola, "confirmar_duplicados": [0],
+        })
+        en_cuenta_ajena = await cliente.call_tool("previsualizar_importacion", {
+            "id_cuenta": escenario["ajena"], "filas": cartola,
+        })
+        importaciones = await cliente.call_tool("listar_importaciones", {})
+        deshecha = await cliente.call_tool("deshacer_importacion", {
+            "id_importacion": primera.structured_content["id_importacion"],
+        })
+        metro_despues = await cliente.call_tool("buscar_movimientos", {"texto": "metro"})
+        restaurant = await cliente.call_tool("buscar_movimientos", {"texto": "restaurant"})
+
+    assert not previa.is_error, previa.content
+    resumen = previa.structured_content
+    assert (resumen["nuevas"], resumen["posibles_duplicados"], resumen["invalidas"]) == (3, 1, 1)
+    assert resumen["total_gastos"] == 1600 and resumen["total_ingresos"] == 850000
+    estados = {f["indice"]: f for f in resumen["filas"]}
+    assert estados[0]["estado"] == "posible_duplicado" and estados[0]["coincidencias"]
+    assert estados[4]["estado"] == "invalida" and "Categoría" in estados[4]["detalle"]
+
+    assert rechazada.is_error and "fila 4" in rechazada.content[0].text
+    assert metro_antes.structured_content["items"] == []
+
+    assert not primera.is_error, primera.content
+    assert (primera.structured_content["creados"], primera.structured_content["omitidos_posibles_duplicados"]) == (3, 1)
+    assert repetida.structured_content["creados"] == 0
+    assert repetida.structured_content["omitidos_ya_importados"] == 3
+    assert repetida.structured_content["id_importacion"] is None
+    assert confirmada.structured_content["creados"] == 1
+
+    assert en_cuenta_ajena.is_error and "Cuenta no encontrada" in en_cuenta_ajena.content[0].text
+    nombres = [i["nombre"] for i in importaciones.structured_content["items"]]
+    assert nombres == [None, "Cartola sept"]
+    assert importaciones.structured_content["items"][1]["fecha_desde"].startswith("2026-09-10")
+
+    assert deshecha.structured_content["movimientos_eliminados"] == 3
+    assert metro_despues.structured_content["items"] == []
+    # La fila confirmada vino en otra importacion: sigue ahi, con la descripcion legible.
+    assert [m["descripcion"] for m in restaurant.structured_content["items"]] == ["Restaurant"]
+
+
+@requiere_db
+async def test_importar_abonos_no_supera_el_saldo_de_la_deuda(escenario):
+    async with cliente_mcp(escenario["key_escritura"]) as cliente:
+        deuda = await cliente.call_tool("crear_deuda", {"tipo": "debo", "nombre": "Credito", "monto_total": 10000})
+        id_deuda = deuda.structured_content["id_deuda"]
+        filas = [
+            {"fecha": f"2026-09-{dia}", "descripcion_original": f"PAGO CREDITO {dia}", "monto": 6000,
+             "tipo_movimiento": "gasto", "id_categoria": escenario["comida"], "id_deuda": id_deuda}
+            for dia in (12, 13)
+        ]
+        previa = await cliente.call_tool("previsualizar_importacion", {"id_cuenta": escenario["rut"], "filas": filas})
+        solo_una = await cliente.call_tool("importar_movimientos", {"id_cuenta": escenario["rut"], "filas": filas[:1]})
+        deudas = await cliente.call_tool("listar_deudas", {})
+
+    [invalida] = previa.structured_content["filas"]
+    # La segunda cuota junta 12.000 contra un total de 10.000.
+    assert invalida["indice"] == 1 and "supera el saldo" in invalida["detalle"]
+    assert solo_una.structured_content["creados"] == 1
+    assert deudas.structured_content["items"][0]["saldo"] == 4000

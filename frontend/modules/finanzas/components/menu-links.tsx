@@ -12,6 +12,7 @@ const TABS = [
     label: "Movimientos",
     match: (p: string) => p.startsWith("/app/finanzas/movimientos") || p === "/app/finanzas/historico",
   },
+  { href: "/app/finanzas/deudas", label: "Deudas", match: (p: string) => p.startsWith("/app/finanzas/deudas") },
   {
     href: "/app/finanzas/cuentas",
     label: "Cuentas",

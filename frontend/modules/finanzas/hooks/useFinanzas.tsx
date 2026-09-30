@@ -21,6 +21,9 @@ import {
   CategoriaResponse,
   CuentaCreate,
   CuentaPatch,
+  DeudaCreate,
+  DeudaPatch,
+  DeudaResponse,
   MovimientoCreate,
   MovimientoItemCreate,
   MovimientoItemPatch,
@@ -124,6 +127,64 @@ export function useMovimientoItems(idMovimiento: number) {
       runOnlineOnlyAction(() => editar.mutateAsync({ idItem, payload })),
     quitarItem: (idItem: number) => runOnlineOnlyAction(() => quitar.mutateAsync(idItem)),
     guardandoItem: agregar.isPending || editar.isPending || quitar.isPending,
+  }
+}
+
+export function useDeudas() {
+  return useQuery({
+    queryKey: queryKeys.finanzas.deudas,
+    queryFn: FinanzasAPI.getDeudas,
+    staleTime: ONE_MINUTE,
+  })
+}
+
+export function useDeuda(idDeuda: number) {
+  return useQuery({
+    queryKey: queryKeys.finanzas.deuda(idDeuda),
+    queryFn: () => FinanzasAPI.getDeuda(idDeuda),
+    staleTime: ONE_MINUTE,
+    enabled: Number.isFinite(idDeuda),
+  })
+}
+
+/** Crear, editar y borrar deudas. Los abonos son movimientos: se registran con useFinanzas. */
+export function useDeudasMutations() {
+  const queryClient = useQueryClient()
+  const alCambiar = () => queryClient.invalidateQueries({ queryKey: queryKeys.finanzas.deudas })
+
+  const crear = useMutation({ mutationFn: FinanzasAPI.createDeuda, onSuccess: alCambiar })
+  const editar = useMutation({
+    mutationFn: ({ idDeuda, payload }: { idDeuda: number; payload: DeudaPatch }) =>
+      FinanzasAPI.updateDeuda(idDeuda, payload),
+    onSuccess: alCambiar,
+  })
+  const eliminar = useMutation({
+    mutationFn: FinanzasAPI.deleteDeuda,
+    onSuccess: (_data, idDeuda) => {
+      queryClient.removeQueries({ queryKey: queryKeys.finanzas.deuda(idDeuda) })
+      // Sus abonos quedan sin deuda: cambia el detalle de esos movimientos.
+      return Promise.all([
+        alCambiar(),
+        queryClient.invalidateQueries({ queryKey: queryKeys.finanzas.movimientos }),
+        queryClient.invalidateQueries({ queryKey: ["finanzas", "movimiento"] }),
+      ])
+    },
+  })
+
+  return {
+    /** Devuelve la deuda creada para poder navegar a ella. */
+    crearDeuda: async (payload: DeudaCreate): Promise<{ ok: true; deuda: DeudaResponse } | ActionFailure> => {
+      let deuda: DeudaResponse | undefined
+      const result = await runOnlineOnlyAction(async () => {
+        deuda = await crear.mutateAsync(payload)
+      })
+      return result.ok && deuda ? { ok: true, deuda } : (result as ActionFailure)
+    },
+    editarDeuda: (idDeuda: number, payload: DeudaPatch) =>
+      runOnlineOnlyAction(() => editar.mutateAsync({ idDeuda, payload })),
+    eliminarDeuda: (idDeuda: number) => runOnlineOnlyAction(() => eliminar.mutateAsync(idDeuda)),
+    guardandoDeuda: crear.isPending || editar.isPending,
+    eliminandoDeuda: eliminar.isPending,
   }
 }
 
@@ -271,14 +332,14 @@ const useFinanzasState = () => {
     }) => FinanzasAPI.updateMovimiento(idMovimiento, payload),
     onSuccess: (movimiento) => {
       queryClient.setQueryData(queryKeys.finanzas.movimiento(movimiento.id_transaccion), movimiento)
-      return invalidateFinanzas(queryKeys.finanzas.movimientos, queryKeys.finanzas.analitica)
+      return invalidateFinanzas(queryKeys.finanzas.movimientos, queryKeys.finanzas.analitica, queryKeys.finanzas.deudas)
     },
   })
   const movimientoDeleteMutation = useMutation({
     mutationFn: FinanzasAPI.deleteMovimiento,
     onSuccess: (_data, idMovimiento) => {
       queryClient.removeQueries({ queryKey: queryKeys.finanzas.movimiento(idMovimiento) })
-      return invalidateFinanzas(queryKeys.finanzas.movimientos, queryKeys.finanzas.analitica)
+      return invalidateFinanzas(queryKeys.finanzas.movimientos, queryKeys.finanzas.analitica, queryKeys.finanzas.deudas)
     },
   })
 

@@ -256,6 +256,7 @@ async def buscar_movimientos(
         str | None,
         Field(min_length=1, max_length=100, description="Busca en la descripción y en el nombre de la categoría."),
     ] = None,
+    id_deuda: Annotated[int | None, Field(ge=1, description="Solo los abonos de esta deuda (ver listar_deudas).")] = None,
     limit: Annotated[int, Field(ge=1, le=100, description="Máximo de movimientos a devolver.")] = 30,
     offset: Annotated[int, Field(ge=0, description="Movimientos a omitir, para paginar.")] = 0,
 ) -> MovimientosMCP:
@@ -277,6 +278,7 @@ async def buscar_movimientos(
             id_categoria=id_categoria,
             id_cuenta=id_cuenta,
             q=texto,
+            id_deuda=id_deuda,
         )
         return MovimientosMCP(
             items=[MovimientoMCP.desde_modelo(movimiento) for movimiento in items[:limit]],
@@ -352,6 +354,16 @@ async def registrar_movimiento(
     ] = "variable",
     descripcion: Annotated[str | None, Field(max_length=250, description="Detalle breve, ej. 'Almuerzo'.")] = None,
     fecha: Fecha = None,
+    id_deuda: Annotated[
+        int | None,
+        Field(
+            ge=1,
+            description=(
+                "Si el movimiento abona una deuda (ver listar_deudas): un gasto abona una deuda "
+                "'debo' y un ingreso una 'me_deben'. No puede superar el saldo."
+            ),
+        ),
+    ] = None,
     client_request_id: Annotated[
         UUID | None,
         Field(
@@ -365,7 +377,8 @@ async def registrar_movimiento(
     """Registra un gasto o ingreso del usuario. Sin fecha, usa el momento actual.
 
     Resuelve los ids con listar_cuentas y listar_categorias, y si hay dudas sobre el monto,
-    la cuenta o la categoría, confírmalas con el usuario antes de registrar.
+    la cuenta o la categoría, confírmalas con el usuario antes de registrar. Para pagar o
+    cobrar una deuda, pasa su id_deuda.
     """
     data = _validar(
         MovimientoCreate,
@@ -377,6 +390,7 @@ async def registrar_movimiento(
         monto=monto,
         descripcion=descripcion,
         created_at=_fecha_chile(fecha),
+        id_deuda=id_deuda,
     )
     async with sesion_usuario(ctx, FINANZAS_WRITE) as (db, usuario):
         movimiento = await movimientos.crear_movimiento(db, usuario, data)
@@ -396,6 +410,8 @@ async def editar_movimiento(
         Field(max_length=250, description="Nueva descripción. Un texto vacío la borra."),
     ] = None,
     fecha: Fecha = None,
+    id_deuda: Annotated[int | None, Field(ge=1, description="Vincula el movimiento como abono a esta deuda.")] = None,
+    quitar_deuda: Annotated[bool, Field(description="True desvincula el movimiento de su deuda.")] = False,
 ) -> MovimientoMCP:
     """Modifica un movimiento existente del usuario. Solo cambia los campos que se envían."""
     cambios = {
@@ -409,6 +425,12 @@ async def editar_movimiento(
     cambios = {campo: valor for campo, valor in cambios.items() if valor is not None}
     if descripcion is not None:
         cambios["descripcion"] = descripcion.strip() or None
+    if quitar_deuda and id_deuda is not None:
+        raise ToolError("Usa id_deuda o quitar_deuda, no ambos.")
+    if id_deuda is not None:
+        cambios["id_deuda"] = id_deuda
+    elif quitar_deuda:
+        cambios["id_deuda"] = None
     if not cambios:
         raise ToolError("Indica al menos un campo a modificar.")
 
@@ -450,5 +472,8 @@ HERRAMIENTAS = (
 
 
 def registrar_herramientas_finanzas(servidor: MCPServer) -> None:
-    for funcion, titulo, anotaciones in HERRAMIENTAS:
+    # Import diferido: esos modulos reutilizan sesion_usuario y las anotaciones de este.
+    from app.mcp.tools import deudas, importacion
+
+    for funcion, titulo, anotaciones in (*HERRAMIENTAS, *deudas.HERRAMIENTAS, *importacion.HERRAMIENTAS):
         servidor.add_tool(funcion, title=titulo, annotations=anotaciones)

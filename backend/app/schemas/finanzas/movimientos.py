@@ -116,6 +116,8 @@ class MovimientoResponse(BaseModel):
     id_categoria: int = Field(..., examples=[1])
     categoria: Optional[str] = Field(None, examples=["comida"])
     nombre_cuenta: Optional[str] = Field(None, examples=["Nombre cuenta"])
+    id_deuda: Optional[int] = Field(None, description="Deuda que abona este movimiento.")
+    deuda: Optional[str] = Field(None, examples=["Crédito de consumo"], description="Nombre de la deuda.")
     items: list[MovimientoItemResponse] = Field(
         default_factory=list,
         description="Productos detallados del gasto. Puede cubrir solo parte del monto.",
@@ -146,11 +148,14 @@ class MovimientoResponse(BaseModel):
 
         categoria = data.get("categoria")
         cuenta = data.get("cuenta")
+        deuda = data.get("deuda")
 
         if categoria:
             data["categoria"] = categoria.nombre
         if cuenta:
             data["nombre_cuenta"] = cuenta.nombre_cuenta
+        if deuda is not None and not isinstance(deuda, str):
+            data["deuda"] = deuda.nombre
 
         items = data.get("items") or []
         data["total_detallado"] = sum(
@@ -212,6 +217,14 @@ class MovimientoCreate(BaseModel):
         examples=["2025-12-15T10:30:00"],
         description="Fecha del movimiento. Si no se envía, se usa la fecha actual."
     )
+    id_deuda: Optional[int] = Field(
+        None,
+        ge=1,
+        description=(
+            "Deuda que abona el movimiento: un gasto abona una deuda 'debo' y un ingreso una "
+            "'me_deben'. No puede superar el saldo pendiente."
+        ),
+    )
     items: list[MovimientoItemCreate] = Field(
         default_factory=list,
         max_length=100,
@@ -263,6 +276,8 @@ class MovimientoPatch(BaseModel):
     # null borra la descripcion (la columna es nullable).
     descripcion: Optional[str] = Field(None, max_length=250)
     created_at: Optional[datetime] = None
+    # null desvincula el movimiento de la deuda.
+    id_deuda: Optional[int] = Field(None, ge=1)
 
     @model_validator(mode="after")
     def validate_no_nulls(self):

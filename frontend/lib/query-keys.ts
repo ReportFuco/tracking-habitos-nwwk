@@ -14,6 +14,9 @@ export const queryKeys = {
     // Bajo el prefijo "movimientos": se invalidan junto con la lista principal.
     movimientosFiltrados: (filtros: object) => ["finanzas", "movimientos", "filtros", filtros] as const,
     movimiento: (id: number) => ["finanzas", "movimiento", id] as const,
+    // La lista y el detalle comparten prefijo: un abono nuevo invalida ambos.
+    deudas: ["finanzas", "deudas"] as const,
+    deuda: (id: number) => ["finanzas", "deudas", id] as const,
     analitica: ["finanzas", "analitica"] as const,
     analiticaResumen: (params?: { year?: number; month?: number }) =>
       ["finanzas", "analitica", "resumen", params ?? {}] as const,

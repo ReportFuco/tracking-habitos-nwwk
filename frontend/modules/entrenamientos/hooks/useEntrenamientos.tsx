@@ -1,5 +1,6 @@
 "use client"
 
+import { randomUUID } from "@/lib/uuid"
 import { createContext, ReactNode, useCallback, useContext, useState } from "react"
 import { AxiosError } from "axios"
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query"
@@ -255,7 +256,7 @@ const useEntrenamientosState = () => {
     // La clave se genera acá porque este es el único llamador y no arma un payload propio:
     // así el componente que confirma el cierre no cambia.
     cerrarEntrenoFuerzaActivo: () =>
-      runEntrenoActivoAction(entrenoCloseMutation, { client_request_id: crypto.randomUUID() }),
+      runEntrenoActivoAction(entrenoCloseMutation, { client_request_id: randomUUID() }),
     agregarSerieFuerza: (payload: SerieFuerzaCreate) =>
       runEntrenoActivoAction(serieCreateMutation, payload),
     editarSerieFuerza: (idFuerzaDetalle: number, payload: SerieFuerzaPatch) =>

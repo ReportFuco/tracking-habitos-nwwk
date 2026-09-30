@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import type { ProductoResponse } from "@/modules/catalogo/types/catalogo"
 import type { MovimientoItemCreate } from "@/modules/finanzas/types/finanzas"
 import { AgregarProductoDialog, detalleProducto, EstadoBadge } from "./agregar-producto-dialog"
+import { randomUUID } from "@/lib/uuid"
 
 /** Producto anotado en el formulario, antes de que exista el gasto. */
 export interface ProductoPorGuardar {
@@ -45,7 +46,7 @@ export function ProductosNuevoGasto({ items, onChange, monto, agregando, onAgreg
   const agregar = async (payload: MovimientoItemCreate, producto: ProductoResponse) => {
     onChange([
       ...items,
-      { key: crypto.randomUUID(), producto, cantidad: payload.cantidad ?? 1, precio_total: payload.precio_total ?? null },
+      { key: randomUUID(), producto, cantidad: payload.cantidad ?? 1, precio_total: payload.precio_total ?? null },
     ])
     return { ok: true } as const
   }

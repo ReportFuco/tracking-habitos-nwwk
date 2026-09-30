@@ -79,9 +79,20 @@ el `issuer` que los clientes comparan carácter a carácter.
 | `registrar_movimiento` | Crea un gasto o ingreso (idempotente con `client_request_id`) |
 | `editar_movimiento` | Cambia solo los campos enviados |
 | `eliminar_movimiento` | Borra un movimiento (marcada como destructiva) |
+| `listar_deudas` | Deudas con monto total, abonado, saldo y estado, más totales pendientes |
+| `crear_deuda` / `editar_deuda` / `eliminar_deuda` | Deudas `debo` o `me_deben`; se abonan con movimientos que llevan `id_deuda` |
+| `previsualizar_importacion` | Revisa una cartola normalizada sin guardar: nuevas, ya importadas, posibles duplicados e inválidas |
+| `importar_movimientos` | Importa la cartola en una transacción (todo o nada) |
+| `listar_importaciones` / `deshacer_importacion` | Cargas anteriores y su reversión completa |
 
-Las tres últimas requieren `finanzas:write`. Montos en CLP enteros; fechas en calendario
-de Chile (una fecha con zona horaria se convierte).
+Crear, editar, eliminar e importar requieren `finanzas:write` (ver el listado completo en
+`app/mcp/tools/`). Montos en CLP enteros; fechas en calendario de Chile (una fecha con
+zona horaria se convierte).
+
+La carga masiva existe solo por MCP: el modelo lee el Excel del banco, lo normaliza a
+filas (`FilaImportacion`) y asigna categorías. Cada fila recibe un `client_request_id`
+determinista (UUID5 de usuario, cuenta, fecha, tipo, monto y glosa original), así que
+subir cartolas que se solapan no duplica movimientos.
 
 ## Conectar un cliente
 

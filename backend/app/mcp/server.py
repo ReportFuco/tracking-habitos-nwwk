@@ -21,10 +21,11 @@ from app.mcp.tools.finanzas import registrar_herramientas_finanzas
 
 INSTRUCCIONES = """\
 Servidor de finanzas personales de Ritmo: cuentas, categorías, movimientos, productos
-comprados y analítica del usuario que autorizó esta conexión.
+comprados, deudas, carga de cartolas bancarias y analítica del usuario que autorizó esta
+conexión.
 
 - Leer requiere el permiso finanzas:read; registrar, editar y eliminar (movimientos,
-  categorías, productos) requiere finanzas:write. Si una herramienta responde que falta un permiso, díselo al
+  categorías, productos, deudas, importaciones) requiere finanzas:write. Si una herramienta responde que falta un permiso, díselo al
   usuario en vez de reintentar.
 - Montos en pesos chilenos (CLP), enteros y siempre positivos; el signo lo da
   tipo_movimiento ('gasto' o 'ingreso').
@@ -42,6 +43,34 @@ comprados y analítica del usuario que autorizó esta conexión.
   Busca antes por nombre y por marca para no duplicar productos.
 - Al registrar, genera un client_request_id (UUID) y reutilízalo si reintentas la misma
   llamada. Antes de eliminar un movimiento, confirma con el usuario.
+
+Deudas
+- Una deuda es 'debo' (préstamo, crédito, compra en cuotas) o 'me_deben' (plata que el
+  usuario prestó). Se pagan de a poco con movimientos que llevan id_deuda: gastos para
+  'debo', ingresos para 'me_deben'. El saldo se calcula solo y la deuda queda 'pagada'
+  al llegar a 0; un abono no puede superar el saldo.
+- Cuando el usuario diga que pagó (o le pagaron) algo de una deuda, busca la deuda con
+  listar_deudas y registra el movimiento con su id_deuda.
+
+Carga de cartolas bancarias (Excel o CSV)
+- Lee el archivo que subió el usuario. Cada banco usa columnas distintas: identifica la
+  fecha de la operación, la glosa/descripción y los montos (una columna con signo, o
+  columnas separadas de cargos y abonos). Ignora encabezados, subtotales, saldos y filas
+  vacías. Normaliza cada movimiento a una fila: fecha, descripcion_original (la glosa
+  tal cual, sin editar), descripcion (legible, opcional), monto entero positivo en CLP,
+  tipo_movimiento ('gasto' para cargos, 'ingreso' para abonos) e id_categoria.
+- Asigna la categoría según la glosa usando listar_categorias; si dudas en varias,
+  pregúntale al usuario en bloque en vez de adivinar.
+- Pregunta qué hacer con transferencias entre cuentas propias y pagos de tarjeta de
+  crédito: suelen duplicar gastos ya registrados en otra cuenta. Si una fila paga una
+  deuda registrada, ponle su id_deuda.
+- Flujo: previsualizar_importacion → mostrar al usuario el resumen (nuevas, ya
+  importadas, posibles duplicados con sus coincidencias, inválidas) → corregir las
+  inválidas → importar_movimientos con la misma lista y, en confirmar_duplicados, solo
+  los índices que el usuario confirmó que no están repetidos.
+- Las filas ya importadas se omiten solas, así que subir cartolas que se solapan es
+  seguro mientras descripcion_original sea la glosa exacta. Una importación equivocada
+  se revierte con deshacer_importacion (ver listar_importaciones), previa confirmación.
 """
 
 

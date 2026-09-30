@@ -4,8 +4,9 @@ import { FormEvent, useMemo, useState } from "react"
 import { ArrowDownLeft, ArrowUpRight, Repeat } from "lucide-react"
 import { ChipSelect } from "@/components/forms/chip-select"
 import { Button } from "@/components/ui/button"
+import { formatCLP } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { useFinanzas } from "@/modules/finanzas/hooks/useFinanzas"
+import { useDeudas, useFinanzas } from "@/modules/finanzas/hooks/useFinanzas"
 import type { MovimientoPatch, MovimientoResponse, TipoMovimiento } from "@/modules/finanzas/types/finanzas"
 
 const milesFormatter = new Intl.NumberFormat("es-CL")
@@ -21,6 +22,7 @@ interface Props {
 /** Edicion en linea de un movimiento. Solo envia los campos que cambiaron. */
 export function MovimientoEditForm({ movimiento, onDone }: Props) {
   const { categorias, cuentas, editarMovimiento, submittingMovimiento } = useFinanzas()
+  const deudasQuery = useDeudas()
 
   const original = useMemo(
     () => ({
@@ -31,6 +33,8 @@ export function MovimientoEditForm({ movimiento, onDone }: Props) {
       id_cuenta: String(porNombre(cuentas.map((c) => ({ id: c.id_cuenta, nombre: c.nombre_cuenta })), movimiento.nombre_cuenta) ?? ""),
       descripcion: movimiento.descripcion ?? "",
       created_at: movimiento.created_at.slice(0, 16),
+      /** "" = sin deuda. */
+      id_deuda: movimiento.id_deuda ? String(movimiento.id_deuda) : "",
     }),
     [movimiento, cuentas],
   )
@@ -47,6 +51,23 @@ export function MovimientoEditForm({ movimiento, onDone }: Props) {
   }, [categorias, movimiento.id_categoria, movimiento.categoria])
   const [error, setError] = useState<string | null>(null)
 
+  // Deudas activas del tipo que corresponde, mas la actual aunque ya este pagada: el abono
+  // que la salda debe poder editarse sin perder el vinculo.
+  const deudaOptions = useMemo(() => {
+    const tipoDeuda = form.tipo_movimiento === "ingreso" ? "me_deben" : "debo"
+    const opciones = (deudasQuery.data?.items ?? [])
+      .filter(
+        (deuda) =>
+          deuda.tipo === tipoDeuda && (deuda.estado === "activa" || String(deuda.id_deuda) === original.id_deuda),
+      )
+      .map((deuda) => ({
+        value: String(deuda.id_deuda),
+        label: deuda.nombre,
+        hint: deuda.estado === "activa" ? `Saldo ${formatCLP(deuda.saldo)}` : "Pagada",
+      }))
+    return [{ value: "", label: "Ninguna" }, ...opciones]
+  }, [deudasQuery.data, form.tipo_movimiento, original.id_deuda])
+
   const cambios = useMemo(() => {
     const payload: MovimientoPatch = {}
     if (form.tipo_movimiento !== original.tipo_movimiento) payload.tipo_movimiento = form.tipo_movimiento
@@ -56,6 +77,7 @@ export function MovimientoEditForm({ movimiento, onDone }: Props) {
     if (form.id_cuenta && form.id_cuenta !== original.id_cuenta) payload.id_cuenta = Number(form.id_cuenta)
     if (form.descripcion.trim() !== original.descripcion) payload.descripcion = form.descripcion.trim() || null
     if (form.created_at && form.created_at !== original.created_at) payload.created_at = `${form.created_at}:00`
+    if (form.id_deuda !== original.id_deuda) payload.id_deuda = form.id_deuda ? Number(form.id_deuda) : null
     return payload
   }, [form, original])
 
@@ -91,7 +113,8 @@ export function MovimientoEditForm({ movimiento, onDone }: Props) {
               type="button"
               role="radio"
               aria-checked={active}
-              onClick={() => setForm((prev) => ({ ...prev, tipo_movimiento: tipo }))}
+              // Una deuda de lo que debo no sirve para un ingreso ni al reves.
+              onClick={() => setForm((prev) => ({ ...prev, tipo_movimiento: tipo, id_deuda: tipo === prev.tipo_movimiento ? prev.id_deuda : "" }))}
               className={cn("flex h-10 items-center justify-center gap-2 rounded-md text-sm font-semibold capitalize", !active && "text-muted-foreground")}
               style={active ? { background: `var(--${tipo})`, color: `var(--${tipo}-on)` } : undefined}
             >
@@ -140,6 +163,20 @@ export function MovimientoEditForm({ movimiento, onDone }: Props) {
           options={cuentas.map((c) => ({ value: String(c.id_cuenta), label: c.nombre_cuenta, hint: c.nombre_banco ?? undefined }))}
         />
       </Campo>
+
+      {deudaOptions.length > 1 ? (
+        <Campo titulo={form.tipo_movimiento === "ingreso" ? "Cobro de deuda" : "Pago de deuda"}>
+          <ChipSelect
+            label="Deuda"
+            value={form.id_deuda}
+            onChange={(value) => {
+              setError(null)
+              setForm((prev) => ({ ...prev, id_deuda: value }))
+            }}
+            options={deudaOptions}
+          />
+        </Campo>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">

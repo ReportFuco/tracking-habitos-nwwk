@@ -1,20 +1,21 @@
 "use client"
 
 import { FormEvent, useCallback, useMemo, useRef, useState } from "react"
-import { ArrowDownLeft, ArrowUpRight, CalendarClock, Check, LoaderCircle, MapPin, Plus, Repeat, ShoppingBasket, X } from "lucide-react"
+import { ArrowDownLeft, ArrowUpRight, CalendarClock, Check, HandCoins, LoaderCircle, MapPin, Plus, Repeat, ShoppingBasket, X } from "lucide-react"
 import { toast } from "sonner"
 import { ChipSelect, type ChipOption } from "@/components/forms/chip-select"
 import { Button } from "@/components/ui/button"
 import { formatCLP } from "@/lib/format"
 import { getGeolocationErrorMessage, obtenerUbicacion, type UbicacionUsuario } from "@/lib/geolocation"
 import { cn } from "@/lib/utils"
-import { useFinanzas } from "@/modules/finanzas/hooks/useFinanzas"
+import { useDeudas, useFinanzas } from "@/modules/finanzas/hooks/useFinanzas"
 import { movimientoCreateSchema } from "@/modules/finanzas/schemas/finanzas.schema"
 import type { TipoGasto, TipoMovimiento } from "@/modules/finanzas/types/finanzas"
 import { MovimientoRegistrado, type MovimientoRegistradoInfo } from "./movimiento-registrado"
 import { aItemsCreate, ProductosNuevoGasto, type ProductoPorGuardar } from "./productos-nuevo-gasto"
+import { randomUUID } from "@/lib/uuid"
 
-type Campo = "monto" | "id_categoria" | "id_cuenta" | "created_at"
+type Campo = "monto" | "id_categoria" | "id_cuenta" | "created_at" | "id_deuda"
 
 const initialForm = {
   id_categoria: "",
@@ -48,9 +49,17 @@ function contarPorNombre(nombres: (string | null | undefined)[]) {
   return conteo
 }
 
-export function MovimientoFormCard({ tipoInicial = "gasto" }: { tipoInicial?: TipoMovimiento }) {
+export function MovimientoFormCard({
+  tipoInicial = "gasto",
+  deudaInicial,
+}: {
+  tipoInicial?: TipoMovimiento
+  /** Abre el registro como pago (o cobro) de esta deuda. */
+  deudaInicial?: number
+}) {
   const { categorias, cuentas, movimientos, loadingCatalogos, submittingMovimiento, crearMovimiento, crearCategoria } =
     useFinanzas()
+  const deudasQuery = useDeudas()
 
   const [form, setForm] = useState(() => ({ ...initialForm, tipo_movimiento: tipoInicial }))
   const [nuevaCategoria, setNuevaCategoria] = useState<string | null>(null)
@@ -62,9 +71,31 @@ export function MovimientoFormCard({ tipoInicial = "gasto" }: { tipoInicial?: Ti
   const [registrado, setRegistrado] = useState<MovimientoRegistradoInfo | null>(null)
   const [productos, setProductos] = useState<ProductoPorGuardar[]>([])
   const [agregandoProducto, setAgregandoProducto] = useState(false)
+  // "" = no abona ninguna deuda.
+  const [idDeuda, setIdDeuda] = useState(deudaInicial ? String(deudaInicial) : "")
+  const [mostrarDeuda, setMostrarDeuda] = useState(Boolean(deudaInicial))
   const montoRef = useRef<HTMLInputElement>(null)
 
   const esIngreso = form.tipo_movimiento === "ingreso"
+
+  // Un gasto paga lo que debo; un ingreso cobra lo que me deben.
+  const deudasDisponibles = useMemo(
+    () =>
+      (deudasQuery.data?.items ?? []).filter(
+        (deuda) => deuda.estado === "activa" && deuda.tipo === (esIngreso ? "me_deben" : "debo"),
+      ),
+    [deudasQuery.data, esIngreso],
+  )
+  const deudaOptions = useMemo<ChipOption[]>(
+    () =>
+      deudasDisponibles.map((deuda) => ({
+        value: String(deuda.id_deuda),
+        label: deuda.nombre,
+        hint: `Saldo ${formatCLP(deuda.saldo)}`,
+      })),
+    [deudasDisponibles],
+  )
+  const deudaSeleccionada = mostrarDeuda ? deudasDisponibles.find((deuda) => String(deuda.id_deuda) === idDeuda) : undefined
 
   // Las categorias que mas usas quedan primero: la mayoria de los registros son un toque.
   const categoriaOptions = useMemo<ChipOption[]>(() => {
@@ -104,6 +135,8 @@ export function MovimientoFormCard({ tipoInicial = "gasto" }: { tipoInicial?: Ti
   }
 
   const seleccionarTipo = (tipo: TipoMovimiento) => {
+    // Las deudas de un tipo no sirven para el otro.
+    if (tipo !== form.tipo_movimiento) setIdDeuda("")
     setForm((prev) => ({
       ...prev,
       tipo_movimiento: tipo,
@@ -158,6 +191,10 @@ export function MovimientoFormCard({ tipoInicial = "gasto" }: { tipoInicial?: Ti
     if (!montoNumero) nuevosErrores.monto = "Ingresa un monto"
     if (!form.id_categoria) nuevosErrores.id_categoria = "Elige una categoria"
     if (!cuentaSeleccionada) nuevosErrores.id_cuenta = "Elige una cuenta"
+    if (mostrarDeuda && !deudaSeleccionada) nuevosErrores.id_deuda = "Elige la deuda"
+    else if (deudaSeleccionada && montoNumero > deudaSeleccionada.saldo) {
+      nuevosErrores.id_deuda = `El saldo es ${formatCLP(deudaSeleccionada.saldo)}`
+    }
     if (Object.keys(nuevosErrores).length > 0) {
       setErrores(nuevosErrores)
       if (nuevosErrores.monto) montoRef.current?.focus()
@@ -188,9 +225,10 @@ export function MovimientoFormCard({ tipoInicial = "gasto" }: { tipoInicial?: Ti
 
     const result = await crearMovimiento({
       ...parsed.data,
-      client_request_id: crypto.randomUUID(),
+      client_request_id: randomUUID(),
       descripcion: parsed.data.descripcion || null,
       created_at: parsed.data.created_at ? ensureSeconds(parsed.data.created_at) : undefined,
+      id_deuda: deudaSeleccionada?.id_deuda,
       // Los productos quedan guardados si se cambia a ingreso, pero solo viajan con un gasto.
       items: !esIngreso && productos.length > 0 ? aItemsCreate(productos) : undefined,
     })
@@ -201,7 +239,7 @@ export function MovimientoFormCard({ tipoInicial = "gasto" }: { tipoInicial?: Ti
     }
 
     setRegistrado({
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       idMovimiento: result.idMovimiento,
       tipo: form.tipo_movimiento,
       monto: montoNumero,
@@ -218,6 +256,8 @@ export function MovimientoFormCard({ tipoInicial = "gasto" }: { tipoInicial?: Ti
     setUbicacion(null)
     setMostrarFecha(false)
     setProductos([])
+    setIdDeuda("")
+    setMostrarDeuda(false)
     setErrores({})
   }
 
@@ -398,6 +438,19 @@ export function MovimientoFormCard({ tipoInicial = "gasto" }: { tipoInicial?: Ti
               />
             </>
           )}
+          {deudaOptions.length > 0 || mostrarDeuda ? (
+            <Toggle
+              pressed={mostrarDeuda}
+              onClick={() => {
+                setMostrarDeuda((prev) => !prev)
+                setIdDeuda("")
+                setErrores((prev) => ({ ...prev, id_deuda: undefined }))
+              }}
+              icon={<HandCoins className="size-4" aria-hidden />}
+              label={esIngreso ? "Cobro de deuda" : "Pago de deuda"}
+              title={esIngreso ? "Descuenta este ingreso de lo que te deben." : "Descuenta este gasto de lo que debes."}
+            />
+          ) : null}
           <Toggle
             pressed={mostrarFecha || Boolean(form.created_at)}
             onClick={() => {
@@ -441,6 +494,33 @@ export function MovimientoFormCard({ tipoInicial = "gasto" }: { tipoInicial?: Ti
             </div>
             {errores.created_at ? <p className="mt-1.5 text-xs font-medium text-destructive">{errores.created_at}</p> : null}
           </div>
+        ) : null}
+
+        {mostrarDeuda ? (
+          <Grupo titulo={esIngreso ? "Te lo pagó" : "Abona a"} error={errores.id_deuda} errorId="deuda-error">
+            <ChipSelect
+              label="Deuda"
+              options={deudaOptions}
+              value={idDeuda}
+              onChange={(value) => {
+                setIdDeuda(value)
+                setErrores((prev) => ({ ...prev, id_deuda: undefined }))
+              }}
+              loading={deudasQuery.isLoading}
+              invalid={Boolean(errores.id_deuda)}
+              errorId={errores.id_deuda ? "deuda-error" : undefined}
+              emptyMessage={esIngreso ? "No tienes plata por cobrar." : "No tienes deudas pendientes."}
+            />
+            {deudaSeleccionada && montoNumero !== deudaSeleccionada.saldo ? (
+              <button
+                type="button"
+                onClick={() => actualizar("monto", String(deudaSeleccionada.saldo))}
+                className="self-start text-xs font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                {esIngreso ? "Cobrar" : "Pagar"} el saldo completo · {formatCLP(deudaSeleccionada.saldo)}
+              </button>
+            ) : null}
+          </Grupo>
         ) : null}
 
         {esIngreso ? null : (

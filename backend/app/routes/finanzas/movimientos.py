@@ -63,6 +63,7 @@ async def obtener_movimiento(
         str | None,
         Query(min_length=1, max_length=100, description="Busca en la descripcion y en el nombre de la categoria."),
     ] = None,
+    id_deuda: Annotated[int | None, Query(ge=1, description="Solo los abonos de esta deuda.")] = None,
 ):
     usuario = await obtener_usuario_actual(user, db)
 
@@ -77,6 +78,7 @@ async def obtener_movimiento(
         id_categoria=id_categoria,
         id_cuenta=id_cuenta,
         q=q,
+        id_deuda=id_deuda,
     )
 
     return MovimientoListResponse(

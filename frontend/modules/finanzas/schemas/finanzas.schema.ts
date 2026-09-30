@@ -2,12 +2,15 @@ import { z } from "zod"
 
 export const TIPOS_MOVIMIENTO = ["gasto", "ingreso"] as const
 export const TIPOS_GASTO = ["variable", "fijo"] as const
+export const TIPOS_DEUDA = ["debo", "me_deben"] as const
 
 const tipoMovimientoSchema = z.enum(TIPOS_MOVIMIENTO)
 const tipoGastoSchema = z.enum(TIPOS_GASTO)
+const tipoDeudaSchema = z.enum(TIPOS_DEUDA)
 
 export type TipoMovimiento = z.infer<typeof tipoMovimientoSchema>
 export type TipoGasto = z.infer<typeof tipoGastoSchema>
+export type TipoDeuda = z.infer<typeof tipoDeudaSchema>
 
 export const cuentaCreateSchema = z.object({
   id_producto_financiero: z
@@ -104,6 +107,8 @@ export const movimientoResponseSchema = z.object({
   id_categoria: z.number().int(),
   categoria: z.string().nullish(),
   nombre_cuenta: z.string().nullish(),
+  id_deuda: z.number().int().nullish(),
+  deuda: z.string().nullish(),
   items: z.array(movimientoItemResponseSchema),
   total_detallado: z.number(),
   monto: z.number(),
@@ -124,6 +129,32 @@ export const movimientosPageResponseSchema = z.object({
   limit: z.number().int(),
   total_gasto_mensual: z.number(),
 })
+
+// Deudas: el saldo lo calcula el backend (monto_total - abonos). Espejo de
+// backend/app/schemas/finanzas/deudas.py.
+export const deudaResponseSchema = z.object({
+  id_deuda: z.number().int(),
+  tipo: tipoDeudaSchema,
+  nombre: z.string(),
+  contraparte: z.string().nullish(),
+  descripcion: z.string().nullish(),
+  monto_total: z.number().int(),
+  abonado: z.number().int(),
+  saldo: z.number().int(),
+  estado: z.enum(["activa", "pagada"]),
+  cantidad_abonos: z.number().int(),
+  ultimo_abono: z.string().nullish(),
+  created_at: z.string(),
+})
+
+export const deudasListResponseSchema = z.object({
+  items: z.array(deudaResponseSchema),
+  total_debo: z.number().int(),
+  total_me_deben: z.number().int(),
+})
+
+export type DeudaResponse = z.infer<typeof deudaResponseSchema>
+export type DeudasListResponse = z.infer<typeof deudasListResponseSchema>
 
 export type CuentaResponse = z.infer<typeof cuentaResponseSchema>
 export type MovimientoResponse = z.infer<typeof movimientoResponseSchema>

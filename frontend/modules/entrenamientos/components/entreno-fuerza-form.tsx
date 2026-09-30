@@ -11,6 +11,7 @@ import { FieldGroup, FormNote, FormPanel, FormSubmitBar } from "@/components/for
 import { entrenoFuerzaCreateSchema } from "@/modules/entrenamientos/schemas/entrenamientos.schema"
 import { useEntrenamientos } from "@/modules/entrenamientos/hooks/useEntrenamientos"
 import { TrainingNotificationSettings } from "@/components/pwa/training-notification-settings"
+import { randomUUID } from "@/lib/uuid"
 
 const initialForm = {
   id_gimnasio: "",
@@ -65,7 +66,7 @@ export function EntrenoFuerzaFormCard() {
 
     const result = await iniciarEntrenoFuerza({
       ...parsed.data,
-      client_request_id: crypto.randomUUID(),
+      client_request_id: randomUUID(),
     })
 
     if (result.ok) {
