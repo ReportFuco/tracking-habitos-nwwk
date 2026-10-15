@@ -135,7 +135,9 @@ export function RegistroSerie({
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        {/* grid-cols-1 y no la columna implicita: esa es `auto` y crece hasta el ancho
+            intrinseco del input numerico, empujando el boton + fuera de la tarjeta. */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <CampoNumerico
             etiqueta="Peso"
             sufijo="kg"

@@ -10,6 +10,7 @@ from .ejercicios import (
     EjercicioCreate,
     EjercicioPatch,
     EjercicioResponse,
+    EjercicioUsoResponse,
     MusculoResponse,
     SubcategoriaMusculoResponse,
 )

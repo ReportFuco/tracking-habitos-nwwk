@@ -6,7 +6,6 @@ import { EntrenamientosAPI } from "@/modules/entrenamientos/api/entrenamientos.a
 import type {
   EjercicioCreate,
   EjercicioEdit,
-  EjerciciosParams,
 } from "@/modules/entrenamientos/types/entrenamientos"
 
 const ONE_MINUTE = 1000 * 60
@@ -18,21 +17,19 @@ const ONE_WEEK = ONE_DAY * 7
 const persistMeta = { persist: true }
 
 /**
- * Catalogo de ejercicios.
+ * Catalogo de ejercicios completo.
  *
- * Los filtros viajan en la queryKey para que cada combinacion tenga su propia entrada de
- * cache y volver a un filtro ya visto sea instantaneo y funcione offline.
+ * Se baja una sola vez y se filtra en el cliente: cada combinacion de filtros pedida al
+ * backend era otra copia de mas de un mega guardada en el cache offline, y sin senal solo
+ * funcionaban los filtros ya visitados. Comparte la clave con el selector del entreno.
  */
-export const useEjerciciosCatalogo = (params: EjerciciosParams) => {
+export const useEjerciciosCatalogo = () => {
   const query = useQuery({
-    queryKey: queryKeys.entrenamientos.ejercicios(params),
-    queryFn: () => EntrenamientosAPI.getEjercicios(params),
+    queryKey: queryKeys.entrenamientos.ejercicios(),
+    queryFn: () => EntrenamientosAPI.getEjercicios(),
     staleTime: ONE_DAY,
     gcTime: ONE_WEEK,
     meta: persistMeta,
-    // Mantiene en pantalla el resultado anterior mientras llega el nuevo, para que al
-    // escribir en el buscador la lista no parpadee a vacio en cada tecla.
-    placeholderData: (anterior) => anterior,
   })
 
   return {
@@ -55,11 +52,17 @@ export const useMusculosCatalogo = () => {
   return query.data ?? []
 }
 
-export const useEquipamientos = () => {
+/**
+ * Ejercicios que el usuario ya registro y la ultima carga de cada uno.
+ *
+ * Se invalida al sincronizar una serie o cerrar el entreno; el staleTime corto solo cubre
+ * lo que se haya registrado desde otro dispositivo.
+ */
+export const useEjerciciosMios = () => {
   const query = useQuery({
-    queryKey: queryKeys.entrenamientos.equipamientos,
-    queryFn: EntrenamientosAPI.getEquipamientos,
-    staleTime: ONE_DAY,
+    queryKey: queryKeys.entrenamientos.ejerciciosMios,
+    queryFn: EntrenamientosAPI.getEjerciciosMios,
+    staleTime: ONE_MINUTE * 5,
     gcTime: ONE_WEEK,
     meta: persistMeta,
   })

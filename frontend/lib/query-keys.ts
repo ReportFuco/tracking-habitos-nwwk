@@ -42,7 +42,8 @@ export const queryKeys = {
       tipo?: string
     }) =>
       ["entrenamientos", "ejercicios", params ?? {}] as const,
-    equipamientos: ["entrenamientos", "equipamientos"] as const,
+    // Fuera de ejerciciosRoot: editar el catalogo no cambia lo que el usuario ya registro.
+    ejerciciosMios: ["entrenamientos", "ejercicios-mios"] as const,
     musculos: ["entrenamientos", "musculos"] as const,
     gimnasiosRoot: ["entrenamientos", "gimnasios"] as const,
     gimnasios: (q?: string) => ["entrenamientos", "gimnasios", { q: q ?? "" }] as const,

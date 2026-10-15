@@ -138,6 +138,8 @@ export const registerEntrenamientosMutationDefaults = (queryClient: QueryClient)
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: activoKey }),
       queryClient.invalidateQueries({ queryKey: queryKeys.entrenamientos.fuerzaLista }),
+      // Lo que el usuario hace y con que carga: alimenta el selector del entreno.
+      queryClient.invalidateQueries({ queryKey: queryKeys.entrenamientos.ejerciciosMios }),
     ])
   }
 

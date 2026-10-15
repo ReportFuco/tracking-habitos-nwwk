@@ -132,6 +132,18 @@ export const entrenoFuerzaSerieResponseSchema = entrenoFuerzaBaseSchema.extend({
   series: z.array(serieFuerzaResponseSchema).optional(),
 })
 
+// Ejercicios que el usuario ya registro, del mas reciente al mas antiguo.
+export const ejercicioUsoResponseSchema = z.object({
+  id_ejercicio: z.number().int(),
+  series: z.number().int(),
+  ultima_vez: z.string(),
+  ultimo_peso: z.number().nullish(),
+  ultimas_repeticiones: z.number().int().nullish(),
+})
+
+export const ejerciciosUsoListResponseSchema = z.array(ejercicioUsoResponseSchema)
+
+export type EjercicioUso = z.infer<typeof ejercicioUsoResponseSchema>
 export type SerieFuerzaResponse = z.infer<typeof serieFuerzaResponseSchema>
 export type EntrenoFuerzaResponse = z.infer<typeof entrenoFuerzaResponseSchema>
 // sync_error es solo-cliente (ver types/entrenamientos.ts): la apertura offline lo agrega

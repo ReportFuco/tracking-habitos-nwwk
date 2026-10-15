@@ -547,6 +547,7 @@ Cambio importante:
 |---|---|---|---|
 | `GET` | `/api/entrenamientos/ejercicios/` | usuario | Lista ejercicios, acepta filtros `q`, `id_musculo`, `id_subcategoria_musculo` y `tipo` legacy |
 | `GET` | `/api/entrenamientos/ejercicios/musculos` | usuario | Lista músculos disponibles con sus subcategorías |
+| `GET` | `/api/entrenamientos/ejercicios/mios` | usuario | Ejercicios que el usuario ya registró (series, última vez y última serie efectiva), del más reciente al más antiguo |
 | `GET` | `/api/entrenamientos/ejercicios/{id_ejercicio}` | usuario | Obtiene un ejercicio |
 | `POST` | `/api/entrenamientos/ejercicios/` | superuser | Crea ejercicio |
 | `PATCH` | `/api/entrenamientos/ejercicios/{id_ejercicio}` | superuser | Edita ejercicio |

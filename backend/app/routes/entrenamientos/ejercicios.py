@@ -1,18 +1,27 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth.fastapi_users import current_superuser, current_user_or_api_key
 from app.db.session import get_db
-from app.models import Ejercicios, Musculo, SerieFuerza, SubcategoriaMusculo
+from app.models import (
+    Ejercicios,
+    Entrenamiento,
+    EntrenamientoFuerza,
+    Musculo,
+    SerieFuerza,
+    SubcategoriaMusculo,
+    Usuario,
+)
 from app.routes.utils import normalize_search_text, normalize_sql_text
 from app.schemas.entrenamientos import (
     EjercicioCreate,
     EjercicioPatch,
     EjercicioResponse,
+    EjercicioUsoResponse,
     MusculoResponse,
 )
 
@@ -173,6 +182,72 @@ async def obtener_equipamientos(
         .order_by(Ejercicios.equipamiento.asc())
     )
     return result.scalars().all()
+
+
+@router.get(
+    "/mios",
+    response_model=list[EjercicioUsoResponse],
+    status_code=status.HTTP_200_OK,
+)
+async def obtener_ejercicios_usados(
+    db: AsyncSession = Depends(get_db),
+    user=Depends(current_user_or_api_key),
+):
+    """Ejercicios que el usuario ya registró, del más reciente al más antiguo.
+
+    Con mil ejercicios en el catálogo, los que alguien de verdad hace son unos pocos: el
+    selector del entreno los pone primero y precarga la carga con la que se dejó cada uno.
+    """
+    usuario = await db.scalar(select(Usuario).where(Usuario.auth_user_id == user.id))
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Perfil de usuario no encontrado.")
+
+    series_del_usuario = (
+        select(
+            SerieFuerza.id_ejercicio,
+            SerieFuerza.cantidad_peso,
+            SerieFuerza.repeticiones,
+            SerieFuerza.es_calentamiento,
+            EntrenamientoFuerza.inicio_at,
+            func.count().over(partition_by=SerieFuerza.id_ejercicio).label("series"),
+            func.max(EntrenamientoFuerza.inicio_at)
+            .over(partition_by=SerieFuerza.id_ejercicio)
+            .label("ultima_vez"),
+            # La última serie efectiva va primero; los calentamientos quedan al final para
+            # no precargar el peso de una serie de aproximación.
+            func.row_number()
+            .over(
+                partition_by=SerieFuerza.id_ejercicio,
+                order_by=(
+                    SerieFuerza.es_calentamiento.asc(),
+                    EntrenamientoFuerza.inicio_at.desc(),
+                    SerieFuerza.id_fuerza_detalle.desc(),
+                ),
+            )
+            .label("orden"),
+        )
+        .join(EntrenamientoFuerza, EntrenamientoFuerza.id_entrenamiento_fuerza == SerieFuerza.id_entrenamiento_fuerza)
+        .join(Entrenamiento, Entrenamiento.id_entrenamiento == EntrenamientoFuerza.id_entrenamiento)
+        .where(Entrenamiento.id_usuario == usuario.id_usuario)
+        .subquery()
+    )
+
+    filas = await db.execute(
+        select(series_del_usuario)
+        .where(series_del_usuario.c.orden == 1)
+        .order_by(series_del_usuario.c.ultima_vez.desc(), series_del_usuario.c.series.desc())
+    )
+
+    return [
+        EjercicioUsoResponse(
+            id_ejercicio=fila.id_ejercicio,
+            series=fila.series,
+            ultima_vez=fila.ultima_vez,
+            ultimo_peso=None if fila.es_calentamiento else fila.cantidad_peso,
+            ultimas_repeticiones=None if fila.es_calentamiento else fila.repeticiones,
+        )
+        for fila in filas
+    ]
 
 
 @router.get(

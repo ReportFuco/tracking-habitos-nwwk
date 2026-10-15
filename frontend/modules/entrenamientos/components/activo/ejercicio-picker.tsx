@@ -7,9 +7,11 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { EjercicioMedia } from "@/modules/entrenamientos/components/ejercicio-media"
 import {
   Chip,
+  coincideBusqueda,
   describirGrupoEjercicio,
   normalizarTexto,
 } from "@/modules/entrenamientos/components/activo/shared"
+import type { EjercicioUso } from "@/modules/entrenamientos/schemas/entrenamientos.schema"
 import type {
   EjercicioResponse,
   Musculo,
@@ -19,15 +21,27 @@ import type {
 // principal en el telefono. Se muestran de a tandas conforme el usuario baja.
 const TAMANO_TANDA = 24
 
+const describirUltimaCarga = (uso: EjercicioUso | undefined) => {
+  if (!uso || uso.ultimo_peso == null || uso.ultimas_repeticiones == null) {
+    return null
+  }
+
+  return `Ultima vez: ${uso.ultimo_peso.toLocaleString("es-CL")} kg × ${uso.ultimas_repeticiones}`
+}
+
 function TarjetaEjercicio({
   ejercicio,
+  uso,
   onSeleccionar,
   priority,
 }: {
   ejercicio: EjercicioResponse
+  uso?: EjercicioUso
   onSeleccionar: (ejercicio: EjercicioResponse) => void
   priority: boolean
 }) {
+  const ultimaCarga = describirUltimaCarga(uso)
+
   return (
     <button
       type="button"
@@ -41,7 +55,7 @@ function TarjetaEjercicio({
           {ejercicio.nombre}
         </p>
         <p className="truncate text-xs text-muted-foreground">
-          {ejercicio.equipamiento ?? describirGrupoEjercicio(ejercicio)}
+          {ultimaCarga ?? ejercicio.equipamiento ?? describirGrupoEjercicio(ejercicio)}
         </p>
       </div>
       <span
@@ -61,12 +75,16 @@ function TarjetaEjercicio({
  * fila de chips -- se ve de un vistazo que grupos hay y cuantos ejercicios tiene cada uno,
  * sin abrir nada -- y el ejercicio se elige por su imagen, que es como se reconoce un
  * movimiento cuando no se recuerda como se llama.
+ *
+ * De los mil ejercicios del catalogo cada persona hace unos pocos: esos van primero, con
+ * la carga con la que se dejaron, y el resto del catalogo queda debajo.
  */
 export function EjercicioPicker({
   ejercicios,
   musculos,
   cargando,
   recientes,
+  usados,
   onSeleccionar,
   onCancelar,
   titulo,
@@ -77,6 +95,8 @@ export function EjercicioPicker({
   cargando: boolean
   /** Ejercicios ya usados en esta sesion; volver a uno es el gesto mas repetido. */
   recientes: EjercicioResponse[]
+  /** Ejercicios que el usuario ya registro alguna vez, del mas reciente al mas antiguo. */
+  usados: EjercicioUso[]
   onSeleccionar: (ejercicio: EjercicioResponse) => void
   onCancelar?: () => void
   titulo: string
@@ -122,13 +142,38 @@ export function EjercicioPicker({
 
       // El catalogo guarda el nombre original en ingles: buscar "bench press" tiene que
       // encontrar "Press de banca con barra".
-      return (
-        normalizarTexto(ejercicio.nombre).includes(termino) ||
-        normalizarTexto(ejercicio.nombre_original).includes(termino) ||
-        normalizarTexto(ejercicio.equipamiento).includes(termino)
-      )
+      return coincideBusqueda(termino, [
+        ejercicio.nombre,
+        ejercicio.nombre_original,
+        ejercicio.equipamiento,
+        ejercicio.musculo_nombre,
+        ejercicio.subcategoria_nombre,
+      ])
     })
   }, [ejercicios, idMusculo, termino])
+
+  const usoPorId = useMemo(
+    () => new Map(usados.map((uso, indice) => [uso.id_ejercicio, { uso, indice }])),
+    [usados],
+  )
+
+  // Los propios van en el orden de `usados` (el mas reciente primero); el resto conserva
+  // el orden alfabetico del catalogo.
+  const { propios, resto } = useMemo(() => {
+    const propios: EjercicioResponse[] = []
+    const resto: EjercicioResponse[] = []
+
+    for (const ejercicio of filtrados) {
+      ;(usoPorId.has(ejercicio.id_ejercicio) ? propios : resto).push(ejercicio)
+    }
+
+    propios.sort(
+      (a, b) =>
+        (usoPorId.get(a.id_ejercicio)?.indice ?? 0) - (usoPorId.get(b.id_ejercicio)?.indice ?? 0),
+    )
+
+    return { propios, resto }
+  }, [filtrados, usoPorId])
 
   // Cuantos se muestran va atado a los filtros con los que se conto: si cambian, el valor
   // guardado deja de aplicar y se vuelve a la primera tanda sin un efecto que recorte la
@@ -139,7 +184,7 @@ export function EjercicioPicker({
   useEffect(() => {
     const nodo = centinela.current
 
-    if (!nodo || visibles >= filtrados.length) {
+    if (!nodo || visibles >= resto.length) {
       return
     }
 
@@ -155,9 +200,9 @@ export function EjercicioPicker({
 
     observador.observe(nodo)
     return () => observador.disconnect()
-  }, [clave, visibles, filtrados.length])
+  }, [clave, visibles, resto.length])
 
-  const mostrados = filtrados.slice(0, visibles)
+  const mostrados = resto.slice(0, visibles)
   const hayFiltro = idMusculo !== null || termino !== ""
 
   return (
@@ -236,7 +281,7 @@ export function EjercicioPicker({
             value={busqueda}
             onChange={(evento) => setBusqueda(evento.target.value)}
             placeholder="Buscar ejercicio o equipo..."
-            className="h-13 w-full rounded-lg border-0 bg-surface-low pr-11 pl-11 text-base text-foreground outline-none transition motion-reduce:transition-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring sm:text-sm"
+            className="h-13 w-full rounded-lg border-0 bg-surface-low pr-11 pl-11 [&::-webkit-search-cancel-button]:hidden text-base text-foreground outline-none transition motion-reduce:transition-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring sm:text-sm"
           />
           {busqueda ? (
             <button
@@ -324,17 +369,45 @@ export function EjercicioPicker({
           </div>
         ) : (
           <>
-            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-              {mostrados.map((ejercicio, indice) => (
-                <TarjetaEjercicio
-                  key={ejercicio.id_ejercicio}
-                  ejercicio={ejercicio}
-                  onSeleccionar={onSeleccionar}
-                  // Las primeras entran con la pagina; el resto al acercarse.
-                  priority={indice < 4}
-                />
-              ))}
-            </div>
+            {propios.length > 0 ? (
+              <div className="space-y-2">
+                <p className="font-label text-[0.68rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Tus ejercicios
+                </p>
+                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                  {propios.map((ejercicio, indice) => (
+                    <TarjetaEjercicio
+                      key={ejercicio.id_ejercicio}
+                      ejercicio={ejercicio}
+                      uso={usoPorId.get(ejercicio.id_ejercicio)?.uso}
+                      onSeleccionar={onSeleccionar}
+                      priority={indice < 4}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {resto.length > 0 ? (
+              <div className="space-y-2">
+                {propios.length > 0 ? (
+                  <p className="font-label text-[0.68rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    {hayFiltro ? "Mas del catalogo" : "Resto del catalogo"}
+                  </p>
+                ) : null}
+                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                  {mostrados.map((ejercicio, indice) => (
+                    <TarjetaEjercicio
+                      key={ejercicio.id_ejercicio}
+                      ejercicio={ejercicio}
+                      onSeleccionar={onSeleccionar}
+                      // Las primeras entran con la pagina; el resto al acercarse.
+                      priority={propios.length === 0 && indice < 4}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <div ref={centinela} aria-hidden className="h-px" />
           </>
         )}

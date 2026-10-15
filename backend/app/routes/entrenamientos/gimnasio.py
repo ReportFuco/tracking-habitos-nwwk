@@ -17,7 +17,10 @@ from app.schemas.entrenamientos import (
 
 router = APIRouter(prefix="/gimnasio", tags=["Entrenamientos · Gimnasio"])
 _GIMNASIOS_CACHE_SECONDS = 15
-_gimnasios_cache: dict[str, tuple[float, list[Gimnasio]]] = {}
+# Se guardan las respuestas ya serializadas, no las filas: una fila ORM queda atada a la
+# sesion de la peticion que la cargo, y si esa sesion la expira (un rollback) la siguiente
+# peticion que la saque del cache falla al serializarla con DetachedInstanceError.
+_gimnasios_cache: dict[str, tuple[float, list[GimnasioResponse]]] = {}
 
 
 def _cache_key(q: Optional[str]) -> str:
@@ -68,7 +71,7 @@ async def obtener_gimnasios(
         )
 
     result = await db.execute(stmt)
-    gimnasios = result.scalars().all()
+    gimnasios = [GimnasioResponse.model_validate(fila) for fila in result.scalars().all()]
     _gimnasios_cache[cache_key] = (now, gimnasios)
 
     return gimnasios

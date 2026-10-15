@@ -1,6 +1,7 @@
 import { api } from "@/lib/api"
 import { parseApiResponse } from "@/lib/api-schema"
 import {
+  ejerciciosUsoListResponseSchema,
   entrenoFuerzaResponseSchema,
   entrenoFuerzaSerieResponseSchema,
   entrenosFuerzaListResponseSchema,
@@ -8,6 +9,7 @@ import {
   gimnasiosListResponseSchema,
   serieFuerzaResponseSchema,
 } from "@/modules/entrenamientos/schemas/entrenamientos.schema"
+import type { EjercicioUso } from "@/modules/entrenamientos/schemas/entrenamientos.schema"
 import {
   EjercicioCreate,
   EjercicioEdit,
@@ -217,10 +219,13 @@ export const EntrenamientosAPI = {
       .filter((item): item is EjercicioResponse => item !== null)
   },
 
-  getEquipamientos: async (): Promise<string[]> => {
-    const { data } = await api.get("/api/entrenamientos/ejercicios/equipamientos")
-
-    return toArray<unknown>(data).filter((item): item is string => typeof item === "string")
+  getEjerciciosMios: async (): Promise<EjercicioUso[]> => {
+    const { data } = await api.get("/api/entrenamientos/ejercicios/mios")
+    return parseApiResponse(
+      ejerciciosUsoListResponseSchema,
+      data,
+      "GET /api/entrenamientos/ejercicios/mios",
+    )
   },
 
   createEjercicio: async (payload: EjercicioCreate): Promise<EjercicioResponse> => {

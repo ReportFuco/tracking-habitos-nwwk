@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
@@ -73,3 +75,14 @@ class MusculoResponse(BaseModel):
     subcategorias: list[SubcategoriaMusculoResponse] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class EjercicioUsoResponse(BaseModel):
+    """Un ejercicio que el usuario ya registró: cuánto lo usa y con qué carga lo dejó."""
+
+    id_ejercicio: int
+    series: int
+    ultima_vez: datetime
+    # Última serie efectiva (sin calentamientos); null si sólo registró calentamientos.
+    ultimo_peso: float | None = None
+    ultimas_repeticiones: int | None = None

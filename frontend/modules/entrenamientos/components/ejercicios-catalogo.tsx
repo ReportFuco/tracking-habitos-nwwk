@@ -16,9 +16,12 @@ import {
 import {
   useEjerciciosCatalogo,
   useEjerciciosMutations,
-  useEquipamientos,
   useMusculosCatalogo,
 } from "@/modules/entrenamientos/hooks/useEjercicios"
+import {
+  coincideBusqueda,
+  normalizarTexto,
+} from "@/modules/entrenamientos/components/activo/shared"
 import {
   ejercicioCreateSchema,
   ejercicioEditSchema,
@@ -72,6 +75,7 @@ export function EjerciciosCatalogo() {
   const [busqueda, setBusqueda] = useState("")
   const [busquedaAplicada, setBusquedaAplicada] = useState("")
   const [idMusculo, setIdMusculo] = useState<number | null>(null)
+  const [idSubcategoria, setIdSubcategoria] = useState<number | null>(null)
   const [equipamiento, setEquipamiento] = useState<string | null>(null)
   const [verFiltros, setVerFiltros] = useState(false)
   const [tanda, setTanda] = useState<{ filtros: object; visibles: number }>({
@@ -93,18 +97,78 @@ export function EjerciciosCatalogo() {
   }, [busqueda])
 
   const filtros = useMemo(
-    () => ({
-      ...(busquedaAplicada ? { q: busquedaAplicada } : {}),
-      ...(idMusculo !== null ? { id_musculo: idMusculo } : {}),
-      ...(equipamiento !== null ? { equipamiento } : {}),
-    }),
-    [busquedaAplicada, idMusculo, equipamiento],
+    () => ({ termino: normalizarTexto(busquedaAplicada), idMusculo, idSubcategoria, equipamiento }),
+    [busquedaAplicada, idMusculo, idSubcategoria, equipamiento],
   )
 
-  const { ejercicios, cargando, refrescando } = useEjerciciosCatalogo(filtros)
+  const { ejercicios: catalogo, cargando, refrescando } = useEjerciciosCatalogo()
   const musculos = useMusculosCatalogo()
-  const equipamientos = useEquipamientos()
   const { crear, editar, eliminar, guardando } = useEjerciciosMutations()
+
+  // Los equipos en uso salen del propio catalogo: un chip de un equipo sin ejercicios no
+  // devolveria nada.
+  const equipamientos = useMemo(
+    () =>
+      Array.from(
+        new Set(catalogo.map((ejercicio) => ejercicio.equipamiento).filter(Boolean) as string[]),
+      ).sort((a, b) => a.localeCompare(b, "es")),
+    [catalogo],
+  )
+
+  // Zonas del musculo elegido que tienen ejercicios, con cuantos tiene cada una.
+  const subcategorias = useMemo(() => {
+    if (idMusculo === null) {
+      return []
+    }
+
+    const conteo = new Map<number, number>()
+    for (const ejercicio of catalogo) {
+      const id = ejercicio.id_subcategoria_musculo
+      if (ejercicio.id_musculo === idMusculo && id != null) {
+        conteo.set(id, (conteo.get(id) ?? 0) + 1)
+      }
+    }
+
+    const musculo = musculos.find((item) => item.id_musculo === idMusculo)
+    const conEjercicios = (musculo?.subcategorias ?? [])
+      .filter((sub) => sub.activo && conteo.has(sub.id_subcategoria_musculo))
+      .map((sub) => ({ sub, total: conteo.get(sub.id_subcategoria_musculo) ?? 0 }))
+
+    // Una sola zona es lo mismo que no filtrar: no se ofrece.
+    return conEjercicios.length > 1 ? conEjercicios : []
+  }, [catalogo, idMusculo, musculos])
+
+  const ejercicios = useMemo(() => {
+    const { termino } = filtros
+
+    return catalogo.filter((ejercicio) => {
+      if (filtros.idMusculo !== null && ejercicio.id_musculo !== filtros.idMusculo) {
+        return false
+      }
+      if (
+        filtros.idSubcategoria !== null &&
+        ejercicio.id_subcategoria_musculo !== filtros.idSubcategoria
+      ) {
+        return false
+      }
+      if (filtros.equipamiento !== null && ejercicio.equipamiento !== filtros.equipamiento) {
+        return false
+      }
+      if (!termino) {
+        return true
+      }
+
+      // El catalogo guarda el nombre original en ingles: buscar "bench press" tiene que
+      // encontrar "Press de banca con barra".
+      return coincideBusqueda(termino, [
+        ejercicio.nombre,
+        ejercicio.nombre_original,
+        ejercicio.equipamiento,
+        ejercicio.musculo_nombre,
+        ejercicio.subcategoria_nombre,
+      ])
+    })
+  }, [catalogo, filtros])
 
   // Cuantos se muestran va atado a los filtros con los que se conto: si cambian, el
   // valor guardado deja de aplicar y se vuelve solo a la primera tanda, sin un efecto que
@@ -139,10 +203,16 @@ export function EjerciciosCatalogo() {
 
   const hayFiltros = idMusculo !== null || equipamiento !== null || busquedaAplicada !== ""
 
+  const elegirMusculo = (id: number | null) => {
+    setIdMusculo(id)
+    // La zona pertenece al musculo: al cambiarlo deja de aplicar.
+    setIdSubcategoria(null)
+  }
+
   const limpiarFiltros = () => {
     setBusqueda("")
     setBusquedaAplicada("")
-    setIdMusculo(null)
+    elegirMusculo(null)
     setEquipamiento(null)
   }
 
@@ -236,7 +306,7 @@ export function EjerciciosCatalogo() {
               onChange={(evento) => setBusqueda(evento.target.value)}
               placeholder="Buscar ejercicio o equipo..."
               aria-label="Buscar en el catalogo de ejercicios"
-              className="h-13 w-full rounded-3xl border-0 bg-surface-variant pr-11 pl-11 text-base text-foreground outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring sm:text-sm"
+              className="h-13 w-full rounded-3xl border-0 bg-surface-variant pr-11 pl-11 [&::-webkit-search-cancel-button]:hidden text-base text-foreground outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring sm:text-sm"
             />
             {busqueda ? (
               <button
@@ -276,7 +346,7 @@ export function EjerciciosCatalogo() {
             {/* Scroll horizontal en vez de envolver: mantiene la barra en una linea y no
                 empuja la lista hacia abajo en el telefono. */}
             <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-6 sm:px-6">
-              <Chip activo={idMusculo === null} onClick={() => setIdMusculo(null)}>
+              <Chip activo={idMusculo === null} onClick={() => elegirMusculo(null)}>
                 Todos
               </Chip>
               {musculos
@@ -286,13 +356,40 @@ export function EjerciciosCatalogo() {
                     key={musculo.id_musculo}
                     activo={idMusculo === musculo.id_musculo}
                     onClick={() =>
-                      setIdMusculo(idMusculo === musculo.id_musculo ? null : musculo.id_musculo)
+                      elegirMusculo(idMusculo === musculo.id_musculo ? null : musculo.id_musculo)
                     }
                   >
                     {musculo.nombre}
                   </Chip>
                 ))}
             </div>
+
+            {subcategorias.length > 0 ? (
+              <div
+                className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-6 sm:px-6"
+                aria-label="Filtrar por zona del musculo"
+              >
+                <Chip activo={idSubcategoria === null} onClick={() => setIdSubcategoria(null)}>
+                  Toda la zona
+                </Chip>
+                {subcategorias.map(({ sub, total }) => (
+                  <Chip
+                    key={sub.id_subcategoria_musculo}
+                    activo={idSubcategoria === sub.id_subcategoria_musculo}
+                    onClick={() =>
+                      setIdSubcategoria(
+                        idSubcategoria === sub.id_subcategoria_musculo
+                          ? null
+                          : sub.id_subcategoria_musculo,
+                      )
+                    }
+                  >
+                    {sub.nombre}
+                    <span className="ml-1.5 text-[11px] opacity-60">{total}</span>
+                  </Chip>
+                ))}
+              </div>
+            ) : null}
 
             {equipamientos.length > 0 ? (
               <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-6 sm:px-6">

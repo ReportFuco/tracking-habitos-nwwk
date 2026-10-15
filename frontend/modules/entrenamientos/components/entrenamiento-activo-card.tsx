@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useEntrenamientos } from "@/modules/entrenamientos/hooks/useEntrenamientos"
+import { useEjerciciosMios } from "@/modules/entrenamientos/hooks/useEjercicios"
 import {
   EjercicioPicker,
 } from "@/modules/entrenamientos/components/activo/ejercicio-picker"
@@ -117,6 +118,7 @@ export function EntrenamientoActivoCard() {
     eliminarSerieFuerza,
     cerrarEntrenoFuerzaActivo,
   } = useEntrenamientos()
+  const usados = useEjerciciosMios()
   const router = useRouter()
 
   const [modo, setModo] = useState<Modo>({ tipo: "picker" })
@@ -174,13 +176,21 @@ export function EntrenamientoActivoCard() {
       }
     }
 
-    return (
-      leerUltimaSerieLocal(ejercicioEnRegistro.id_ejercicio) ?? {
-        cantidad_peso: "",
-        repeticiones: "",
-        es_calentamiento: false,
-      }
-    )
+    const local = leerUltimaSerieLocal(ejercicioEnRegistro.id_ejercicio)
+
+    if (local) {
+      return local
+    }
+
+    // Sin rastro en este dispositivo (otro telefono, cache borrado): la ultima serie
+    // efectiva que guardo el backend.
+    const uso = usados.find((item) => item.id_ejercicio === ejercicioEnRegistro.id_ejercicio)
+
+    return {
+      cantidad_peso: uso?.ultimo_peso != null ? String(uso.ultimo_peso) : "",
+      repeticiones: uso?.ultimas_repeticiones != null ? String(uso.ultimas_repeticiones) : "",
+      es_calentamiento: false,
+    }
     // Solo interesa el valor con el que se monta el panel de ese ejercicio: recalcularlo
     // en cada serie no aportaria nada porque `RegistroSerie` ya conserva lo que se cargo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -475,6 +485,7 @@ export function EntrenamientoActivoCard() {
               musculos={musculos}
               cargando={loading}
               recientes={recientes}
+              usados={usados}
               onSeleccionar={seleccionarEjercicio}
               titulo={modo.tipo === "reasignar" ? "Cambiar ejercicio" : "Nueva serie"}
               descripcion={

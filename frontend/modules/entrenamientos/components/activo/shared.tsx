@@ -18,6 +18,19 @@ export const normalizarTexto = (valor: string | null | undefined) =>
     .trim()
     .toLowerCase()
 
+/**
+ * Si un ejercicio coincide con lo buscado: cada palabra tiene que aparecer en alguno de los
+ * campos, en cualquier orden. "press banca" encuentra "Press de banca con barra", que como
+ * texto corrido no coincide. `termino` ya viene normalizado.
+ */
+export const coincideBusqueda = (
+  termino: string,
+  campos: Array<string | null | undefined>,
+) => {
+  const texto = campos.map(normalizarTexto).join(" ")
+  return termino.split(/\s+/).every((palabra) => texto.includes(palabra))
+}
+
 export const describirGrupoEjercicio = (ejercicio: {
   musculo_nombre?: string | null
   subcategoria_nombre?: string | null
