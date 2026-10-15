@@ -1,7 +1,9 @@
 "use client"
 
 import type { InfiniteData, QueryClient } from "@tanstack/react-query"
+import { formatCLP } from "@/lib/format"
 import { queryKeys } from "@/lib/query-keys"
+import { guardarFallido, quitarFallido, reintentoCola } from "@/lib/sync-fallidos"
 import { FinanzasAPI } from "@/modules/finanzas/api/finanzas.api"
 import type {
   CategoriaResponse,
@@ -26,7 +28,8 @@ type MovimientosCache = InfiniteData<MovimientosPageResponse, number>
 let optimisticSeq = 0
 const nextOptimisticId = () => -(Date.now() + optimisticSeq++)
 
-const getLocalDateTime = () => {
+/** Fecha y hora local sin zona ("2026-10-15T18:30:00"), el formato que espera el backend. */
+export const getLocalDateTime = () => {
   const now = new Date()
   const offset = now.getTimezoneOffset() * 60_000
   return new Date(now.getTime() - offset).toISOString().slice(0, 19)
@@ -114,7 +117,7 @@ export const registerFinanzasMutationDefaults = (queryClient: QueryClient) => {
   queryClient.setMutationDefaults(finanzasMutationKeys.movimientoCreate, {
     mutationFn: (payload: MovimientoCreate) => FinanzasAPI.createMovimiento(payload),
     scope: { id: MOVIMIENTOS_OFFLINE_SCOPE_ID },
-    retry: 3,
+    ...reintentoCola,
     onMutate: async (payload: MovimientoCreate) => {
       await queryClient.cancelQueries({ queryKey: movimientosKey })
       const optimistic = buildOptimisticMovimiento(queryClient, payload)
@@ -135,6 +138,7 @@ export const registerFinanzasMutationDefaults = (queryClient: QueryClient) => {
       })
     },
     onSuccess: (created, payload) => {
+      quitarFallido(queryClient, payload.client_request_id)
       queryClient.setQueryData<MovimientosCache>(movimientosKey, (current) => {
         if (!current) {
           return current
@@ -151,7 +155,31 @@ export const registerFinanzasMutationDefaults = (queryClient: QueryClient) => {
         }
       })
     },
-    onError: (_error, payload) => {
+    onError: (error, payload) => {
+      // El movimiento sale de la lista pero no se pierde: queda en la bandeja de no
+      // sincronizados, desde donde se reintenta con el mismo client_request_id.
+      if (payload.client_request_id) {
+        const categoria = findCatalogLabel<CategoriaResponse>(
+          queryClient,
+          queryKeys.finanzas.categorias,
+          (item) => item.id_categoria === payload.id_categoria,
+          (item) => item.nombre,
+        )
+        guardarFallido(queryClient, {
+          id: payload.client_request_id,
+          tipo: "movimiento",
+          payload,
+          descripcion: [
+            payload.tipo_movimiento === "ingreso" ? "Ingreso" : "Gasto",
+            formatCLP(payload.monto),
+            categoria ?? payload.descripcion,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          error,
+        })
+      }
+
       queryClient.setQueryData<MovimientosCache>(movimientosKey, (current) => {
         if (!current) {
           return current

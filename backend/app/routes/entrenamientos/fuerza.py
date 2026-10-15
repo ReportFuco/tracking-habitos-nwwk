@@ -5,7 +5,7 @@ from app.auth.fastapi_users import current_user_or_api_key
 from app.db.session import get_db
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from app.notifications.service import (
     cancel_training_reminders,
     schedule_training_reminders,
@@ -30,6 +30,25 @@ from app.models import (
 
 
 router = APIRouter(prefix="/fuerza", tags=["Entrenamientos · Fuerza"])
+
+
+# Lo mas que puede esperar un alta en la cola offline antes de que el cache persistido la
+# descarte (maxAge del persister en el frontend).
+_ATRASO_MAXIMO_COLA = timedelta(days=7)
+
+
+def _hora_del_cliente(valor: datetime | None, ahora: datetime) -> datetime:
+    """Hora que trae un alta encolada sin conexion, acotada a lo creible.
+
+    Si no viene, manda la del servidor. Un reloj de telefono adelantado no puede dejar una
+    sesion en el futuro, y una fecha absurda en el pasado se acota en vez de rechazarse: el
+    alta ya viajo horas en la cola y rechazarla seria perderla.
+    """
+    if valor is None:
+        return ahora
+    if valor.tzinfo is None:
+        valor = valor.replace(tzinfo=timezone.utc)
+    return min(max(valor, ahora - _ATRASO_MAXIMO_COLA), ahora)
 
 
 async def obtener_usuario_actual(user, db: AsyncSession) -> Usuario:
@@ -230,7 +249,7 @@ async def activar_entrenamiento(
     entreno_fuerza = EntrenamientoFuerza(
         id_entrenamiento=entreno.id_entrenamiento,
         id_gimnasio=data.id_gimnasio,
-        inicio_at=datetime.now(timezone.utc),
+        inicio_at=_hora_del_cliente(data.inicio_at, datetime.now(timezone.utc)),
         client_request_id=data.client_request_id,
     )
 
@@ -284,6 +303,7 @@ async def finalizar_sesion_fuerza(
     # expirado y volver a tocarlo dispararia un lazy-load sincrono invalido en async.
     id_usuario = usuario.id_usuario
     client_request_id = data.client_request_id if data else None
+    fin_cliente = data.fin_at if data else None
 
     # Reintentar el cierre tras perder la respuesta no debe fallar ni reabrir nada: si esta
     # clave ya cerro una sesion, se devuelve tal cual quedo la primera vez.
@@ -322,7 +342,12 @@ async def finalizar_sesion_fuerza(
         )
 
     entreno_activo.estado = EstadoEntreno.CERRADO
-    entreno_activo.fin_at = datetime.now(timezone.utc)
+    # El cierre nunca antes del inicio: el inicio pudo ponerlo el servidor y el cierre el
+    # reloj del telefono.
+    entreno_activo.fin_at = max(
+        _hora_del_cliente(fin_cliente, datetime.now(timezone.utc)),
+        entreno_activo.inicio_at,
+    )
     entreno_activo.cierre_client_request_id = client_request_id
     await cancel_training_reminders(
         db,

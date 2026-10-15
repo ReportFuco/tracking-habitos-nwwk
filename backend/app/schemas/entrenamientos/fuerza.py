@@ -48,6 +48,13 @@ class EntrenoFuerzaCreate(BaseModel):
     client_request_id: UUID | None = Field(
         None, description="Identificador generado por el cliente para reintentos seguros."
     )
+    inicio_at: datetime | None = Field(
+        None,
+        description=(
+            "Hora real de inicio cuando el alta se encoló sin conexión. Si no se envía se usa "
+            "la hora del servidor; nunca queda en el futuro ni más de 7 días atrás."
+        ),
+    )
 
     model_config={
         "title":"Crear entreno de Fuerza"
@@ -57,6 +64,13 @@ class EntrenoFuerzaCreate(BaseModel):
 class EntrenoFuerzaCierre(BaseModel):
     client_request_id: UUID | None = Field(
         None, description="Identificador generado por el cliente para reintentos seguros."
+    )
+    fin_at: datetime | None = Field(
+        None,
+        description=(
+            "Hora real de cierre cuando se encoló sin conexión. Si no se envía se usa la hora "
+            "del servidor; nunca queda en el futuro ni antes del inicio."
+        ),
     )
 
 

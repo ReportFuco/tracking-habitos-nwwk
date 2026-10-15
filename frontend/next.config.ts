@@ -1,6 +1,22 @@
+import { execSync } from "node:child_process";
 import type { NextConfig } from "next";
 
+// Identifica el build ante el service worker (ver public/sw.js): con el commit, cada deploy
+// estrena cache y el del anterior se limpia. Sin git disponible, la hora del build.
+const buildId = (() => {
+  try {
+    return execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
+  } catch {
+    return String(Date.now());
+  }
+})();
+
 const nextConfig: NextConfig = {
+  env: {
+    RITMO_BUILD_ID: buildId,
+  },
   allowedDevOrigins: ["100.107.250.78", "100.124.185.116"],
   turbopack: {
     root: process.cwd(),

@@ -17,9 +17,12 @@ export function ServiceWorkerRegistration() {
 
     const register = async () => {
       try {
-        const registration = await navigator.serviceWorker.register("/sw.js", {
-          scope: "/",
-        })
+        // La version del build viaja en la URL: el SW la usa para nombrar su cache y
+        // descartar el de deploys viejos.
+        const registration = await navigator.serviceWorker.register(
+          `/sw.js?v=${encodeURIComponent(process.env.RITMO_BUILD_ID ?? "")}`,
+          { scope: "/" },
+        )
         await registration.update()
       } catch {
         // La app sigue funcionando online aunque el navegador rechace el SW.

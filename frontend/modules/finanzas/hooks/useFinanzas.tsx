@@ -11,9 +11,13 @@ import {
 import { toast } from "sonner"
 import { getFriendlyErrorMessage } from "@/lib/error-messages"
 import { runOnlineOnlyAction } from "@/lib/online-only"
+import { quitarFallido } from "@/lib/sync-fallidos"
 import { queryKeys } from "@/lib/query-keys"
 import { FinanzasAPI } from "@/modules/finanzas/api/finanzas.api"
-import { finanzasMutationKeys } from "@/modules/finanzas/offline/movimientos-offline"
+import {
+  finanzasMutationKeys,
+  getLocalDateTime,
+} from "@/modules/finanzas/offline/movimientos-offline"
 import {
   BancoCreate,
   CategoriaCreate,
@@ -432,7 +436,12 @@ const useFinanzasState = () => {
     eliminarCuenta: (idCuenta: number) => runOnlineOnlyAction(() => cuentaDeleteMutation.mutateAsync(idCuenta)),
     crearMovimiento: async (payload: MovimientoCreate): ActionResult => {
       if (!onlineManager.isOnline()) {
-        movimientoCreateMutation.mutate(payload)
+        // La cola puede salir horas despues: sin fecha explicita el backend registraria
+        // la hora en que sincronizo y no la del gasto.
+        movimientoCreateMutation.mutate({
+          ...payload,
+          created_at: payload.created_at ?? getLocalDateTime(),
+        })
         return { ok: true, queued: true }
       }
 
@@ -441,7 +450,20 @@ const useFinanzasState = () => {
       const result = await runOnlineOnlyAction(async () => {
         creado = await movimientoCreateMutation.mutateAsync(payload)
       })
-      return result.ok ? { ok: true, idMovimiento: creado?.id_transaccion } : result
+      if (!result.ok) {
+        // El formulario muestra el error y conserva los datos: no va ademas a la bandeja.
+        quitarFallido(queryClient, payload.client_request_id)
+        return result
+      }
+      return { ok: true, idMovimiento: creado?.id_transaccion }
+    },
+    // Desde la bandeja de no sincronizados: si vuelve a fallar tiene que quedarse ahi.
+    reintentarMovimiento: async (payload: MovimientoCreate): ActionResult => {
+      if (!onlineManager.isOnline()) {
+        movimientoCreateMutation.mutate(payload)
+        return { ok: true, queued: true }
+      }
+      return runOnlineOnlyAction(() => movimientoCreateMutation.mutateAsync(payload))
     },
     editarMovimiento: (idMovimiento: number, payload: MovimientoPatch) =>
       runOnlineOnlyAction(() => movimientoUpdateMutation.mutateAsync({ idMovimiento, payload })),

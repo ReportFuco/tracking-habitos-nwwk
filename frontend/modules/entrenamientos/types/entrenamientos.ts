@@ -85,10 +85,14 @@ export interface EntrenoFuerzaCreate {
   // Permite que un reintento (respuesta perdida offline) devuelva el entreno ya abierto
   // en vez de crear uno duplicado.
   client_request_id?: string
+  // Hora real de inicio cuando el alta se encola sin conexion; si no, la pone el backend.
+  inicio_at?: string
 }
 
 export interface EntrenoFuerzaCierre {
   client_request_id: string
+  // Hora real de cierre cuando se encola sin conexion; si no, la pone el backend.
+  fin_at?: string
 }
 
 // Derivados de los schemas Zod en modules/entrenamientos/schemas/entrenamientos.schema.ts

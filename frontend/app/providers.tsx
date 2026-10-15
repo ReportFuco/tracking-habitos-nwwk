@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client"
+import { registerFallidosDefaults } from "@/lib/sync-fallidos"
 import {
   QUERY_CACHE_SCHEMA_VERSION,
   createQueryPersister,
@@ -67,6 +68,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     // de estos defaults.
     registerEntrenamientosMutationDefaults(client)
     registerFinanzasMutationDefaults(client)
+    registerFallidosDefaults(client)
 
     return client
   })

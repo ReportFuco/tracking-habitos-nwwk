@@ -4,6 +4,7 @@ import type { QueryClient, UseMutationResult } from "@tanstack/react-query"
 import { getFriendlyErrorMessage } from "@/lib/error-messages"
 import { queryKeys } from "@/lib/query-keys"
 import { isAppOffline, runOnlineOnlyAction } from "@/lib/online-only"
+import { guardarFallido, quitarFallido, reintentoCola } from "@/lib/sync-fallidos"
 import { EntrenamientosAPI } from "@/modules/entrenamientos/api/entrenamientos.api"
 import type {
   EjercicioResponse,
@@ -98,7 +99,7 @@ const buildEntrenoOptimista = (
   return {
     id_entrenamiento_fuerza: nextOptimisticId(),
     estado: "activo",
-    inicio_at: new Date().toISOString(),
+    inicio_at: variables.inicio_at ?? new Date().toISOString(),
     fin_at: null,
     nombre_gimnasio: gimnasio?.nombre_gimnasio ?? null,
     nombre_cadena: gimnasio?.nombre_cadena ?? null,
@@ -146,6 +147,7 @@ export const registerEntrenamientosMutationDefaults = (queryClient: QueryClient)
   queryClient.setMutationDefaults(entrenamientosMutationKeys.entrenoCreate, {
     mutationFn: (variables: EntrenoFuerzaCreate) => EntrenamientosAPI.createEntrenoFuerza(variables),
     scope: { id: ENTRENO_ACTIVO_SCOPE_ID },
+    ...reintentoCola,
     onMutate: async (variables: EntrenoFuerzaCreate) => {
       await queryClient.cancelQueries({ queryKey: activoKey })
       const previous = queryClient.getQueryData<ActivoCache>(activoKey)
@@ -179,6 +181,7 @@ export const registerEntrenamientosMutationDefaults = (queryClient: QueryClient)
   queryClient.setMutationDefaults(entrenamientosMutationKeys.serieCreate, {
     mutationFn: (variables: SerieFuerzaCreate) => EntrenamientosAPI.createSerieFuerza(variables),
     scope: { id: ENTRENO_ACTIVO_SCOPE_ID },
+    ...reintentoCola,
     onMutate: async (variables: SerieFuerzaCreate) => {
       // Se cancela cualquier refetch en curso para que no pise el update optimista.
       await queryClient.cancelQueries({ queryKey: activoKey })
@@ -194,9 +197,22 @@ export const registerEntrenamientosMutationDefaults = (queryClient: QueryClient)
 
       return { optimisticId: serie.id_fuerza_detalle }
     },
+    onSuccess: (_serie, variables) => quitarFallido(queryClient, variables.client_request_id),
     // Se quita solo la serie que fallo, en vez de restaurar un snapshot completo: las
-    // otras series de la cola siguen pendientes y no hay que descartarlas.
-    onError: (_error, _variables, context) => {
+    // otras series de la cola siguen pendientes y no hay que descartarlas. La serie no se
+    // pierde: pasa a la bandeja de no sincronizadas, desde donde se reintenta.
+    onError: (error, variables, context) => {
+      if (variables.client_request_id) {
+        const ejercicio = findEjercicio(queryClient, variables.id_ejercicio)
+        guardarFallido(queryClient, {
+          id: variables.client_request_id,
+          tipo: "serie",
+          payload: variables,
+          descripcion: `${ejercicio?.nombre ?? "Serie"} · ${variables.cantidad_peso} kg × ${variables.repeticiones}`,
+          error,
+        })
+      }
+
       const optimisticId = (context as SerieContext | undefined)?.optimisticId
 
       if (optimisticId === undefined) {
@@ -221,6 +237,7 @@ export const registerEntrenamientosMutationDefaults = (queryClient: QueryClient)
     mutationFn: (variables: EntrenoFuerzaCierre) =>
       EntrenamientosAPI.closeEntrenoFuerzaActivo(variables),
     scope: { id: ENTRENO_ACTIVO_SCOPE_ID },
+    ...reintentoCola,
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: activoKey })
       const previous = queryClient.getQueryData<ActivoCache>(activoKey)

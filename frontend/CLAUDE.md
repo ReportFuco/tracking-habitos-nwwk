@@ -27,6 +27,9 @@ comprobar a mano y fácil de romper sin darse cuenta:
   datos del usuario anterior, y que el `buster` descarte cachés de versiones viejas.
 - `tests/entrenamientos-offline.test.ts` — la cola offline del entreno activo:
   actualización optimista, supervivencia a una recarga y reenvío **en orden**.
+- `tests/sync-fallidos.test.ts` — qué errores se reintentan y que un alta que la cola no
+  logra sincronizar quede en la bandeja de "sin sincronizar" (y sobreviva a una recarga)
+  en vez de perderse.
 
 ## Architecture
 

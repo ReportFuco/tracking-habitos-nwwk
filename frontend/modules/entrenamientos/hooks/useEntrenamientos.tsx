@@ -5,7 +5,8 @@ import { createContext, ReactNode, useCallback, useContext, useState } from "rea
 import { AxiosError } from "axios"
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query"
 import { getFriendlyErrorMessage } from "@/lib/error-messages"
-import { runOnlineOnlyAction } from "@/lib/online-only"
+import { isAppOffline, runOnlineOnlyAction } from "@/lib/online-only"
+import { quitarFallido } from "@/lib/sync-fallidos"
 import { queryKeys } from "@/lib/query-keys"
 import { EntrenamientosAPI } from "@/modules/entrenamientos/api/entrenamientos.api"
 import { entrenosFuerzaQueryOptions } from "@/modules/entrenamientos/queries"
@@ -251,13 +252,31 @@ const useEntrenamientosState = () => {
       runOnlineOnlyAction(() => gimnasioUpdateMutation.mutateAsync({ idGimnasio, payload })),
     eliminarGimnasio: (idGimnasio: number) =>
       runOnlineOnlyAction(() => gimnasioDeleteMutation.mutateAsync(idGimnasio)),
+    // Sin conexion la hora viaja con el alta: la cola puede salir horas despues y el
+    // backend, si no, registraria la hora en que sincronizo y no la del entreno.
     iniciarEntrenoFuerza: (payload: EntrenoFuerzaCreate) =>
-      runEntrenoActivoAction(entrenoCreateMutation, payload),
+      runEntrenoActivoAction(
+        entrenoCreateMutation,
+        isAppOffline() ? { ...payload, inicio_at: new Date().toISOString() } : payload,
+      ),
     // La clave se genera acá porque este es el único llamador y no arma un payload propio:
     // así el componente que confirma el cierre no cambia.
     cerrarEntrenoFuerzaActivo: () =>
-      runEntrenoActivoAction(entrenoCloseMutation, { client_request_id: randomUUID() }),
-    agregarSerieFuerza: (payload: SerieFuerzaCreate) =>
+      runEntrenoActivoAction(entrenoCloseMutation, {
+        client_request_id: randomUUID(),
+        ...(isAppOffline() ? { fin_at: new Date().toISOString() } : {}),
+      }),
+    agregarSerieFuerza: async (payload: SerieFuerzaCreate) => {
+      const resultado = await runEntrenoActivoAction(serieCreateMutation, payload)
+      // Con conexion el error ya se muestra en el formulario, que conserva los valores
+      // para volver a enviarla: no hace falta ademas dejarla en la bandeja.
+      if (!resultado.ok) {
+        quitarFallido(queryClient, payload.client_request_id)
+      }
+      return resultado
+    },
+    // Desde la bandeja de no sincronizadas: si vuelve a fallar tiene que quedarse ahi.
+    reintentarSerieFuerza: (payload: SerieFuerzaCreate) =>
       runEntrenoActivoAction(serieCreateMutation, payload),
     editarSerieFuerza: (idFuerzaDetalle: number, payload: SerieFuerzaPatch) =>
       runOnlineOnlyAction(() => serieUpdateMutation.mutateAsync({ idFuerzaDetalle, payload })),

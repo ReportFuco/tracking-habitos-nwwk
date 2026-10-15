@@ -1,7 +1,17 @@
-const CACHE_VERSION = "tcl-shell-v5"
+// La version llega en la URL con la que se registra el SW (/sw.js?v=<build>): cambia en
+// cada deploy, asi que los chunks de builds viejos se van limpiando en vez de acumularse.
+const VERSION = new URL(self.location.href).searchParams.get("v") || "sin-version"
+const SHELL_PREFIX = "tcl-shell-"
+const SHELL_CACHE = `${SHELL_PREFIX}${VERSION}`
+// Imagenes de ejercicios e iconos no dependen del build: sobreviven a los deploys para no
+// volver a bajar lo que ya se miro.
+const MEDIA_CACHE = "tcl-media-v1"
 const OFFLINE_URL = "/offline"
 const APP_ICON = "/icons/app-icon-192.png"
-const PRECACHE_URLS = [OFFLINE_URL, "/app/dashboard", APP_ICON]
+const SHELL_PRECACHE = [OFFLINE_URL, "/app/dashboard"]
+// Con senal mala la red puede tardar decenas de segundos en fallar: pasado este tiempo se
+// muestra la copia guardada y la respuesta de la red, si llega, queda para la proxima.
+const NAVEGACION_TIMEOUT_MS = 3000
 
 const isAppDocument = (pathname) =>
   pathname.startsWith("/app/") || pathname.startsWith("/administrador")
@@ -14,10 +24,10 @@ const rscCacheKey = (url) =>
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE_VERSION)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting()),
+    Promise.all([
+      caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL_PRECACHE)),
+      caches.open(MEDIA_CACHE).then((cache) => cache.add(APP_ICON)),
+    ]).then(() => self.skipWaiting()),
   )
 })
 
@@ -25,13 +35,19 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key !== CACHE_VERSION)
-            .map((key) => caches.delete(key)),
-        ),
-      )
+      .then((keys) => {
+        // Se conserva el shell del build anterior: una pestana abierta antes del deploy
+        // todavia puede pedir sus chunks, que en el servidor ya no existen. caches.keys()
+        // devuelve los caches en orden de creacion, asi que el ultimo es el mas reciente.
+        const anteriores = keys.filter(
+          (key) => key.startsWith(SHELL_PREFIX) && key !== SHELL_CACHE,
+        )
+        const conservar = new Set([SHELL_CACHE, MEDIA_CACHE, anteriores.at(-1)])
+
+        return Promise.all(
+          keys.filter((key) => !conservar.has(key)).map((key) => caches.delete(key)),
+        )
+      })
       .then(() => self.clients.claim()),
   )
 })
@@ -52,17 +68,34 @@ self.addEventListener("fetch", (event) => {
   if (request.mode === "navigate") {
     event.respondWith(
       (async () => {
-        const cache = await caches.open(CACHE_VERSION)
-
-        try {
-          const response = await fetch(request)
+        const cache = await caches.open(SHELL_CACHE)
+        const red = fetch(request).then(async (response) => {
           if (response.ok && isAppDocument(url.pathname)) {
             await cache.put(request, response.clone()).catch(() => undefined)
           }
           return response
+        })
+        const guardado = await caches.match(request, { ignoreSearch: true })
+
+        // Sin copia guardada no hay alternativa: se espera a la red lo que tarde.
+        if (!guardado) {
+          try {
+            return await red
+          } catch {
+            return (await caches.match(OFFLINE_URL)) || Response.error()
+          }
+        }
+
+        // La peticion sigue aunque gane la copia: asi actualiza el cache para la proxima.
+        event.waitUntil(red.catch(() => undefined))
+        const limite = new Promise((resolve) =>
+          setTimeout(() => resolve(null), NAVEGACION_TIMEOUT_MS),
+        )
+
+        try {
+          return (await Promise.race([red, limite])) || guardado
         } catch {
-          const cachedDocument = await cache.match(request, { ignoreSearch: true })
-          return cachedDocument || (await cache.match(OFFLINE_URL)) || Response.error()
+          return guardado
         }
       })(),
     )
@@ -72,7 +105,7 @@ self.addEventListener("fetch", (event) => {
   if (isAppDocument(url.pathname) && isRscRequest(request, url)) {
     event.respondWith(
       (async () => {
-        const cache = await caches.open(CACHE_VERSION)
+        const cache = await caches.open(SHELL_CACHE)
         const cacheKey = rscCacheKey(url)
 
         try {
@@ -92,11 +125,13 @@ self.addEventListener("fetch", (event) => {
   // Las imagenes del catalogo se guardan a medida que se ven, no en el install: son 43 MB
   // en total y precargarlas seria una descarga enorme por material que quiza no se
   // consulte. Asi, el ejercicio que ya se miro sigue disponible en el gimnasio sin senal.
-  if (
-    url.pathname.startsWith("/_next/static/") ||
-    url.pathname.startsWith("/ejercicios/") ||
-    url.pathname.startsWith("/icons/")
-  ) {
+  const destino = url.pathname.startsWith("/_next/static/")
+    ? SHELL_CACHE
+    : url.pathname.startsWith("/ejercicios/") || url.pathname.startsWith("/icons/")
+      ? MEDIA_CACHE
+      : null
+
+  if (destino) {
     event.respondWith(
       caches.match(request).then(
         (cached) =>
@@ -104,7 +139,7 @@ self.addEventListener("fetch", (event) => {
           fetch(request).then((response) => {
             if (response.ok) {
               const copy = response.clone()
-              void caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy))
+              void caches.open(destino).then((cache) => cache.put(request, copy))
             }
             return response
           }),
