@@ -9,8 +9,15 @@ export interface PushConfig {
 export interface PushStatus {
   configured: boolean
   training_reminders_enabled: boolean
+  expense_reminders_enabled: boolean
+  /** "HH:MM", hora de Chile. */
+  expense_reminder_time: string
   active_subscriptions: number
 }
+
+export type PushPreferencesPatch = Partial<
+  Pick<PushStatus, "training_reminders_enabled" | "expense_reminders_enabled" | "expense_reminder_time">
+>
 
 interface SerializedSubscription {
   endpoint: string
@@ -36,6 +43,11 @@ export const NotificationsAPI = {
       "/api/notifications/subscriptions",
       subscription,
     )
+    return response.data
+  },
+
+  updatePreferences: async (patch: PushPreferencesPatch) => {
+    const response = await api.patch<PushStatus>("/api/notifications/preferences", patch)
     return response.data
   },
 

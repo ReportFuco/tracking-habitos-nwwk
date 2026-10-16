@@ -3,6 +3,7 @@
 import { ContextNav } from "@/components/shell/context-nav"
 import { PageHeader } from "@/components/shell/page-header"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
+import { NotificacionesSettings } from "@/modules/notifications/components/notificaciones-settings"
 import { usePerfil } from "@/modules/usuario/hooks/usePerfil"
 import { ConexionesIA } from "./conexiones-ia"
 import { PerfilEditForm } from "./perfil-edit-form"
@@ -51,6 +52,8 @@ export function PerfilView() {
         </div>
         <ThemeToggle />
       </section>
+
+      <NotificacionesSettings />
 
       {perfil ? (
         <>

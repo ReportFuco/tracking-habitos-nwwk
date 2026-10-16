@@ -158,17 +158,17 @@ self.addEventListener("push", (event) => {
 
   const notification = payload.notification ?? payload
   const title = notification.title || "Ritmo"
-  const navigate = notification.navigate || "/app/entrenamientos/activo"
+  const navigate = notification.navigate || "/app/dashboard"
 
   event.waitUntil(
     Promise.all([
       self.registration.showNotification(title, {
-        body: notification.body || "Tienes un entrenamiento activo.",
+        body: notification.body || "",
         lang: notification.lang || "es-CL",
         dir: notification.dir || "ltr",
         icon: APP_ICON,
         badge: APP_ICON,
-        tag: notification.tag || "training-reminder",
+        tag: notification.tag || "ritmo",
         renotify: true,
         data: { navigate },
       }),
@@ -180,7 +180,7 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close()
   const target = new URL(
-    event.notification.data?.navigate || "/app/entrenamientos/activo",
+    event.notification.data?.navigate || "/app/dashboard",
     self.location.origin,
   ).href
 

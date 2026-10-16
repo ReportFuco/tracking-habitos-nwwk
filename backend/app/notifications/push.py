@@ -34,7 +34,28 @@ def build_training_payload(milestone: str) -> str:
     )
 
 
-def send_training_push(subscription: PushSubscription, milestone: str) -> None:
+def build_expense_payload() -> str:
+    navigate = urljoin(f"{URL_SITE.rstrip('/')}/", "app/finanzas/registrar-movimiento")
+    return json.dumps(
+        {
+            "web_push": 8030,
+            "notification": {
+                "title": "¿Anotaste tus gastos de hoy?",
+                "lang": "es-CL",
+                "dir": "ltr",
+                "body": "Hoy todavía no registras ningún gasto. Te toma un minuto.",
+                "navigate": navigate,
+                "silent": False,
+                "app_badge": "1",
+                # Un solo aviso visible: el de mañana reemplaza al de hoy si sigue ahi.
+                "tag": "expense-reminder",
+            },
+        },
+        ensure_ascii=False,
+    )
+
+
+def send_push(subscription: PushSubscription, payload: str, ttl: int) -> None:
     webpush(
         subscription_info={
             "endpoint": subscription.endpoint,
@@ -43,8 +64,18 @@ def send_training_push(subscription: PushSubscription, milestone: str) -> None:
                 "auth": subscription.auth_key,
             },
         },
-        data=build_training_payload(milestone),
+        data=payload,
         vapid_private_key=VAPID_PRIVATE_KEY,
         vapid_claims={"sub": VAPID_SUBJECT},
-        ttl=60 * 60,
+        ttl=ttl,
     )
+
+
+def send_training_push(subscription: PushSubscription, milestone: str) -> None:
+    send_push(subscription, build_training_payload(milestone), ttl=60 * 60)
+
+
+def send_expense_push(subscription: PushSubscription) -> None:
+    # Si el telefono esta apagado, el aviso aun sirve unas horas despues; al dia
+    # siguiente ya no.
+    send_push(subscription, build_expense_payload(), ttl=3 * 60 * 60)

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.fastapi_users import current_user
 from app.db.session import get_db
 from app.models import NotificationPreference, PushSubscription
+from app.notifications.gastos import chile_now, mark_today_if_time_passed
 from app.schemas.notifications import (
     NotificationPreferenceUpdate,
     PushConfigResponse,
@@ -46,6 +47,26 @@ async def get_or_create_preference(
     return preference
 
 
+async def build_status(
+    db: AsyncSession,
+    preference: NotificationPreference,
+) -> PushStatusResponse:
+    await db.flush()
+    subscription_count = await db.scalar(
+        select(func.count(PushSubscription.id_subscription)).where(
+            PushSubscription.auth_user_id == preference.auth_user_id,
+            PushSubscription.enabled.is_(True),
+        )
+    )
+    return PushStatusResponse(
+        configured=push_is_configured(),
+        training_reminders_enabled=preference.training_reminders_enabled,
+        expense_reminders_enabled=preference.expense_reminders_enabled,
+        expense_reminder_time=preference.expense_reminder_time.strftime("%H:%M"),
+        active_subscriptions=subscription_count or 0,
+    )
+
+
 @router.get("/config", response_model=PushConfigResponse)
 async def get_push_config(user=Depends(current_user)) -> PushConfigResponse:
     return PushConfigResponse(
@@ -64,17 +85,7 @@ async def get_push_status(
     db: AsyncSession = Depends(get_db),
 ) -> PushStatusResponse:
     preference = await get_or_create_preference(db, user.id)
-    subscription_count = await db.scalar(
-        select(func.count(PushSubscription.id_subscription)).where(
-            PushSubscription.auth_user_id == user.id,
-            PushSubscription.enabled.is_(True),
-        )
-    )
-    return PushStatusResponse(
-        configured=push_is_configured(),
-        training_reminders_enabled=preference.training_reminders_enabled,
-        active_subscriptions=subscription_count or 0,
-    )
+    return await build_status(db, preference)
 
 
 @router.post("/subscriptions", response_model=PushStatusResponse)
@@ -115,22 +126,10 @@ async def subscribe_device(
     subscription.updated_at = now
     subscription.user_agent = request.headers.get("user-agent", "")[:255] or None
 
+    # Suscribir el dispositivo no toca las preferencias: son de la cuenta y se eligen en
+    # Perfil (o al activar los avisos de entreno, que las pide explicitamente).
     preference = await get_or_create_preference(db, user.id)
-    preference.training_reminders_enabled = True
-    preference.updated_at = now
-    await db.flush()
-
-    subscription_count = await db.scalar(
-        select(func.count(PushSubscription.id_subscription)).where(
-            PushSubscription.auth_user_id == user.id,
-            PushSubscription.enabled.is_(True),
-        )
-    )
-    return PushStatusResponse(
-        configured=True,
-        training_reminders_enabled=True,
-        active_subscriptions=subscription_count or 0,
-    )
+    return await build_status(db, preference)
 
 
 @router.post("/subscriptions/unsubscribe", response_model=PushStatusResponse)
@@ -151,18 +150,7 @@ async def unsubscribe_device(
         subscription.updated_at = utc_now()
 
     preference = await get_or_create_preference(db, user.id)
-    await db.flush()
-    subscription_count = await db.scalar(
-        select(func.count(PushSubscription.id_subscription)).where(
-            PushSubscription.auth_user_id == user.id,
-            PushSubscription.enabled.is_(True),
-        )
-    )
-    return PushStatusResponse(
-        configured=push_is_configured(),
-        training_reminders_enabled=preference.training_reminders_enabled,
-        active_subscriptions=subscription_count or 0,
-    )
+    return await build_status(db, preference)
 
 
 @router.patch("/preferences", response_model=PushStatusResponse)
@@ -172,16 +160,15 @@ async def update_preferences(
     db: AsyncSession = Depends(get_db),
 ) -> PushStatusResponse:
     preference = await get_or_create_preference(db, user.id)
-    preference.training_reminders_enabled = data.training_reminders_enabled
+    if data.training_reminders_enabled is not None:
+        preference.training_reminders_enabled = data.training_reminders_enabled
+    if data.expense_reminder_time is not None:
+        preference.expense_reminder_time = data.expense_reminder_time
+    if data.expense_reminders_enabled is not None:
+        preference.expense_reminders_enabled = data.expense_reminders_enabled
+    if preference.expense_reminders_enabled and (
+        data.expense_reminders_enabled or data.expense_reminder_time is not None
+    ):
+        mark_today_if_time_passed(preference, chile_now())
     preference.updated_at = utc_now()
-    subscription_count = await db.scalar(
-        select(func.count(PushSubscription.id_subscription)).where(
-            PushSubscription.auth_user_id == user.id,
-            PushSubscription.enabled.is_(True),
-        )
-    )
-    return PushStatusResponse(
-        configured=push_is_configured(),
-        training_reminders_enabled=preference.training_reminders_enabled,
-        active_subscriptions=subscription_count or 0,
-    )
+    return await build_status(db, preference)

@@ -1,3 +1,5 @@
+from datetime import time
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -23,7 +25,19 @@ class PushSubscriptionDelete(BaseModel):
 
 
 class NotificationPreferenceUpdate(BaseModel):
-    training_reminders_enabled: bool
+    """Solo se cambian los campos enviados."""
+
+    training_reminders_enabled: bool | None = None
+    expense_reminders_enabled: bool | None = None
+    expense_reminder_time: time | None = None
+
+    @field_validator("expense_reminder_time")
+    @classmethod
+    def validate_time(cls, value: time | None) -> time | None:
+        # Hora local de Chile, sin zona ni segundos: el worker compara contra la hora local.
+        if value is None:
+            return value
+        return value.replace(second=0, microsecond=0, tzinfo=None)
 
 
 class PushConfigResponse(BaseModel):
@@ -35,4 +49,6 @@ class PushConfigResponse(BaseModel):
 class PushStatusResponse(BaseModel):
     configured: bool
     training_reminders_enabled: bool
+    expense_reminders_enabled: bool
+    expense_reminder_time: str
     active_subscriptions: int

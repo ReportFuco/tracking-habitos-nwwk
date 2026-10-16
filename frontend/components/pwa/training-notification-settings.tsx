@@ -1,60 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { Bell, BellOff, Smartphone } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import {
-  base64UrlToUint8Array,
-  NotificationsAPI,
-  serializePushSubscription,
-  type PushConfig,
-} from "@/modules/notifications/api/notifications.api"
-
-type NavigatorWithStandalone = Navigator & { standalone?: boolean }
-
-const isStandalone = () =>
-  window.matchMedia("(display-mode: standalone)").matches ||
-  Boolean((navigator as NavigatorWithStandalone).standalone)
-
-const isIOS = () =>
-  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+import { NotificationsAPI } from "@/modules/notifications/api/notifications.api"
+import { usePushDevice } from "@/modules/notifications/hooks/usePushDevice"
 
 export function TrainingNotificationSettings() {
-  const [config, setConfig] = useState<PushConfig | null>(null)
-  const [supported, setSupported] = useState(true)
-  const [requiresInstall, setRequiresInstall] = useState(false)
-  const [subscribed, setSubscribed] = useState(false)
-  const [permission, setPermission] = useState<NotificationPermission>("default")
-  const [busy, setBusy] = useState(false)
-
-  useEffect(() => {
-    const inspect = async () => {
-      const hasSupport =
-        "serviceWorker" in navigator &&
-        "PushManager" in window &&
-        "Notification" in window
-      setSupported(hasSupport)
-      setRequiresInstall(isIOS() && !isStandalone())
-      if (!hasSupport) {
-        return
-      }
-      setPermission(Notification.permission)
-      try {
-        const nextConfig = await NotificationsAPI.getConfig()
-        setConfig(nextConfig)
-        const registration = await navigator.serviceWorker.getRegistration()
-        if (registration) {
-          setSubscribed(Boolean(await registration.pushManager.getSubscription()))
-        }
-      } catch {
-        // La tarjeta conserva un estado neutro si estamos offline.
-      }
-    }
-
-    void inspect()
-  }, [])
+  const { config, supported, requiresInstall, subscribed, permission, busy, activate, deactivate } =
+    usePushDevice()
 
   if (!supported) {
     return (
@@ -80,60 +34,22 @@ export function TrainingNotificationSettings() {
     return null
   }
 
-  const activate = async () => {
-    if (!config?.vapid_public_key) {
-      toast.error("Los recordatorios aun no estan configurados")
-      return
-    }
-    setBusy(true)
-    try {
-      const nextPermission = await Notification.requestPermission()
-      setPermission(nextPermission)
-      if (nextPermission !== "granted") {
-        toast.error("Safari no tiene permiso para mostrar avisos")
-        return
-      }
-
-      const registration = await navigator.serviceWorker.ready
-      const existing = await registration.pushManager.getSubscription()
-      const subscription =
-        existing ??
-        (await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: base64UrlToUint8Array(config.vapid_public_key),
-        }))
-      await NotificationsAPI.subscribe(serializePushSubscription(subscription))
-      setSubscribed(true)
+  const onActivate = async () => {
+    const { ok } = await activate()
+    if (ok) {
+      // Activar desde aqui es pedir explicitamente los avisos de entreno.
+      await NotificationsAPI.updatePreferences({ training_reminders_enabled: true }).catch(
+        () => undefined,
+      )
       toast.success("Recordatorios activados", {
         description: "Te avisaremos a la hora y a las dos horas si el entreno sigue abierto.",
       })
-    } catch {
-      toast.error("No pudimos activar los recordatorios")
-    } finally {
-      setBusy(false)
     }
   }
 
-  const deactivate = async () => {
-    setBusy(true)
-    try {
-      const registration = await navigator.serviceWorker.ready
-      const subscription = await registration.pushManager.getSubscription()
-      if (subscription) {
-        try {
-          await NotificationsAPI.unsubscribe(subscription.endpoint)
-        } finally {
-          await subscription.unsubscribe()
-        }
-      }
-      setSubscribed(false)
-      toast.success("Recordatorios desactivados en este dispositivo")
-    } catch {
-      setSubscribed(false)
-      toast.error("No pudimos desactivar los recordatorios")
-    } finally {
-      setBusy(false)
-    }
+  const onDeactivate = async () => {
+    const { ok } = await deactivate()
+    if (ok) toast.success("Recordatorios desactivados en este dispositivo")
   }
 
   if (permission === "denied") {
@@ -161,7 +77,7 @@ export function TrainingNotificationSettings() {
           variant={subscribed ? "ghost" : "default"}
           size="sm"
           disabled={busy || !config}
-          onClick={subscribed ? deactivate : activate}
+          onClick={subscribed ? onDeactivate : onActivate}
           className={
             subscribed
               ? ""

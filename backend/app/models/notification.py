@@ -1,13 +1,15 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timezone
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     ForeignKey,
     Index,
     Integer,
     String,
     Text,
+    Time,
     UniqueConstraint,
     text,
 )
@@ -40,6 +42,22 @@ class NotificationPreference(Base):
         default=True,
         server_default=text("true"),
     )
+    # Recordatorio diario de gastos. Es opt-in: solo se envia si el usuario lo activa.
+    expense_reminders_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+    # Hora local de Chile en que llega el aviso.
+    expense_reminder_time: Mapped[time] = mapped_column(
+        Time,
+        nullable=False,
+        default=time(21, 0),
+        server_default=text("'21:00'"),
+    )
+    # Ultimo dia (calendario de Chile) ya procesado: evita avisar dos veces el mismo dia.
+    expense_reminder_last_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

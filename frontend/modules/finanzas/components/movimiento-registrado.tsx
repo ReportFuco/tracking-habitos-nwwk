@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, type CSSProperties } from "react"
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react"
 import { CloudOff, Plus, ShoppingBasket } from "lucide-react"
 import { formatCLP } from "@/lib/format"
 import type { TipoMovimiento } from "@/modules/finanzas/types/finanzas"
@@ -24,7 +24,9 @@ interface MovimientoRegistradoProps {
   onAnother: () => void
 }
 
-const AUTO_CLOSE_MS = 2600
+const AUTO_CLOSE_MS = 4000
+// Lo que dura la salida (ritmo-salida en globals.css): la tarjeta toma impulso y cae.
+const EXIT_MS = 460
 
 // Bloques de colores de modulo que salen disparados desde el check (el "cartel" de Ritmo).
 const BURST = [
@@ -43,17 +45,32 @@ const BURST = [
  * se puede descartar con un toque o Escape. Anuncia el resultado a lectores de pantalla.
  */
 export function MovimientoRegistrado({ info, onClose, onAnother }: MovimientoRegistradoProps) {
+  const [saliendo, setSaliendo] = useState(false)
+  const saliendoRef = useRef(false)
+
+  // Antes de desmontar se reproduce la salida; con movimiento reducido se cierra al tiro.
+  const salir = useCallback((accion: () => void) => {
+    if (saliendoRef.current) return
+    saliendoRef.current = true
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      accion()
+      return
+    }
+    setSaliendo(true)
+    window.setTimeout(accion, EXIT_MS)
+  }, [])
+
   useEffect(() => {
-    const timer = window.setTimeout(onClose, AUTO_CLOSE_MS)
+    const timer = window.setTimeout(() => salir(onClose), AUTO_CLOSE_MS)
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose()
+      if (event.key === "Escape") salir(onClose)
     }
     window.addEventListener("keydown", onKey)
     return () => {
       window.clearTimeout(timer)
       window.removeEventListener("keydown", onKey)
     }
-  }, [info.id, onClose])
+  }, [info.id, onClose, salir])
 
   const esIngreso = info.tipo === "ingreso"
   const color = esIngreso ? "var(--ingreso)" : "var(--gasto)"
@@ -67,14 +84,22 @@ export function MovimientoRegistrado({ info, onClose, onAnother }: MovimientoReg
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-4 pb-[calc(env(safe-area-inset-bottom)+6rem)] motion-safe:animate-[ritmo-fade_180ms_ease-out] sm:items-center sm:pb-4"
-      onClick={onClose}
+      className={`fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-4 pb-[calc(env(safe-area-inset-bottom)+6rem)] sm:items-center sm:pb-4 ${
+        saliendo
+          ? "pointer-events-none motion-safe:animate-[ritmo-fade-out_460ms_ease-in_both]"
+          : "motion-safe:animate-[ritmo-fade_180ms_ease-out]"
+      }`}
+      onClick={() => salir(onClose)}
     >
       <div
         role="status"
         aria-live="polite"
         onClick={(event) => event.stopPropagation()}
-        className="relative w-full max-w-sm overflow-visible rounded-2xl p-5 shadow-[var(--shadow-airy-lg)] motion-safe:animate-[ritmo-pop_520ms_cubic-bezier(0.2,0.9,0.3,1.2)_both]"
+        className={`relative w-full max-w-sm overflow-visible rounded-2xl p-5 shadow-[var(--shadow-airy-lg)] ${
+          saliendo
+            ? "motion-safe:animate-[ritmo-salida_460ms_cubic-bezier(0.5,0,0.75,0)_both]"
+            : "motion-safe:animate-[ritmo-pop_520ms_cubic-bezier(0.2,0.9,0.3,1.2)_both]"
+        }`}
         style={{ background: color, color: onColor }}
       >
         <div className="relative mx-auto flex size-16 items-center justify-center">
@@ -131,7 +156,7 @@ export function MovimientoRegistrado({ info, onClose, onAnother }: MovimientoReg
         <div className="mt-5 grid grid-cols-2 gap-2">
           <button
             type="button"
-            onClick={onAnother}
+            onClick={() => salir(onAnother)}
             className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md bg-[color:var(--sidebar)] text-sm font-semibold text-[color:var(--sidebar-foreground)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sidebar)]"
           >
             <Plus className="size-4" aria-hidden />
@@ -157,7 +182,8 @@ export function MovimientoRegistrado({ info, onClose, onAnother }: MovimientoReg
         {/* Cuenta regresiva del cierre automatico. */}
         <span
           aria-hidden
-          className="absolute inset-x-5 bottom-0 h-1 origin-left bg-current opacity-40 motion-safe:animate-[ritmo-countdown_2600ms_linear_both]"
+          className="absolute inset-x-5 bottom-0 h-1 origin-left bg-current opacity-40 motion-safe:animate-[ritmo-countdown_linear_both]"
+          style={{ animationDuration: `${AUTO_CLOSE_MS}ms` }}
         />
       </div>
     </div>
