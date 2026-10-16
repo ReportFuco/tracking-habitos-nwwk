@@ -82,31 +82,7 @@ export function PerfilEditForm({ perfil, submitting, onSubmit }: PerfilEditFormP
   const handleReset = () => setForm(original)
 
   return (
-    <FormPanel
-      eyebrow="Edicion"
-      title="Datos personales"
-      description="Actualiza tu informacion base. Solo se envian los campos que realmente cambian."
-      aside={
-        <div className="space-y-4">
-          <div>
-            <p className="font-label text-[0.64rem] uppercase tracking-[0.2em] text-muted-foreground">
-              Metodo
-            </p>
-            <p className="mt-2 text-sm leading-6 text-foreground/80">
-              Este formulario funciona como una ficha editorial: corrige solo lo necesario y deja el resto intacto.
-            </p>
-          </div>
-          <div>
-            <p className="font-label text-[0.64rem] uppercase tracking-[0.2em] text-muted-foreground">
-              Consejo
-            </p>
-            <p className="mt-2 text-sm leading-6 text-foreground/80">
-              Mantener email y telefono al dia ayuda a recuperar acceso y ordenar futuras notificaciones.
-            </p>
-          </div>
-        </div>
-      }
-    >
+    <FormPanel>
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
           <FieldGroup label="Username" hint="Visible en tu perfil">
@@ -172,9 +148,7 @@ export function PerfilEditForm({ perfil, submitting, onSubmit }: PerfilEditFormP
         </FieldGroup>
 
         <FormNote>
-          {hasChanges
-            ? "Hay cambios listos para guardar. Si prefieres volver a la version anterior, puedes descartarlos antes de enviar."
-            : "Todavia no hay cambios pendientes. Cuando edites un campo, esta ficha preparara solo el diferencial para la API."}
+          {hasChanges ? "Hay cambios sin guardar." : "Edita un campo para guardar cambios."}
         </FormNote>
 
         <div className="flex flex-wrap items-center gap-3">

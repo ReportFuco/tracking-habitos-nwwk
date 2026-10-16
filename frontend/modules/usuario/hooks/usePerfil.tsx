@@ -1,11 +1,14 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { getFriendlyErrorMessage } from "@/lib/error-messages"
+import { queryKeys } from "@/lib/query-keys"
 import { UsuariosAPI } from "@/modules/usuario/api/usuario.api"
 import { Usuario, UsuarioPerfilPatch } from "@/modules/usuario/types/usuario"
 
 export const usePerfil = () => {
+  const queryClient = useQueryClient()
   const [perfil, setPerfil] = useState<Usuario | null>(null)
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -30,6 +33,8 @@ export const usePerfil = () => {
     try {
       const data = await UsuariosAPI.updatePerfil(payload)
       setPerfil(data)
+      // La topbar y la portada de Perfil leen el perfil de la sesion.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.auth.profile })
       return { ok: true as const, perfil: data }
     } catch (err) {
       const message = getFriendlyErrorMessage(err)

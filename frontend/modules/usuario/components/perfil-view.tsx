@@ -1,70 +1,63 @@
 "use client"
 
-import { ContextNav } from "@/components/shell/context-nav"
+import { Bell, Bot, UserRound } from "lucide-react"
+import { MenuGroup, MenuList, MenuRow } from "@/components/shell/menu-group"
 import { PageHeader } from "@/components/shell/page-header"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
-import { NotificacionesSettings } from "@/modules/notifications/components/notificaciones-settings"
-import { usePerfil } from "@/modules/usuario/hooks/usePerfil"
-import { ConexionesIA } from "./conexiones-ia"
-import { PerfilEditForm } from "./perfil-edit-form"
-import { PerfilSummaryCard } from "./perfil-summary-card"
+import { useProfile } from "@/modules/auth/hooks/useProfile"
 
+/** Portada de Perfil: quien eres y un menu con cada ajuste en su propia pagina. */
 export function PerfilView() {
-  const { perfil, loading, submitting, error, actualizarPerfil } = usePerfil()
+  const { data: perfil } = useProfile()
+  const initials = `${perfil?.nombre?.[0] ?? ""}${perfil?.apellido?.[0] ?? ""}`.toUpperCase() || "?"
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
-      <ContextNav
-        crumbs={[
-          { label: "Inicio", href: "/app/dashboard" },
-          { label: "Perfil" },
-        ]}
-      />
-
-      <PageHeader
-        eyebrow="Cuenta"
-        title="Perfil"
-        description="Tu espacio personal para revisar identidad, actualizar datos y administrar el estado de tu cuenta."
-      />
-
-      {error ? (
-        <div className="rounded-xl bg-[color:var(--surface-lowest)] px-4 py-4 shadow-[var(--shadow-airy)] sm:px-5">
-          <p className="font-label text-[0.65rem] uppercase tracking-[0.2em] text-[color:var(--destructive)]">
-            Aviso
-          </p>
-          <p className="mt-2 text-sm leading-6 text-[color:var(--destructive)]">{error}</p>
-        </div>
-      ) : null}
-
-      <PerfilSummaryCard perfil={perfil} loading={loading} />
-
-      <section
-        aria-labelledby="apariencia-titulo"
-        className="flex flex-col gap-3 rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:flex-row sm:items-center sm:justify-between sm:p-5"
-      >
-        <div>
-          <h2 id="apariencia-titulo" className="text-base font-semibold">
-            Apariencia
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Modo claro, oscuro o el que use tu telefono.
-          </p>
-        </div>
-        <ThemeToggle />
-      </section>
-
-      <NotificacionesSettings />
+      <PageHeader title="Perfil" className="pb-0" />
 
       {perfil ? (
-        <>
-          <PerfilEditForm
-            perfil={perfil}
-            submitting={submitting}
-            onSubmit={actualizarPerfil}
-          />
-          <ConexionesIA />
-        </>
+        <section className="flex items-center gap-3 rounded-xl bg-[color:var(--surface-lowest)] p-3 shadow-[var(--shadow-airy)] sm:p-4">
+          <span
+            className="flex size-12 shrink-0 items-center justify-center rounded-md bg-highlight font-display text-lg text-highlight-foreground"
+            aria-hidden
+          >
+            {initials}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-base font-semibold">
+              {perfil.nombre} {perfil.apellido}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">
+              @{perfil.username} · {perfil.email}
+            </p>
+          </div>
+        </section>
       ) : null}
+
+      <MenuGroup title="Ajustes">
+        <MenuList>
+          <MenuRow href="/app/perfil/datos" icon={UserRound} title="Datos personales" detail="Nombre, email y telefono" />
+          <MenuRow
+            href="/app/perfil/notificaciones"
+            icon={Bell}
+            title="Notificaciones"
+            detail="Recordatorios de entrenos y gastos"
+          />
+          <MenuRow
+            href="/app/perfil/conexiones"
+            icon={Bot}
+            title="Conexiones con IA"
+            detail="Claude, ChatGPT y claves de acceso"
+          />
+        </MenuList>
+      </MenuGroup>
+
+      <MenuGroup title="Apariencia">
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-[color:var(--surface-lowest)] p-3 shadow-[var(--shadow-airy)]">
+          <span className="text-sm font-semibold">Tema</span>
+          <ThemeToggle />
+        </div>
+      </MenuGroup>
     </div>
   )
 }

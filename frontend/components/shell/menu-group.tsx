@@ -34,7 +34,8 @@ interface MenuRowProps {
   icon: LucideIcon
   title: string
   detail?: string
-  module: ModuleKey
+  /** Sin modulo (por ejemplo en Perfil) el icono va en tono neutro. */
+  module?: ModuleKey
 }
 
 /** Fila de 56px: icono, nombre y una linea de contexto. Pensada para el pulgar. */
@@ -47,10 +48,14 @@ export function MenuRow({ href, icon: Icon, title, detail, module }: MenuRowProp
       >
         <span
           className="inline-flex size-9 shrink-0 items-center justify-center rounded-md"
-          style={{
-            background: `color-mix(in oklch, var(--module-${module}) 14%, transparent)`,
-            color: `var(--module-${module})`,
-          }}
+          style={
+            module
+              ? {
+                  background: `color-mix(in oklch, var(--module-${module}) 14%, transparent)`,
+                  color: `var(--module-${module})`,
+                }
+              : { background: "var(--surface-low)", color: "var(--foreground)" }
+          }
         >
           <Icon className="size-4" aria-hidden />
         </span>

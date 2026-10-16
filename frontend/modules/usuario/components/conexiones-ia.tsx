@@ -121,7 +121,7 @@ export function ConexionesIA() {
   const [creada, setCreada] = useState<{ secreto: string; mcpUrl: string } | null>(null)
   const [porRevocar, setPorRevocar] = useState<PorRevocar | null>(null)
   const revocando = apiKeys.revokingId !== null || apps.revokingId !== null
-  // El componente solo se monta en el cliente (Perfil espera el perfil del usuario).
+  // Solo se monta en el cliente: el AuthGuard no pinta la app hasta tener el perfil.
   const mcpUrl = getMcpUrl()
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -157,8 +157,6 @@ export function ConexionesIA() {
 
   return (
     <FormPanel
-      eyebrow="Integraciones"
-      title="Conexiones con IA"
       description="Conecta Claude, ChatGPT u otro asistente a Ritmo para preguntarle por tus gastos o tus entrenamientos, registrar movimientos conversando o recibir sugerencias de entreno."
       aside={
         <div className="space-y-4">

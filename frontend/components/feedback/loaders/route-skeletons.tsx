@@ -170,19 +170,6 @@ export function ActiveSessionSkeleton() {
   )
 }
 
-export function ProfileSkeleton() {
-  return (
-    <div className="flex flex-col gap-5">
-      <ContextNavSkeleton />
-      <PageHeaderSkeleton hasActions />
-      <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
-        <SkeletonCard className="h-56 rounded-3xl" />
-        <SkeletonCard tone="low" className="h-72 rounded-3xl" />
-      </div>
-    </div>
-  )
-}
-
 export function StatsAndTableSkeleton() {
   return (
     <div className="flex flex-col gap-4 sm:gap-6">

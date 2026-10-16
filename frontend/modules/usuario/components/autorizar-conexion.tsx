@@ -95,8 +95,8 @@ export function AutorizarConexion() {
           <p className="text-sm text-[color:var(--destructive)]">{estado.mensaje}</p>
           <p className="mt-3 text-sm text-muted-foreground">
             Vuelve a iniciar la conexion desde tu asistente. Tus conexiones estan en{" "}
-            <Link href="/app/perfil" className="font-semibold underline underline-offset-4">
-              Perfil
+            <Link href="/app/perfil/conexiones" className="font-semibold underline underline-offset-4">
+              Perfil → Conexiones con IA
             </Link>
             .
           </p>

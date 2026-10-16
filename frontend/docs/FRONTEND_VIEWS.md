@@ -66,6 +66,9 @@ Zona separada para mantenimiento y control global.
 /app
 /app/dashboard
 /app/perfil
+/app/perfil/datos
+/app/perfil/notificaciones
+/app/perfil/conexiones
 /app/finanzas
 /app/finanzas/cuentas
 /app/finanzas/cuentas/:id
@@ -239,11 +242,15 @@ Ruta sugerida:
 
 ```txt
 /app/perfil
+/app/perfil/datos
+/app/perfil/notificaciones
+/app/perfil/conexiones
 ```
 
 Objetivo:
 
 - editar datos del usuario
+- la portada es un menu (identidad, ajustes y tema); cada ajuste vive en su subpagina
 
 Bloques sugeridos:
 

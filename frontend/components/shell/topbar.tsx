@@ -113,8 +113,14 @@ export function Topbar({
           ) : null}
 
           {profile ? (
-            <div className="hidden items-center gap-3 sm:flex">
-              <div className="text-right">
+            // En movil es el unico acceso a Perfil: el nav inferior solo lleva los modulos.
+            <Link
+              href="/app/perfil"
+              aria-label="Perfil"
+              title="Perfil"
+              className="flex items-center gap-3 rounded-md transition hover:opacity-85"
+            >
+              <div className="hidden text-right sm:block">
                 <p className="text-sm font-medium leading-tight">
                   {profile.nombre} {profile.apellido}
                 </p>
@@ -128,7 +134,7 @@ export function Topbar({
               >
                 {initials}
               </span>
-            </div>
+            </Link>
           ) : null}
 
           {profile?.is_superuser && variant === "user" ? (

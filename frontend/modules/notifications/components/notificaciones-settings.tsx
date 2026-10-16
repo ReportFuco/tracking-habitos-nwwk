@@ -97,12 +97,9 @@ export function NotificacionesSettings() {
 
   return (
     <section
-      aria-labelledby="notificaciones-titulo"
+      aria-label="Notificaciones"
       className="rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5"
     >
-      <h2 id="notificaciones-titulo" className="text-base font-semibold">
-        Notificaciones
-      </h2>
       <p className="text-sm text-muted-foreground">
         Recordatorios en tu telefono, aunque la app este cerrada.
       </p>

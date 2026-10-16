@@ -1,5 +1,5 @@
-import { ProfileSkeleton } from "@/components/feedback/loaders/route-skeletons"
+import { ModuleHomeSkeleton } from "@/components/feedback/loaders/route-skeletons"
 
 export default function PerfilLoading() {
-  return <ProfileSkeleton />
+  return <ModuleHomeSkeleton />
 }

@@ -335,7 +335,7 @@ function NotasIA({
           </p>
           <p>
             Para conectarlo ve a{" "}
-            <Link href="/app/perfil" className="font-semibold text-foreground underline underline-offset-4">
+            <Link href="/app/perfil/conexiones" className="font-semibold text-foreground underline underline-offset-4">
               Perfil → Conexiones con IA
             </Link>{" "}
             y dale permiso de escritura en entrenamientos.
