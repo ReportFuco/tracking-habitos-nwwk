@@ -6,9 +6,11 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog"
 import { EditorialInput, FieldGroup } from "@/components/forms/editorial-form"
+import { isInsideOptionPicker, OPTION_PICKER_ATTR } from "@/components/forms/option-picker"
 import { SearchableCombobox } from "@/components/forms/searchable-combobox"
 import type { EjercicioResponse, Musculo } from "@/modules/entrenamientos/types/entrenamientos"
 
@@ -76,8 +78,22 @@ export function EjercicioFormDialog({
       })) ?? []
 
   return (
-    <Dialog open onOpenChange={(valor) => (valor ? null : onCerrar())}>
-      <DialogContent className="top-auto bottom-0 left-0 max-h-[92dvh] max-w-full translate-x-0 translate-y-0 overflow-y-auto rounded-t-[1.75rem] rounded-b-none border-0 bg-surface-lowest p-0 shadow-(--shadow-airy-lg) sm:top-[50%] sm:left-[50%] sm:max-w-md sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-3xl">
+    // No modal: un dialogo modal de Radix bloquea toques, foco y scroll fuera de el, y los
+    // selectores abren su hoja en un portal aparte. El fondo oscuro se pinta a mano porque
+    // Radix no dibuja overlay sin modal; tocarlo sigue cerrando el dialogo.
+    <Dialog open modal={false} onOpenChange={(valor) => (valor ? null : onCerrar())}>
+      <DialogPortal>
+        <div aria-hidden className="fixed inset-0 z-50 bg-black/60" />
+      </DialogPortal>
+      <DialogContent
+        onInteractOutside={(evento) => {
+          if (isInsideOptionPicker(evento.target)) evento.preventDefault()
+        }}
+        onEscapeKeyDown={(evento) => {
+          // Con una hoja abierta, Escape la cierra a ella y no al dialogo.
+          if (document.querySelector(`[${OPTION_PICKER_ATTR}]`)) evento.preventDefault()
+        }}
+        className="top-auto bottom-0 left-0 max-h-[92dvh] max-w-full translate-x-0 translate-y-0 overflow-y-auto rounded-t-[1.75rem] rounded-b-none border-0 bg-surface-lowest p-0 shadow-(--shadow-airy-lg) sm:top-[50%] sm:left-[50%] sm:max-w-md sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-3xl">
         <div className="space-y-5 px-4 pt-6 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] sm:px-7 sm:pb-7">
           <div className="space-y-1.5">
             <DialogTitle className="text-lg font-semibold tracking-[-0.01em] sm:text-xl">

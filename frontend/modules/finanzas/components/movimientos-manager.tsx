@@ -1,8 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { useDeferredValue, useMemo, useState } from "react"
+import { useDeferredValue, useMemo, useRef, useState } from "react"
 import { ArrowDownLeft, ArrowUpRight, ChevronRight, CloudOff, Plus, Search, X } from "lucide-react"
+import { OptionPicker } from "@/components/forms/option-picker"
 import { addDays, datePart, formatMonth, toLocalIsoDate } from "@/lib/dates"
 import { formatCLP } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -352,27 +353,39 @@ function FiltroSelect({
   onChange: (value: string) => void
   options: { value: string; label: string }[]
 }) {
+  const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const actual = options.find((option) => option.value === value)
+
   return (
-    <label
-      className={cn(
-        "relative flex h-10 shrink-0 items-center rounded-md border px-3 text-sm font-semibold",
-        value ? "border-foreground bg-foreground text-background" : "border-border text-foreground",
-      )}
-    >
-      <span className="sr-only">{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="max-w-[10rem] appearance-none truncate bg-transparent pr-4 capitalize outline-none"
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={`${label}: ${actual?.label ?? "todas"}`}
+        onClick={() => setOpen((prev) => !prev)}
+        className={cn(
+          "flex h-10 max-w-[12rem] shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-semibold",
+          value ? "border-foreground bg-foreground text-background" : "border-border text-foreground",
+        )}
       >
-        <option value="">{label}: todas</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <ChevronRight aria-hidden className="pointer-events-none absolute right-2 size-3.5 rotate-90" />
-    </label>
+        <span className="truncate capitalize">{actual ? actual.label : `${label}: todas`}</span>
+        <ChevronRight aria-hidden className={cn("size-3.5 shrink-0 transition-transform", open ? "-rotate-90" : "rotate-90")} />
+      </button>
+      <OptionPicker
+        open={open}
+        onClose={() => setOpen(false)}
+        anchorRef={triggerRef}
+        options={[{ value: "", label: "Todas" }, ...options]}
+        value={value}
+        onSelect={onChange}
+        title={label}
+        searchPlaceholder={`Buscar ${label.toLocaleLowerCase("es")}...`}
+        minPopoverWidth={240}
+        capitalize
+      />
+    </>
   )
 }

@@ -5,7 +5,7 @@ import { Apple, Plus, Trash2, UtensilsCrossed } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { EditorialSelect } from "@/components/forms/editorial-form"
+import { ChipSelect } from "@/components/forms/chip-select"
 import { cn } from "@/lib/utils"
 import { useNutricion } from "@/modules/nutricion/hooks/useNutricion"
 import {
@@ -146,34 +146,25 @@ export function ConsumosManager({ abrirFormulario = false }: { abrirFormulario?:
             </button>
           </div>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <LabeledField label="Fecha y hora">
-              <Input
-                type="datetime-local"
-                value={form.fecha_consumo}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, fecha_consumo: event.target.value }))
-                }
-                className="h-12 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
-              />
-            </LabeledField>
+          <LabeledField label="Tipo de comida" className="mt-3">
+            <ChipSelect
+              label="Tipo de comida"
+              options={TIPOS_COMIDA.map((tipo) => ({ value: tipo, label: tipo }))}
+              value={form.tipo_comida}
+              onChange={(tipo) => setForm((prev) => ({ ...prev, tipo_comida: tipo as TipoComida }))}
+            />
+          </LabeledField>
 
-            <LabeledField label="Tipo de comida">
-              <EditorialSelect
-                value={form.tipo_comida}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, tipo_comida: event.target.value as TipoComida }))
-                }
-                className="h-12"
-              >
-                {TIPOS_COMIDA.map((tipo) => (
-                  <option key={tipo} value={tipo}>
-                    {tipo}
-                  </option>
-                ))}
-              </EditorialSelect>
-            </LabeledField>
-          </div>
+          <LabeledField label="Fecha y hora" className="mt-3">
+            <Input
+              type="datetime-local"
+              value={form.fecha_consumo}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, fecha_consumo: event.target.value }))
+              }
+              className="h-12 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+            />
+          </LabeledField>
 
           <LabeledField label="Observacion" className="mt-3">
             <Input

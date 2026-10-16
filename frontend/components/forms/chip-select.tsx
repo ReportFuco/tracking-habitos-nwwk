@@ -1,6 +1,8 @@
 "use client"
 
-import { KeyboardEvent, useRef } from "react"
+import { KeyboardEvent, useRef, useState } from "react"
+import { ChevronDown } from "lucide-react"
+import { OptionPicker } from "@/components/forms/option-picker"
 import { cn } from "@/lib/utils"
 
 export interface ChipOption {
@@ -22,6 +24,12 @@ interface ChipSelectProps {
   loading?: boolean
   emptyMessage?: string
   className?: string
+  /**
+   * Con mas opciones que esto se muestran solo las primeras (vienen ordenadas por uso) y un
+   * chip "Mas" abre todas en una hoja con buscador.
+   */
+  maxVisible?: number
+  searchPlaceholder?: string
 }
 
 /**
@@ -38,16 +46,31 @@ export function ChipSelect({
   loading = false,
   emptyMessage = "Sin opciones",
   className,
+  maxVisible,
+  searchPlaceholder = "Buscar...",
 }: ChipSelectProps) {
   const refs = useRef<(HTMLButtonElement | null)[]>([])
-  const selectedIndex = options.findIndex((option) => option.value === value)
+  const moreRef = useRef<HTMLButtonElement>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  const collapsed = maxVisible !== undefined && options.length > maxVisible
+  const allSelectedIndex = options.findIndex((option) => option.value === value)
+  // Lo elegido en "Mas" se suma como chip, para que se vea que quedo seleccionado.
+  const visible =
+    collapsed && maxVisible !== undefined
+      ? allSelectedIndex >= maxVisible
+        ? [...options.slice(0, maxVisible), options[allSelectedIndex]]
+        : options.slice(0, maxVisible)
+      : options
+  const hiddenCount = options.length - visible.length
+  const selectedIndex = visible.findIndex((option) => option.value === value)
 
   const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     const delta = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 0
     if (!delta) return
     event.preventDefault()
-    const next = (index + delta + options.length) % options.length
-    onChange(options[next].value)
+    const next = (index + delta + visible.length) % visible.length
+    onChange(visible[next].value)
     refs.current[next]?.focus()
   }
 
@@ -72,13 +95,17 @@ export function ChipSelect({
       aria-invalid={invalid || undefined}
       aria-describedby={errorId}
       className={cn(
-        // En movil una fila desplazable que sangra hasta el borde; desde sm los chips se
-        // envuelven, porque con mouse no hay gesto natural para desplazar en horizontal.
-        "-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden",
+        collapsed
+          ? // Recortada a unas pocas opciones se envuelve siempre: en una fila desplazable el
+            // chip "Mas" quedaria fuera de la pantalla, al final.
+            "flex flex-wrap gap-2"
+          : // En movil una fila desplazable que sangra hasta el borde; desde sm los chips se
+            // envuelven, porque con mouse no hay gesto natural para desplazar en horizontal.
+            "-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden",
         className,
       )}
     >
-      {options.map((option, index) => {
+      {visible.map((option, index) => {
         const selected = option.value === value
         // Sin seleccion, el primer chip es el que recibe el foco con Tab.
         const tabbable = selected || (selectedIndex === -1 && index === 0)
@@ -112,6 +139,39 @@ export function ChipSelect({
           </button>
         )
       })}
+
+      {collapsed ? (
+        <>
+          <button
+            ref={moreRef}
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={pickerOpen}
+            onClick={() => setPickerOpen((prev) => !prev)}
+            className="flex min-h-10 shrink-0 items-center gap-1 rounded-md border border-dashed border-border bg-[color:var(--surface-lowest)] px-3 text-sm font-semibold whitespace-nowrap text-foreground transition-colors hover:border-foreground/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            Mas
+            <span className="text-xs font-normal text-muted-foreground">+{hiddenCount}</span>
+            <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden />
+          </button>
+          <OptionPicker
+            open={pickerOpen}
+            onClose={() => setPickerOpen(false)}
+            anchorRef={moreRef}
+            options={options.map((option) => ({
+              value: option.value,
+              label: option.label,
+              description: option.hint,
+            }))}
+            value={value}
+            onSelect={onChange}
+            title={label}
+            searchPlaceholder={searchPlaceholder}
+            minPopoverWidth={260}
+            capitalize
+          />
+        </>
+      ) : null}
     </div>
   )
 }

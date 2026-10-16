@@ -335,6 +335,8 @@ export function MovimientoFormCard({
         <Grupo titulo="Categoria" error={errores.id_categoria} errorId="categoria-error">
           <ChipSelect
             label="Categoria"
+            maxVisible={5}
+            searchPlaceholder="Buscar categoria..."
             options={categoriaOptions}
             value={form.id_categoria}
             onChange={(value) => actualizar("id_categoria", value)}
@@ -392,6 +394,8 @@ export function MovimientoFormCard({
         <Grupo titulo="Cuenta" error={errores.id_cuenta} errorId="cuenta-error">
           <ChipSelect
             label="Cuenta"
+            maxVisible={5}
+            searchPlaceholder="Buscar cuenta..."
             options={cuentaOptions}
             value={cuentaSeleccionada}
             onChange={(value) => actualizar("id_cuenta", value)}
@@ -500,6 +504,8 @@ export function MovimientoFormCard({
           <Grupo titulo={esIngreso ? "Te lo pagó" : "Abona a"} error={errores.id_deuda} errorId="deuda-error">
             <ChipSelect
               label="Deuda"
+              maxVisible={5}
+              searchPlaceholder="Buscar deuda..."
               options={deudaOptions}
               value={idDeuda}
               onChange={(value) => {

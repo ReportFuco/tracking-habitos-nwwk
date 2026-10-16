@@ -149,6 +149,8 @@ export function MovimientoEditForm({ movimiento, onDone }: Props) {
       <Campo titulo="Categoria">
         <ChipSelect
           label="Categoria"
+          maxVisible={5}
+          searchPlaceholder="Buscar categoria..."
           value={form.id_categoria}
           onChange={(value) => setForm((prev) => ({ ...prev, id_categoria: value }))}
           options={categoriaOptions}
@@ -158,6 +160,8 @@ export function MovimientoEditForm({ movimiento, onDone }: Props) {
       <Campo titulo="Cuenta">
         <ChipSelect
           label="Cuenta"
+          maxVisible={5}
+          searchPlaceholder="Buscar cuenta..."
           value={form.id_cuenta}
           onChange={(value) => setForm((prev) => ({ ...prev, id_cuenta: value }))}
           options={cuentas.map((c) => ({ value: String(c.id_cuenta), label: c.nombre_cuenta, hint: c.nombre_banco ?? undefined }))}
@@ -168,6 +172,8 @@ export function MovimientoEditForm({ movimiento, onDone }: Props) {
         <Campo titulo={form.tipo_movimiento === "ingreso" ? "Cobro de deuda" : "Pago de deuda"}>
           <ChipSelect
             label="Deuda"
+            maxVisible={5}
+            searchPlaceholder="Buscar deuda..."
             value={form.id_deuda}
             onChange={(value) => {
               setError(null)
