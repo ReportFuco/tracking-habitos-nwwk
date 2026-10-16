@@ -60,7 +60,7 @@ export function RegisterView() {
       title="Empieza tu ritmo."
       description="Una cuenta para llevar finanzas, fuerza, nutricion y compras en el mismo lugar."
       accent="brick"
-      secondaryCta={{
+      secondaryCta={isAuthenticated ? undefined : {
         href: "/login",
         label: "Ir a login",
         description: "Si ya tienes cuenta, puedes volver a la pantalla de acceso.",
@@ -76,9 +76,6 @@ export function RegisterView() {
       ) : (
         <div className="space-y-5 sm:space-y-6">
           <div className="space-y-2 sm:space-y-3">
-            <p className="font-label text-[11px] uppercase tracking-[0.26em] text-muted-foreground sm:text-xs">
-              Crear cuenta
-            </p>
             <h2 className="font-display text-2xl text-foreground sm:text-3xl">
               Crear cuenta
             </h2>

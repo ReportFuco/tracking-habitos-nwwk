@@ -72,7 +72,7 @@ export function LoginView() {
         title="Vuelve a tu ritmo."
         description="Tus cuentas, entrenos, comidas y compras te esperan donde los dejaste."
         accent="olive"
-        secondaryCta={{
+        secondaryCta={isAuthenticated ? undefined : {
           href: "/register",
           label: "Crear cuenta",
           description: "Si aun no tienes cuenta, puedes registrarte desde aqui.",
@@ -88,9 +88,6 @@ export function LoginView() {
         ) : (
           <div className="space-y-5 sm:space-y-6">
           <div className="space-y-2 sm:space-y-3">
-            <p className="font-label text-[11px] uppercase tracking-[0.26em] text-muted-foreground sm:text-xs">
-              Iniciar sesion
-            </p>
             <h2 className="font-display text-2xl text-foreground sm:text-3xl">
               Entrar
             </h2>

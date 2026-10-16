@@ -62,7 +62,7 @@ export function AuthShell({
         </div>
       </div>
 
-      <div className="mx-auto grid min-h-screen w-full max-w-7xl items-stretch gap-6 px-4 pb-6 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8 lg:py-6">
+      <div className="mx-auto grid w-full max-w-7xl items-stretch gap-6 px-4 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:px-6 lg:min-h-screen lg:grid-cols-[1.1fr_0.9fr] lg:px-8 lg:py-6">
         <section className="hidden min-h-[320px] flex-col justify-between gap-10 rounded-4xl bg-[color:var(--sidebar)] p-12 text-[color:var(--sidebar-foreground)] lg:flex">
           <div className="flex items-start justify-between gap-4">
             <BrandMark size="md" tone="inverse" />
