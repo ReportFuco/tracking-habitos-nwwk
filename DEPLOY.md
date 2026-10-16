@@ -1,6 +1,6 @@
 # Deploy a producción
 
-Verificado por inspección directa del servidor el 2026-08-02; actualizado el 2026-09-26. Si algo de acá no
+Verificado por inspección directa del servidor el 2026-08-02; actualizado el 2026-10-15. Si algo de acá no
 coincide con lo que ves en el servidor, confiá en el servidor y actualizá este archivo.
 
 ## Servidor
@@ -71,9 +71,13 @@ Restart=always
     conectarse (la metadata OAuth publicaria URLs locales). Ver `backend/docs/MCP.md`.
   - `SECRET_JWT` es obligatorio: `app/settings.py` lanza `RuntimeError` al importar si
     falta, la API no arranca.
-  - `VAPID_*`, `EVOLUTION_*`, `APIKEY_OPENAI` no están configuradas en producción a
-    propósito — esas integraciones (push notifications, WhatsApp, IA) están inactivas.
-    No hay proceso `app.notifications.worker` corriendo en el servidor.
+  - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` y `VAPID_SUBJECT=https://app.fucolabs.dev`
+    están configuradas desde el 2026-10-15 (par generado en el servidor con
+    `scripts/generate_vapid.py`). **No regenerarlas:** cambiar el par invalida todas las
+    suscripciones Push existentes y cada usuario tendría que reactivar sus avisos.
+  - `EVOLUTION_*` y `APIKEY_OPENAI` no están configuradas a propósito — WhatsApp e IA
+    están inactivas.
+  - `backend/.env` queda con permisos `600` (contiene la llave VAPID privada y la DB).
 - DB: **Postgres nativo del host**, no contenedor. Cluster `postgresql@16-main`, escucha
   en el puerto no estándar **1840** (no 5432). DB `tracking_db`, usuario `tracking_user`.
 - Migraciones: **no son automáticas.** El restart del servicio NO corre Alembic (a
@@ -82,6 +86,28 @@ Restart=always
   ```
   env/bin/alembic -c app/alembic.ini upgrade head
   ```
+
+## Worker de notificaciones (`tracking-push-worker.service`)
+
+Desde el 2026-10-15. Envía los avisos Web Push (entreno abierto y recordatorio diario
+de gastos). Proceso aparte de la API, con el mismo usuario, `.env` y zona horaria:
+
+```ini
+[Service]
+Type=simple
+User=report-fuco
+Group=report-fuco
+WorkingDirectory=/home/report-fuco/proyectos/tracking-habitos-nwwk/backend
+EnvironmentFile=/home/report-fuco/proyectos/tracking-habitos-nwwk/backend/.env
+Environment=TZ=America/Santiago
+Environment=PYTHONPATH=/home/report-fuco/proyectos/tracking-habitos-nwwk/backend
+ExecStart=/home/report-fuco/proyectos/tracking-habitos-nwwk/backend/env/bin/python -m app.notifications.worker
+Restart=always
+RestartSec=10
+```
+
+Se reinicia junto con la API en cada deploy (lee el mismo código). Logs:
+`journalctl -u tracking-push-worker -f`.
 
 ## Frontend (`frontend-tracking-habitos.service`)
 
@@ -144,8 +170,8 @@ $U npm run build
 cd ..
 
 # Reiniciar (requiere root)
-systemctl restart tracking-api.service frontend-tracking-habitos.service
-systemctl status tracking-api.service frontend-tracking-habitos.service --no-pager
+systemctl restart tracking-api.service tracking-push-worker.service frontend-tracking-habitos.service
+systemctl status tracking-api.service tracking-push-worker.service frontend-tracking-habitos.service --no-pager
 ```
 
 Verificar al final con `curl -I https://app.fucolabs.dev` y
