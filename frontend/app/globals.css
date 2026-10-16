@@ -168,6 +168,12 @@
   /* Series de finanzas. Validadas con dataviz/validate_palette (CVD y contraste). */
   --serie-ingreso: #1f4ddb;
   --serie-gasto: #d63b24;
+  /* Carga muscular (mapa del cuerpo): rampa ordinal de un solo tono, bajo -> alto.
+     Validada con dataviz/validate_palette.js --ordinal contra --surface-lowest. */
+  --carga-1: #ec8a75;
+  --carga-2: #de5a40;
+  --carga-3: #b8321c;
+  --carga-4: #7a1d0e;
   --chart-grid: #e6e6e2;
 
   /* Tipo de movimiento como bloque (selector, confirmacion). Mismos tonos que las series. */
@@ -272,6 +278,11 @@
 
   --serie-ingreso: #5b7dff;
   --serie-gasto: #f2573a;
+  /* En oscuro la rampa invierte el ancla: mas carga, mas luz. */
+  --carga-1: #8f3624;
+  --carga-2: #c4472f;
+  --carga-3: #ef6a4e;
+  --carga-4: #ffab96;
   --chart-grid: #2a2a2a;
 
   --gasto: #f2573a;

@@ -16,13 +16,17 @@ from app import settings
 from app.mcp.auth import McpAuthMiddleware
 from app.mcp.oauth import SCOPES_OAUTH, LimiteRegistroMiddleware, RitmoOAuthProvider
 from app.mcp.urls import ISSUER_URL, MCP_PATH, MCP_URL
+from app.mcp.tools.entrenamientos import registrar_herramientas_entrenamientos
 from app.mcp.tools.finanzas import registrar_herramientas_finanzas
 
 
 INSTRUCCIONES = """\
-Servidor de finanzas personales de Ritmo: cuentas, categorías, movimientos, productos
-comprados, deudas, carga de cartolas bancarias y analítica del usuario que autorizó esta
-conexión.
+Servidor de Ritmo, la app de hábitos del usuario que autorizó esta conexión. Tiene dos
+módulos: finanzas personales (cuentas, categorías, movimientos, productos comprados,
+deudas, carga de cartolas y analítica) y entrenamientos de fuerza (sesiones, progreso por
+ejercicio, carga por músculo y notas de seguimiento).
+
+Finanzas
 
 - Leer requiere el permiso finanzas:read; registrar, editar y eliminar (movimientos,
   categorías, productos, deudas, importaciones) requiere finanzas:write. Si una herramienta responde que falta un permiso, díselo al
@@ -71,13 +75,30 @@ Carga de cartolas bancarias (Excel o CSV)
 - Las filas ya importadas se omiten solas, así que subir cartolas que se solapan es
   seguro mientras descripcion_original sea la glosa exacta. Una importación equivocada
   se revierte con deshacer_importacion (ver listar_importaciones), previa confirmación.
+
+Entrenamientos
+- Leer requiere entrenamientos:read; publicar o eliminar notas de seguimiento requiere
+  entrenamientos:write.
+- Las series de calentamiento no cuentan para progreso ni carga. En ejercicios con
+  mancuernas el peso es por mancuerna (por_mancuerna = true).
+- Para "cómo voy", "qué estoy sobrecargando" o "qué me falta entrenar", parte por
+  carga_muscular (modo '7d' para el acumulado continuo, 'semana' para lunes a domingo) y
+  resumen_semanal_fuerza; baja a progreso_ejercicio para un ejercicio puntual (resuélvelo
+  antes con buscar_ejercicios) y a detalle_sesion_fuerza para una sesión.
+- Referencia de series efectivas por músculo y semana: menos de 4 es poco estímulo, 10 a
+  20 es el rango habitual para progresar y más de 20 suele ser sobrecarga. Considera
+  también la recuperación: el mismo músculo con mucha carga en días seguidos.
+- publicar_seguimiento deja una nota que el usuario lee en la app (pestaña Seguimiento).
+  Úsala cuando el usuario pida un análisis, sugerencias o un plan "para verlo en la app",
+  o cuando acepte que lo dejes escrito. Apóyala en cifras de sus datos, marca las zonas
+  que menciona y revisa listar_seguimientos para no repetir notas recientes.
 """
 
 
 def crear_servidor_mcp() -> MCPServer:
     servidor = MCPServer(
-        name="ritmo-finanzas",
-        title="Ritmo · Finanzas",
+        name="ritmo",
+        title="Ritmo",
         instructions=INSTRUCCIONES,
         version=settings.VERSION_API,
         # El SDK configura logging raiz con este nivel; WARNING evita duplicar el log de
@@ -85,6 +106,7 @@ def crear_servidor_mcp() -> MCPServer:
         log_level="WARNING",
     )
     registrar_herramientas_finanzas(servidor)
+    registrar_herramientas_entrenamientos(servidor)
     return servidor
 
 
@@ -131,7 +153,7 @@ def crear_rutas_oauth() -> list[Route]:
         resource_url=_url(MCP_URL),
         authorization_servers=[_url(ISSUER_URL)],
         scopes_supported=SCOPES_OAUTH,
-        resource_name="Ritmo · Finanzas",
+        resource_name="Ritmo",
     )
     # Ademas de la ruta con sufijo (RFC 9728), la raiz: algunos clientes solo prueban esa.
     raiz = Route(

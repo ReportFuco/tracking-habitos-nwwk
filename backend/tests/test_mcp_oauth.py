@@ -346,7 +346,7 @@ async def test_cliente_oauth_del_sdk_descubre_y_se_conecta_solo(usuario):
                 herramientas = (await mcp.list_tools()).tools
                 cuentas = await mcp.call_tool("listar_cuentas", {})
 
-    assert len(herramientas) == 24
+    assert {"listar_cuentas", "carga_muscular"} <= {h.name for h in herramientas}
     assert not cuentas.is_error, cuentas.content
 
 

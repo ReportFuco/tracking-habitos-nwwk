@@ -16,6 +16,8 @@ export function EntrenamientosMenuLinks() {
           ? "Ejercicios"
         : pathname === "/app/entrenamientos/historico"
           ? "Entrenamientos anteriores"
+        : pathname === "/app/entrenamientos/seguimiento"
+          ? "Seguimiento"
           : "Resumen"
 
   return (

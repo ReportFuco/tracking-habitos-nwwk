@@ -38,14 +38,20 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app import settings
 from app.auth.api_key import get_client_ip
-from app.auth.scopes import FINANZAS_READ, FINANZAS_WRITE
+from app.auth.scopes import (
+    ENTRENAMIENTOS_READ,
+    ENTRENAMIENTOS_WRITE,
+    FINANZAS_READ,
+    FINANZAS_WRITE,
+    con_lectura_implicita,
+)
 from app.db.session import AsyncSessionLocal
 from app.mcp.urls import CONSENTIMIENTO_URL, MCP_URL
 from app.models import OAuthAutorizacion, OAuthCliente, OAuthCodigo, OAuthToken as OAuthTokenModelo, User
 from app.services.errores import ErrorDominio, NoEncontrado
 
 
-SCOPES_OAUTH = [FINANZAS_READ, FINANZAS_WRITE]
+SCOPES_OAUTH = [FINANZAS_READ, FINANZAS_WRITE, ENTRENAMIENTOS_READ, ENTRENAMIENTOS_WRITE]
 # Registro dinamico abierto, pero acotado. Se cuenta en la BD (no en memoria) para que el
 # limite valga entre los workers de gunicorn.
 LIMITE_REGISTROS_POR_IP = 10
@@ -111,7 +117,7 @@ def validar_redirect_uri(uri: str) -> None:
 
 
 def normalizar_scopes(pedidos: list[str] | None) -> list[str]:
-    """Scopes de Ritmo dentro de lo pedido. Sin pedido (o sin ninguno conocido), ambos."""
+    """Scopes de Ritmo dentro de lo pedido. Sin pedido (o sin ninguno conocido), todos."""
     conocidos = [scope for scope in (pedidos or []) if scope in SCOPES_OAUTH]
     return conocidos or list(SCOPES_OAUTH)
 
@@ -231,8 +237,15 @@ class RitmoOAuthProvider:
             cliente = await db.get(OAuthCliente, client_id)
         if cliente is None:
             return None
+        # El scope registrado no es una barrera: el registro es abierto y el usuario elige
+        # los permisos al aprobar. Se amplia a los actuales para que un cliente registrado
+        # antes de existir un modulo pueda pedirlo sin registrarse de nuevo.
         return OAuthClientInformationFull.model_validate(
-            {**cliente.metadata_cliente, "client_secret": cliente.client_secret}
+            {
+                **cliente.metadata_cliente,
+                "scope": " ".join(SCOPES_OAUTH),
+                "client_secret": cliente.client_secret,
+            }
         )
 
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
@@ -444,9 +457,7 @@ async def aprobar_solicitud(db: AsyncSession, token: str, auth_user_id: int, sco
     otorgados = sorted(set(scopes))
     if not otorgados or not set(otorgados) <= set(solicitud.scopes_disponibles):
         raise SolicitudInvalida("Los permisos elegidos no corresponden a los que pidio la aplicacion.")
-    # Escribir implica leer: se guarda explicito para que un refresh pueda pedir solo lectura.
-    if FINANZAS_WRITE in otorgados and FINANZAS_READ not in otorgados:
-        otorgados = [FINANZAS_READ, FINANZAS_WRITE]
+    otorgados = con_lectura_implicita(otorgados)
 
     autorizacion = OAuthAutorizacion(
         client_id=solicitud.cliente.client_id, auth_user_id=auth_user_id, scopes=otorgados,

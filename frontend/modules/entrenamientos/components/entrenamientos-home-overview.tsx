@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowUpRight, Dumbbell, History, MapPin } from "lucide-react"
+import { Activity, ArrowUpRight, Dumbbell, History, MapPin } from "lucide-react"
 import { useEntrenamientos } from "@/modules/entrenamientos/hooks/useEntrenamientos"
 
 export function EntrenamientosHomeOverview() {
@@ -21,6 +21,13 @@ export function EntrenamientosHomeOverview() {
     : "Abre una nueva sesion de gym y deja el espacio listo para ir registrando cada serie."
 
   const secondaryCards = [
+    {
+      eyebrow: "Indicadores",
+      title: "Seguimiento",
+      description: "Mira en tu cuerpo la carga de cada musculo y las sugerencias de tu asistente.",
+      href: "/app/entrenamientos/seguimiento",
+      icon: Activity,
+    },
     {
       eyebrow: "Catalogo",
       title: "Ejercicios",

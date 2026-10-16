@@ -240,3 +240,41 @@ class Ejercicios(Base):
     atribucion: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     subcategoria_musculo = relationship("SubcategoriaMusculo", back_populates="ejercicios")
+
+
+TIPOS_SEGUIMIENTO = ("seguimiento", "sugerencia", "alerta", "plan")
+
+
+class SeguimientoIA(Base):
+    """Nota que un asistente de IA deja al usuario por MCP: seguimiento de su progreso,
+    sugerencias de entreno, alertas de sobrecarga o un plan. Se lee en la pestaña
+    Seguimiento del modulo."""
+
+    __tablename__ = "seguimiento_ia"
+    __table_args__ = (
+        CheckConstraint(
+            "tipo IN ('seguimiento', 'sugerencia', 'alerta', 'plan')",
+            name="ck_seguimiento_ia_tipo",
+        ),
+        {"schema": ENTRENAMIENTOS_SCHEMA},
+    )
+
+    id_seguimiento: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id_usuario: Mapped[int] = mapped_column(
+        ForeignKey(table_ref(USUARIOS_SCHEMA, "usuario.id_usuario"), ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    tipo: Mapped[str] = mapped_column(String(20), nullable=False)
+    titulo: Mapped[str] = mapped_column(String(160), nullable=False)
+    contenido: Mapped[str] = mapped_column(Text, nullable=False)
+    # Codigos de zona muscular (app/services/entrenamientos/carga.py) que la nota menciona.
+    zonas: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    # Quien la escribio: nombre de la API key o de la app OAuth.
+    origen: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+        default=lambda: datetime.now(timezone.utc),
+    )

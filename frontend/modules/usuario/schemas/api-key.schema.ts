@@ -3,7 +3,13 @@ import { z } from "zod"
 // Adapter validado (ver lib/api-schema.ts) para las API keys de /auth/api-keys. Son las
 // credenciales con que un asistente de IA se conecta al servidor MCP de Ritmo.
 
-export const API_KEY_SCOPES = ["*", "finanzas:read", "finanzas:write"] as const
+export const API_KEY_SCOPES = [
+  "*",
+  "finanzas:read",
+  "finanzas:write",
+  "entrenamientos:read",
+  "entrenamientos:write",
+] as const
 export type ApiKeyScope = (typeof API_KEY_SCOPES)[number]
 
 export const apiKeyResponseSchema = z.object({

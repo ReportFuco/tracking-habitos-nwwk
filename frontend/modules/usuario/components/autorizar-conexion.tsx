@@ -5,19 +5,31 @@ import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
-import { ChipSelect } from "@/components/forms/chip-select"
 import { FormNote, FormPanel } from "@/components/forms/editorial-form"
 import { PageHeader } from "@/components/shell/page-header"
 import { Button } from "@/components/ui/button"
 import { getFriendlyErrorMessage } from "@/lib/error-messages"
 import { OAuthAPI } from "@/modules/usuario/api/oauth.api"
 import type { SolicitudOAuth } from "@/modules/usuario/schemas/oauth.schema"
+import {
+  MODULOS,
+  PERMISOS_INICIALES,
+  PermisosModulos,
+  describirPermisos,
+  scopesDesdePermisos,
+  type Modulo,
+  type Permisos,
+} from "./permisos-modulos"
 
-type Permiso = "lectura" | "escritura"
-
-const SCOPES_POR_PERMISO: Record<Permiso, string[]> = {
-  lectura: ["finanzas:read"],
-  escritura: ["finanzas:read", "finanzas:write"],
+// Modulos que pidio la app (con lectura) y los que pidio solo para leer.
+const modulosDe = (solicitud: SolicitudOAuth) => {
+  const disponibles = MODULOS.map(({ id }) => id).filter((id) =>
+    solicitud.scopes_disponibles.includes(`${id}:read`),
+  ) as Modulo[]
+  const sinEscritura = disponibles.filter(
+    (id) => !solicitud.scopes_disponibles.includes(`${id}:write`),
+  )
+  return { disponibles, sinEscritura }
 }
 
 type Estado =
@@ -29,7 +41,7 @@ type Estado =
 export function AutorizarConexion() {
   const token = useSearchParams().get("solicitud")
   const [estado, setEstado] = useState<Estado>({ fase: "cargando" })
-  const [permiso, setPermiso] = useState<Permiso>("lectura")
+  const [permisos, setPermisos] = useState<Permisos>(PERMISOS_INICIALES)
   const [enviando, setEnviando] = useState(false)
 
   useEffect(() => {
@@ -51,7 +63,12 @@ export function AutorizarConexion() {
     setEnviando(true)
     try {
       const url = aprobar
-        ? await OAuthAPI.aprobar(token, SCOPES_POR_PERMISO[permiso])
+        ? await OAuthAPI.aprobar(
+            token,
+            scopesDesdePermisos(permisos).filter((scope) =>
+              estado.solicitud.scopes_disponibles.includes(scope),
+            ),
+          )
         : await OAuthAPI.rechazar(token)
       setEstado({ fase: "saliendo", host: estado.solicitud.redirect_host })
       window.location.assign(url)
@@ -66,7 +83,7 @@ export function AutorizarConexion() {
       <PageHeader
         eyebrow="Conexiones con IA"
         title="Autorizar conexion"
-        description="Una aplicacion pide acceso a tus finanzas en Ritmo."
+        description="Una aplicacion pide acceso a tus datos en Ritmo."
       />
 
       {estado.fase === "cargando" ? (
@@ -96,7 +113,7 @@ export function AutorizarConexion() {
         <FormPanel
           eyebrow="Solicitud de acceso"
           title={`${estado.solicitud.cliente_nombre ?? "Una aplicacion"} quiere conectarse`}
-          description={`Si apruebas, volveras a ${estado.solicitud.redirect_host} y la aplicacion podra usar tus datos de finanzas con los permisos que elijas.`}
+          description={`Si apruebas, volveras a ${estado.solicitud.redirect_host} y la aplicacion podra usar tus datos con los permisos que elijas.`}
         >
           <div className="space-y-5">
             <div className="flex gap-3 rounded-lg bg-[color:var(--surface-low)] p-3 sm:p-4">
@@ -109,24 +126,16 @@ export function AutorizarConexion() {
 
             <div className="space-y-2">
               <p className="font-label text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground">Permisos</p>
-              <ChipSelect
-                label="Permisos de la conexion"
-                options={[
-                  { value: "lectura", label: "Solo lectura", hint: "consulta" },
-                  ...(estado.solicitud.scopes_disponibles.includes("finanzas:write")
-                    ? [{ value: "escritura", label: "Lectura y escritura", hint: "registra y edita" }]
-                    : []),
-                ]}
-                value={permiso}
-                onChange={(value) => setPermiso(value as Permiso)}
+              <PermisosModulos
+                value={permisos}
+                onChange={setPermisos}
+                {...modulosDe(estado.solicitud)}
               />
             </div>
 
             <FormNote>
-              {permiso === "lectura"
-                ? "Podra consultar tus cuentas, movimientos y resumenes, pero no cambiar nada."
-                : "Tambien podra registrar, editar y eliminar movimientos."}{" "}
-              Puedes revocar el acceso cuando quieras desde Perfil.
+              {describirPermisos(permisos, modulosDe(estado.solicitud).disponibles)} Puedes revocar el
+              acceso cuando quieras desde Perfil.
             </FormNote>
 
             <div className="flex flex-wrap items-center gap-3">
@@ -134,7 +143,12 @@ export function AutorizarConexion() {
                 type="button"
                 size="lg"
                 className="h-12 rounded-xl px-6 text-sm font-semibold"
-                disabled={enviando}
+                disabled={
+                  enviando ||
+                  !scopesDesdePermisos(permisos).some((scope) =>
+                    estado.solicitud.scopes_disponibles.includes(scope),
+                  )
+                }
                 onClick={() => void decidir(true)}
               >
                 {enviando ? "Conectando..." : "Autorizar"}

@@ -3,7 +3,6 @@
 import { FormEvent, useState } from "react"
 import { Copy, KeyRound } from "lucide-react"
 import { toast } from "sonner"
-import { ChipSelect } from "@/components/forms/chip-select"
 import { FieldGroup, FormNote, FormPanel } from "@/components/forms/editorial-form"
 import { Button } from "@/components/ui/button"
 import {
@@ -20,26 +19,28 @@ import { getMcpUrl } from "@/modules/usuario/api/api-keys.api"
 import { useApiKeys } from "@/modules/usuario/hooks/useApiKeys"
 import { useConexionesOAuth } from "@/modules/usuario/hooks/useConexionesOAuth"
 import { apiKeyCreateSchema } from "@/modules/usuario/schemas/api-key.schema"
-
-type Permiso = "finanzas:read" | "finanzas:write"
+import {
+  PERMISOS_INICIALES,
+  PermisosModulos,
+  describirPermisos,
+  scopesDesdePermisos,
+  type Permisos,
+} from "./permisos-modulos"
 
 type PorRevocar = { tipo: "key" | "app"; id: number; nombre: string }
-
-const PERMISOS = [
-  { value: "finanzas:read", label: "Solo lectura", hint: "consulta" },
-  { value: "finanzas:write", label: "Lectura y escritura", hint: "registra y edita" },
-]
 
 const SCOPE_LABELS: Record<string, string> = {
   "*": "Acceso total",
   "finanzas:read": "Finanzas · lectura",
   "finanzas:write": "Finanzas · lectura y escritura",
+  "entrenamientos:read": "Entrenamientos · lectura",
+  "entrenamientos:write": "Entrenamientos · lectura y escritura",
 }
 
 // Escribir incluye leer: si estan ambos, basta con mostrar el de escritura.
 const describirScopes = (scopes: string[]) =>
   scopes
-    .filter((scope) => !(scope === "finanzas:read" && scopes.includes("finanzas:write")))
+    .filter((scope) => !(scope.endsWith(":read") && scopes.includes(scope.replace(":read", ":write"))))
     .map((scope) => SCOPE_LABELS[scope] ?? scope)
     .join(", ")
 
@@ -116,7 +117,7 @@ export function ConexionesIA() {
   const apiKeys = useApiKeys()
   const apps = useConexionesOAuth()
   const [nombre, setNombre] = useState("")
-  const [permiso, setPermiso] = useState<Permiso>("finanzas:read")
+  const [permisos, setPermisos] = useState<Permisos>(PERMISOS_INICIALES)
   const [creada, setCreada] = useState<{ secreto: string; mcpUrl: string } | null>(null)
   const [porRevocar, setPorRevocar] = useState<PorRevocar | null>(null)
   const revocando = apiKeys.revokingId !== null || apps.revokingId !== null
@@ -125,7 +126,7 @@ export function ConexionesIA() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const parsed = apiKeyCreateSchema.safeParse({ nombre, scopes: [permiso] })
+    const parsed = apiKeyCreateSchema.safeParse({ nombre, scopes: scopesDesdePermisos(permisos) })
     if (!parsed.success) {
       toast.error("Revisa el formulario", { description: parsed.error.issues[0]?.message })
       return
@@ -158,7 +159,7 @@ export function ConexionesIA() {
     <FormPanel
       eyebrow="Integraciones"
       title="Conexiones con IA"
-      description="Conecta Claude, ChatGPT u otro asistente a tus finanzas para preguntarle por tus gastos o registrarlos conversando."
+      description="Conecta Claude, ChatGPT u otro asistente a Ritmo para preguntarle por tus gastos o tus entrenamientos, registrar movimientos conversando o recibir sugerencias de entreno."
       aside={
         <div className="space-y-4">
           <div>
@@ -200,7 +201,7 @@ export function ConexionesIA() {
               <BloqueCopiable etiqueta="Clave" texto={creada.secreto} />
               <BloqueCopiable
                 etiqueta="Comando para Claude Code"
-                texto={`claude mcp add --transport http ritmo-finanzas ${creada.mcpUrl} --header "Authorization: Bearer ${creada.secreto}"`}
+                texto={`claude mcp add --transport http ritmo ${creada.mcpUrl} --header "Authorization: Bearer ${creada.secreto}"`}
               />
               <p className="text-sm text-muted-foreground">
                 En otros clientes, agrega un servidor MCP con la direccion de arriba y el header{" "}
@@ -224,19 +225,10 @@ export function ConexionesIA() {
               </FieldGroup>
 
               <FieldGroup label="Permisos">
-                <ChipSelect
-                  label="Permisos de la clave"
-                  options={PERMISOS}
-                  value={permiso}
-                  onChange={(value) => setPermiso(value as Permiso)}
-                />
+                <PermisosModulos value={permisos} onChange={setPermisos} />
               </FieldGroup>
 
-              <FormNote>
-                {permiso === "finanzas:read"
-                  ? "El asistente podra consultar tus cuentas, movimientos y resumenes, pero no cambiar nada."
-                  : "El asistente tambien podra registrar, editar y eliminar movimientos. Sus instrucciones le piden confirmar contigo antes de borrar."}
-              </FormNote>
+              <FormNote>{describirPermisos(permisos)}</FormNote>
 
               <Button
                 type="submit"

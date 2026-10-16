@@ -50,6 +50,9 @@ export const queryKeys = {
     fuerzaLista: ["entrenamientos", "fuerza", "lista"] as const,
     fuerzaActivo: ["entrenamientos", "fuerza", "activo"] as const,
     fuerzaDetalle: (id: number) => ["entrenamientos", "fuerza", "detalle", id] as const,
+    cargaMuscular: (modo: "7d" | "semana", fecha?: string) =>
+      ["entrenamientos", "carga-muscular", { modo, fecha: fecha ?? null }] as const,
+    seguimientos: ["entrenamientos", "seguimientos"] as const,
   },
   nutricion: {
     consumos: ["nutricion", "consumos"] as const,

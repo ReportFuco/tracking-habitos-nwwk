@@ -15,11 +15,14 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from app.auth.api_key import API_KEY_PREFIX, autenticar_api_key
 from app.db.session import AsyncSessionLocal
 from app.mcp.oauth import RitmoOAuthProvider, SCOPES_OAUTH
+from app.models import OAuthCliente
 from app.mcp.urls import MCP_URL, PROTECTED_RESOURCE_METADATA_URL
 
 
 SCOPE_AUTH_USER_ID = "ritmo.auth_user_id"
 SCOPE_API_KEY_SCOPES = "ritmo.api_key_scopes"
+# Nombre de quien se conecta (la API key o la app OAuth): firma las notas de seguimiento.
+SCOPE_CLIENTE_NOMBRE = "ritmo.cliente_nombre"
 
 
 def extraer_credencial(request: Request) -> tuple[str, str] | None:
@@ -33,6 +36,12 @@ def extraer_credencial(request: Request) -> tuple[str, str] | None:
     if esquema.lower() != "bearer" or not token:
         return None
     return ("api_key" if token.startswith(f"{API_KEY_PREFIX}_") else "oauth"), token
+
+
+async def nombre_cliente_oauth(client_id: str) -> str | None:
+    async with AsyncSessionLocal() as db:
+        cliente = await db.get(OAuthCliente, client_id)
+    return (cliente.metadata_cliente or {}).get("client_name") if cliente else None
 
 
 def _no_autorizado(detalle: str, token_invalido: bool = False) -> JSONResponse:
@@ -76,7 +85,7 @@ class McpAuthMiddleware:
                     return
                 # autenticar_api_key registra el uso de la key (contador, fecha e IP).
                 await db.commit()
-            auth_user_id, scopes = user.id, list(key.scopes)
+            auth_user_id, scopes, cliente = user.id, list(key.scopes), key.nombre
         else:
             token = await self.oauth.load_access_token(valor)
             # Un token emitido para otro recurso (RFC 8707) no sirve aqui.
@@ -84,8 +93,10 @@ class McpAuthMiddleware:
                 await _no_autorizado("Token invalido o expirado.", token_invalido=True)(scope, receive, send)
                 return
             auth_user_id, scopes = int(token.subject), token.scopes
+            cliente = await nombre_cliente_oauth(token.client_id)
 
         # Los permisos se exigen por herramienta (app/mcp/tools), no por ruta.
         scope[SCOPE_AUTH_USER_ID] = auth_user_id
         scope[SCOPE_API_KEY_SCOPES] = scopes
+        scope[SCOPE_CLIENTE_NOMBRE] = cliente
         await self.app(scope, receive, send)

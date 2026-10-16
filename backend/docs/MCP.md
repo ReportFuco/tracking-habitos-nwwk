@@ -1,8 +1,9 @@
-# Servidor MCP (finanzas)
+# Servidor MCP (finanzas y entrenamientos)
 
 El backend expone un servidor [MCP](https://modelcontextprotocol.io) en `POST /mcp`
 (producción: `https://api.fucolabs.dev/mcp`) para que un LLM consulte las finanzas del
-usuario y registre, edite o elimine movimientos, según los permisos de su API key.
+usuario y registre, edite o elimine movimientos, y para que revise sus entrenamientos y le
+deje notas de seguimiento que se leen en la app, según los permisos de la conexión.
 
 - Transporte Streamable HTTP, modo stateless con respuestas JSON: sin sesiones, funciona
   con varios workers de gunicorn y no requiere cambios en nginx.
@@ -29,9 +30,14 @@ Cada key tiene scopes (`app/auth/scopes.py`):
 
 | Scope | MCP | API REST |
 |---|---|---|
-| `finanzas:read` | herramientas de lectura | `GET` en `/api/finanzas/**` |
+| `finanzas:read` | herramientas de lectura de finanzas | `GET` en `/api/finanzas/**` |
 | `finanzas:write` | además registrar, editar y eliminar | todo `/api/finanzas/**` |
+| `entrenamientos:read` | sesiones, progreso, carga muscular, notas | `GET` en `/api/entrenamientos/**` |
+| `entrenamientos:write` | además publicar y eliminar notas de seguimiento | todo `/api/entrenamientos/**` |
 | `*` | todo | toda la API (lo que tenían las keys antes de los scopes) |
+
+Escribir en un módulo incluye leerlo, pero no da acceso a otro módulo. La pantalla de
+autorización y la creación de claves eligen el permiso módulo por módulo.
 
 Una key nueva sin scopes explícitos queda en `finanzas:read`. La migración
 `c80365289c96` dejó las keys existentes en `*`. Sin el scope necesario, la API REST
@@ -85,6 +91,28 @@ el `issuer` que los clientes comparan carácter a carácter.
 | `importar_movimientos` | Importa la cartola en una transacción (todo o nada) |
 | `listar_importaciones` / `deshacer_importacion` | Cargas anteriores y su reversión completa |
 
+### Entrenamientos
+
+| Herramienta | Qué devuelve |
+|---|---|
+| `listar_sesiones_fuerza` | Sesiones con fecha, duración, gimnasio, series, ejercicios y zonas |
+| `detalle_sesion_fuerza` | Series de una sesión (peso, reps, negativas, calentamiento) |
+| `buscar_ejercicios` | Catálogo por nombre, músculo o equipamiento |
+| `progreso_ejercicio` | Por sesión: mejor peso, 1RM estimado (Epley), series y tonelaje |
+| `resumen_semanal_fuerza` | Sesiones, series y tonelaje por semana (lunes a domingo) |
+| `carga_muscular` | Series efectivas por zona, nivel y tonelaje (`7d` o `semana`) |
+| `listar_seguimientos` | Notas ya publicadas |
+| `publicar_seguimiento` / `eliminar_seguimiento` | Notas (seguimiento, sugerencia, alerta, plan) que el usuario ve en Entrenamientos > Seguimiento |
+
+La carga muscular (`app/services/entrenamientos/carga.py`) cuenta *series efectivas*: 1
+por serie de trabajo para el músculo principal y 0,5 para cada secundario del catálogo;
+los calentamientos no cuentan. El tonelaje solo va al principal y, con mancuernas, el peso
+(anotado por mancuerna) cuenta doble. Niveles: bajo < 4, moderado 4-10, óptimo 10-20,
+alto > 20. Es lo mismo que pinta el mapa del cuerpo de la app
+(`GET /api/entrenamientos/carga-muscular`).
+
+Cada nota guarda como `origen` el nombre de la API key o de la app OAuth que la escribió.
+
 Crear, editar, eliminar e importar requieren `finanzas:write` (ver el listado completo en
 `app/mcp/tools/`). Montos en CLP enteros; fechas en calendario de Chile (una fecha con
 zona horaria se convierte).
@@ -99,13 +127,13 @@ subir cartolas que se solapan no duplica movimientos.
 Claude Code:
 
 ```bash
-claude mcp add --transport http ritmo-finanzas https://api.fucolabs.dev/mcp \
+claude mcp add --transport http ritmo https://api.fucolabs.dev/mcp \
   --header "Authorization: Bearer thw_xxxxx"
 ```
 
 Claude.ai y ChatGPT: agregar un conector personalizado con la URL
 `https://api.fucolabs.dev/mcp` y autorizarlo en la pantalla que abre Ritmo. Claude Code
-también puede usar OAuth: `claude mcp add --transport http ritmo-finanzas <url>` sin
+también puede usar OAuth: `claude mcp add --transport http ritmo <url>` sin
 header, y autenticar desde `/mcp`.
 
 Clientes con configuración JSON (Claude Desktop, Cursor, etc.) con API key: URL
@@ -115,7 +143,7 @@ En local, la URL es `http://<host>:8000/mcp`.
 
 ## Tests
 
-`tests/test_mcp_finanzas.py`, `tests/test_api_key_scopes.py` y `tests/test_mcp_oauth.py`
+`tests/test_mcp_finanzas.py`, `tests/test_api_key_scopes.py`, `tests/test_mcp_oauth.py` y `tests/test_entrenamientos_seguimiento*.py`
 (este último incluye el flujo completo con el cliente OAuth oficial del SDK). Los que no
 tocan la BD corren siempre; el resto necesita
 la base `*_test` y `RUN_DB_TESTS=1`, igual que `test_finanzas_movimientos_db.py`.

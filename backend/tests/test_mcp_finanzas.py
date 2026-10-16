@@ -51,6 +51,17 @@ ESCRITURA = {
     "importar_movimientos",
     "deshacer_importacion",
 }
+# Del modulo de entrenamientos (tests/test_entrenamientos_seguimiento_db.py).
+ENTRENAMIENTOS_LECTURA = {
+    "listar_sesiones_fuerza",
+    "detalle_sesion_fuerza",
+    "buscar_ejercicios",
+    "progreso_ejercicio",
+    "resumen_semanal_fuerza",
+    "carga_muscular",
+    "listar_seguimientos",
+}
+ENTRENAMIENTOS_ESCRITURA = {"publicar_seguimiento", "eliminar_seguimiento"}
 
 
 @asynccontextmanager
@@ -205,9 +216,11 @@ async def test_herramientas_marcan_lectura_y_escritura(escenario):
         herramientas = {h.name: h for h in (await cliente.list_tools()).tools}
         instrucciones = cliente.instructions
 
-    assert set(herramientas) == LECTURA | ESCRITURA
-    assert all(herramientas[nombre].annotations.read_only_hint for nombre in LECTURA)
-    assert not any(herramientas[nombre].annotations.read_only_hint for nombre in ESCRITURA)
+    lectura = LECTURA | ENTRENAMIENTOS_LECTURA
+    escritura = ESCRITURA | ENTRENAMIENTOS_ESCRITURA
+    assert set(herramientas) == lectura | escritura
+    assert all(herramientas[nombre].annotations.read_only_hint for nombre in lectura)
+    assert not any(herramientas[nombre].annotations.read_only_hint for nombre in escritura)
     assert herramientas["eliminar_movimiento"].annotations.destructive_hint
     assert "CLP" in instrucciones
 

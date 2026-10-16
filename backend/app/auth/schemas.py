@@ -53,8 +53,9 @@ class ApiKeyCreate(BaseModel):
         min_length=1,
         examples=[["finanzas:read"]],
         description=(
-            "Permisos de la key. '*' es acceso total; 'finanzas:read' solo lee finanzas y "
-            "'finanzas:write' ademas crea, edita y borra en finanzas. Por defecto, solo lectura."
+            "Permisos de la key. '*' es acceso total; '<modulo>:read' solo lee ese modulo y "
+            "'<modulo>:write' ademas crea, edita y borra en el. Modulos: finanzas y "
+            "entrenamientos. Por defecto, solo lectura de finanzas."
         ),
     )
 
