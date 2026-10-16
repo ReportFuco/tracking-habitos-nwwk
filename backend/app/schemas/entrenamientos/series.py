@@ -6,6 +6,7 @@ class SerieFuerzaResponse(BaseModel):
     es_calentamiento: bool
     cantidad_peso: float
     repeticiones: int
+    repeticiones_negativas: int = 0
 
     # campos aplanados
     id_ejercicio: int | None = None
@@ -13,6 +14,9 @@ class SerieFuerzaResponse(BaseModel):
     tipo_ejercicio: str | None = None
     subcategoria_ejercicio: str | None = None
     url_video: str | None = None
+    # El peso de los ejercicios con mancuernas se anota por mancuerna; el front lo rotula
+    # segun el equipamiento.
+    equipamiento_ejercicio: str | None = None
     # El entreno activo pinta la miniatura y la animación de cada serie. Viajan aplanadas
     # en la serie y no se resuelven contra el catálogo en el cliente porque una serie puede
     # sobrevivir a que su ejercicio deje de estar en la lista que el front tenga cargada.
@@ -36,6 +40,7 @@ class SerieFuerzaResponse(BaseModel):
             data["tipo_ejercicio"] = musculo.nombre if musculo else None
             data["subcategoria_ejercicio"] = subcategoria.nombre if subcategoria else None
             data["url_video"] = ejercicio.url_video
+            data["equipamiento_ejercicio"] = ejercicio.equipamiento
             data["url_imagen"] = ejercicio.url_imagen
             data["url_animacion"] = ejercicio.url_animacion
 
@@ -47,6 +52,9 @@ class SerieFuerzaCreate(BaseModel):
     es_calentamiento: bool
     cantidad_peso: float
     repeticiones: int
+    repeticiones_negativas: int = Field(
+        0, ge=0, le=50, description="Negativas hechas al final de la serie, aparte de las repeticiones."
+    )
     # La cola offline puede reenviar la misma solicitud si la respuesta se pierde; con esta
     # clave el reintento devuelve la serie ya creada en vez de duplicarla.
     client_request_id: UUID | None = Field(
@@ -59,3 +67,4 @@ class SerieFuerzaPatch(BaseModel):
     es_calentamiento: bool | None = None
     cantidad_peso: float | None = None
     repeticiones: int | None = None
+    repeticiones_negativas: int | None = Field(None, ge=0, le=50)

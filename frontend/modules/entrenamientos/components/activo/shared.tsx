@@ -100,6 +100,29 @@ export const musculoDeSerie = (serie: SerieFuerzaResponse) =>
 export const formatearPeso = (valor: number) =>
   Number.isInteger(valor) ? String(valor) : valor.toFixed(1).replace(".", ",")
 
+/**
+ * Ejercicios con un par de mancuernas: el peso se anota por mancuerna, que es lo que
+ * marca cada una, y el total de la serie es el doble.
+ */
+export const esConMancuernas = (equipamiento: string | null | undefined) =>
+  normalizarTexto(equipamiento).includes("mancuerna")
+
+/** Rotulo del campo de peso: por mancuerna, con el total de las dos a la vista. */
+export const rotuloPeso = (mancuernas: boolean, peso: string) => {
+  if (!mancuernas) {
+    return { etiqueta: "Peso", sufijo: "kg" }
+  }
+  const valor = Number(peso)
+  return {
+    etiqueta: "Peso por mancuerna",
+    sufijo: valor > 0 ? `total ${formatearPeso(valor * 2)} kg` : "kg c/u",
+  }
+}
+
+/** " + 2 neg." cuando la serie tuvo negativas; vacio si no. */
+export const textoNegativas = (negativas: number | null | undefined) =>
+  negativas ? ` + ${negativas} neg.` : ""
+
 export function Chip({
   activo,
   onClick,
@@ -191,7 +214,9 @@ export function CampoNumerico({
           type="number"
           inputMode={decimales ? "decimal" : "numeric"}
           min={minimo}
-          step={paso}
+          // El paso es solo el de los botones: con step={2.5} el navegador rechazaba al
+          // enviar cualquier peso que no fuera multiplo (36 kg daba "valor no valido").
+          step={decimales ? "any" : paso}
           value={valor}
           disabled={disabled}
           onChange={(evento) => onChange(evento.target.value)}
@@ -204,6 +229,67 @@ export function CampoNumerico({
           onClick={() => ajustar(paso)}
           disabled={disabled}
           aria-label={`Subir ${etiqueta.toLowerCase()}`}
+        >
+          <Plus className="size-4" aria-hidden />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Negativas al final de la serie. Contador compacto y siempre a la vista: casi siempre es
+ * 0, y cuando no, se suma con un toque sin abrir nada.
+ */
+export function CampoNegativas({
+  valor,
+  onChange,
+  disabled,
+}: {
+  valor: number
+  onChange: (valor: number) => void
+  disabled?: boolean
+}) {
+  const claseBoton =
+    "flex size-11 shrink-0 touch-manipulation items-center justify-center rounded-lg bg-surface-lowest text-foreground shadow-(--shadow-airy) transition hover:bg-surface-variant focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100 disabled:opacity-40"
+
+  return (
+    <div
+      role="group"
+      aria-label="Negativas"
+      className="flex items-center justify-between gap-3 rounded-xl bg-surface-low p-3 sm:px-4"
+    >
+      <div className="min-w-0">
+        <p className="font-label text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          Negativas
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Al final de la serie</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className={claseBoton}
+          onClick={() => onChange(Math.max(0, valor - 1))}
+          disabled={disabled || valor <= 0}
+          aria-label="Bajar negativas"
+        >
+          <Minus className="size-4" aria-hidden />
+        </button>
+        <span
+          aria-live="polite"
+          className={cn(
+            "w-8 text-center text-xl font-semibold tabular-nums",
+            valor > 0 ? "text-foreground" : "text-muted-foreground",
+          )}
+        >
+          {valor}
+        </span>
+        <button
+          type="button"
+          className={claseBoton}
+          onClick={() => onChange(Math.min(50, valor + 1))}
+          disabled={disabled || valor >= 50}
+          aria-label="Subir negativas"
         >
           <Plus className="size-4" aria-hidden />
         </button>

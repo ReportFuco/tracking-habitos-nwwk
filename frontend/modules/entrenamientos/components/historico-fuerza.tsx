@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
+import { esConMancuernas } from "@/modules/entrenamientos/components/activo/shared"
 import { useEntrenamientos } from "@/modules/entrenamientos/hooks/useEntrenamientos"
 
 const formatDate = (value: string) => {
@@ -378,10 +379,15 @@ export function HistoricoFuerza() {
                         <div className="shrink-0 text-right">
                           <p className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
                             {serie.cantidad_peso}{" "}
-                            <span className="text-sm text-muted-foreground">kg</span>
+                            <span className="text-sm text-muted-foreground">
+                              {esConMancuernas(serie.equipamiento_ejercicio) ? "kg c/u" : "kg"}
+                            </span>
                           </p>
                           <p className="text-xs text-muted-foreground sm:text-sm">
                             {serie.repeticiones} reps
+                            {serie.repeticiones_negativas
+                              ? ` + ${serie.repeticiones_negativas} neg.`
+                              : ""}
                           </p>
                         </div>
                       </div>

@@ -134,6 +134,7 @@ async def agregar_serie_fuerza(
         es_calentamiento=data.es_calentamiento,
         cantidad_peso=data.cantidad_peso,
         repeticiones=data.repeticiones,
+        repeticiones_negativas=data.repeticiones_negativas,
         client_request_id=data.client_request_id,
     )
 
@@ -190,7 +191,13 @@ async def editar_serie_fuerza(
             detail="Serie no encontrada o no pertenece a una sesión activa."
         )
 
-    update_data = data.model_dump(exclude_unset=True)
+    # Ningun campo de la serie admite NULL: un null explicito se trata como "sin cambio"
+    # en vez de terminar en un error de integridad.
+    update_data = {
+        campo: valor
+        for campo, valor in data.model_dump(exclude_unset=True).items()
+        if valor is not None
+    }
     if not update_data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

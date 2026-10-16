@@ -108,6 +108,8 @@ export interface SerieFuerzaCreate {
   es_calentamiento: boolean
   cantidad_peso: number
   repeticiones: number
+  /** Negativas al final de la serie, aparte de las repeticiones. */
+  repeticiones_negativas?: number
   // Permite que un reintento (respuesta perdida offline) devuelva la serie ya creada en
   // vez de duplicarla.
   client_request_id?: string
@@ -118,4 +120,5 @@ export interface SerieFuerzaPatch {
   es_calentamiento?: boolean | null
   cantidad_peso?: number | null
   repeticiones?: number | null
+  repeticiones_negativas?: number | null
 }

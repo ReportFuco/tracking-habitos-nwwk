@@ -54,6 +54,12 @@ export const serieFuerzaCreateSchema = z.object({
     .number()
     .int("Las repeticiones deben ser un numero entero")
     .positive("Las repeticiones deben ser mayor a 0"),
+  repeticiones_negativas: z
+    .number()
+    .int("Las negativas deben ser un numero entero")
+    .min(0, "Las negativas no pueden ser menos de 0")
+    .max(50, "Son demasiadas negativas")
+    .optional(),
 })
 
 export const serieFuerzaPatchSchema = z.object({
@@ -61,6 +67,7 @@ export const serieFuerzaPatchSchema = z.object({
   es_calentamiento: z.boolean().optional().nullable(),
   cantidad_peso: z.number().nonnegative().finite().optional().nullable(),
   repeticiones: z.number().int().positive().optional().nullable(),
+  repeticiones_negativas: z.number().int().min(0).max(50).optional().nullable(),
 })
 
 export type GimnasioCreateForm = z.infer<typeof gimnasioCreateSchema>
@@ -111,11 +118,14 @@ export const serieFuerzaResponseSchema = z.object({
   es_calentamiento: z.boolean(),
   cantidad_peso: z.number(),
   repeticiones: z.number().int(),
+  // nullish: las series cacheadas antes de este campo no lo traen.
+  repeticiones_negativas: z.number().int().nullish(),
   id_ejercicio: z.number().int().nullish(),
   nombre_ejercicio: z.string().nullish(),
   tipo_ejercicio: z.string().nullish(),
   subcategoria_ejercicio: z.string().nullish(),
   url_video: z.string().nullish(),
+  equipamiento_ejercicio: z.string().nullish(),
   url_imagen: z.string().nullish(),
   url_animacion: z.string().nullish(),
 })

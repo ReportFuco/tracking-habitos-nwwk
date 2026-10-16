@@ -13,13 +13,17 @@ import {
 import { Button } from "@/components/ui/button"
 import { EjercicioMedia } from "@/modules/entrenamientos/components/ejercicio-media"
 import {
+  CampoNegativas,
   CampoNumerico,
   SelectorTipoSerie,
   ejercicioDeSerie,
+  esConMancuernas,
   formatearPeso,
   mediaDeSerie,
   musculoDeSerie,
   normalizarTexto,
+  rotuloPeso,
+  textoNegativas,
 } from "@/modules/entrenamientos/components/activo/shared"
 import { isSeriePendiente } from "@/modules/entrenamientos/offline/entrenamientos-offline"
 import type {
@@ -95,7 +99,12 @@ const agrupar = (
   return Array.from(musculos.values())
 }
 
-const initialEdicion = { cantidad_peso: "", repeticiones: "", es_calentamiento: false }
+const initialEdicion = {
+  cantidad_peso: "",
+  repeticiones: "",
+  repeticiones_negativas: 0,
+  es_calentamiento: false,
+}
 
 export function SeriesSesion({
   series,
@@ -141,6 +150,7 @@ export function SeriesSesion({
     setEdicion({
       cantidad_peso: String(serie.cantidad_peso),
       repeticiones: String(serie.repeticiones),
+      repeticiones_negativas: serie.repeticiones_negativas ?? 0,
       es_calentamiento: serie.es_calentamiento,
     })
   }
@@ -155,6 +165,7 @@ export function SeriesSesion({
       es_calentamiento: edicion.es_calentamiento,
       cantidad_peso: Number(edicion.cantidad_peso),
       repeticiones: Number(edicion.repeticiones),
+      repeticiones_negativas: edicion.repeticiones_negativas,
     })
 
     if (guardado) {
@@ -274,10 +285,16 @@ export function SeriesSesion({
                             key={serie.id_fuerza_detalle}
                             className="space-y-4 rounded-lg bg-surface-low p-3 sm:p-4"
                           >
-                            <div className="grid gap-3 sm:grid-cols-2">
+                            {/* grid-cols-1 explicito: la columna implicita es `auto` y crece
+                                hasta el ancho del input, sacando el boton + de la tarjeta. */}
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                               <CampoNumerico
-                                etiqueta="Peso"
-                                sufijo="kg"
+                                {...rotuloPeso(
+                                  esConMancuernas(
+                                    serie.equipamiento_ejercicio ?? item.ejercicio?.equipamiento,
+                                  ),
+                                  edicion.cantidad_peso,
+                                )}
                                 valor={edicion.cantidad_peso}
                                 paso={2.5}
                                 decimales
@@ -297,6 +314,14 @@ export function SeriesSesion({
                                 }
                               />
                             </div>
+
+                            <CampoNegativas
+                              valor={edicion.repeticiones_negativas}
+                              disabled={submitting}
+                              onChange={(valor) =>
+                                setEdicion((previo) => ({ ...previo, repeticiones_negativas: valor }))
+                              }
+                            />
 
                             <SelectorTipoSerie
                               esCalentamiento={edicion.es_calentamiento}
@@ -353,10 +378,17 @@ export function SeriesSesion({
                               <span className="font-semibold">
                                 {formatearPeso(serie.cantidad_peso)}
                               </span>
-                              <span className="text-xs text-muted-foreground"> kg</span>
+                              <span className="text-xs text-muted-foreground">
+                                {esConMancuernas(
+                                  serie.equipamiento_ejercicio ?? item.ejercicio?.equipamiento,
+                                )
+                                  ? " kg c/u"
+                                  : " kg"}
+                              </span>
                               <span className="text-xs text-muted-foreground">
                                 {" "}
                                 × {serie.repeticiones} reps
+                                {textoNegativas(serie.repeticiones_negativas)}
                               </span>
                             </span>
 

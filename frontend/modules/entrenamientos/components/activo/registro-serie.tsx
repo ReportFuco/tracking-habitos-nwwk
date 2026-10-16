@@ -5,10 +5,14 @@ import { CloudOff, LoaderCircle, Plus, Repeat } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { EjercicioAnimacion } from "@/modules/entrenamientos/components/ejercicio-media"
 import {
+  CampoNegativas,
   CampoNumerico,
   SelectorTipoSerie,
   describirGrupoEjercicio,
+  esConMancuernas,
   formatearPeso,
+  rotuloPeso,
+  textoNegativas,
 } from "@/modules/entrenamientos/components/activo/shared"
 import { isSeriePendiente } from "@/modules/entrenamientos/offline/entrenamientos-offline"
 import type {
@@ -55,6 +59,8 @@ export function RegistroSerie({
   const [peso, setPeso] = useState(sugerencia.cantidad_peso)
   const [repeticiones, setRepeticiones] = useState(sugerencia.repeticiones)
   const [esCalentamiento, setEsCalentamiento] = useState(sugerencia.es_calentamiento)
+  // No se arrastra a la serie siguiente como el peso: las negativas son de la ultima.
+  const [negativas, setNegativas] = useState(0)
   const tituloRef = useRef<HTMLHeadingElement | null>(null)
 
   useEffect(() => {
@@ -64,15 +70,19 @@ export function RegistroSerie({
   const enviar = async (evento: FormEvent<HTMLFormElement>) => {
     evento.preventDefault()
 
-    await onAgregar({
+    const guardada = await onAgregar({
       id_ejercicio: ejercicio.id_ejercicio,
       es_calentamiento: esCalentamiento,
       cantidad_peso: Number(peso),
       repeticiones: Number(repeticiones),
+      repeticiones_negativas: negativas,
     })
+    if (guardada) setNegativas(0)
   }
 
   const grupo = describirGrupoEjercicio(ejercicio)
+  const mancuernas = esConMancuernas(ejercicio.equipamiento)
+  const rotulo = rotuloPeso(mancuernas, peso)
   const puedeGuardar = peso !== "" && repeticiones !== "" && Number(repeticiones) > 0
 
   return (
@@ -139,8 +149,8 @@ export function RegistroSerie({
             intrinseco del input numerico, empujando el boton + fuera de la tarjeta. */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <CampoNumerico
-            etiqueta="Peso"
-            sufijo="kg"
+            etiqueta={rotulo.etiqueta}
+            sufijo={rotulo.sufijo}
             valor={peso}
             paso={2.5}
             decimales
@@ -156,6 +166,8 @@ export function RegistroSerie({
             disabled={submitting}
           />
         </div>
+
+        <CampoNegativas valor={negativas} onChange={setNegativas} disabled={submitting} />
 
         <SelectorTipoSerie
           esCalentamiento={esCalentamiento}
@@ -201,7 +213,9 @@ export function RegistroSerie({
                   <span className="flex size-5 items-center justify-center rounded-md bg-surface-lowest font-label text-[10px] text-muted-foreground">
                     {indice + 1}
                   </span>
-                  {formatearPeso(serie.cantidad_peso)} kg × {serie.repeticiones}
+                  {formatearPeso(serie.cantidad_peso)} kg{mancuernas ? " c/u" : ""} ×{" "}
+                  {serie.repeticiones}
+                  {textoNegativas(serie.repeticiones_negativas)}
                   {isSeriePendiente(serie) ? (
                     <CloudOff
                       className="size-3 text-muted-foreground"

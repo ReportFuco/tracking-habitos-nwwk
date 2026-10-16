@@ -7,6 +7,7 @@ from sqlalchemy import (
     ForeignKey,
     text,
     Boolean,
+    CheckConstraint,
     Enum as SQLEnum,
     SmallInteger,
     UniqueConstraint,
@@ -146,7 +147,13 @@ class EntrenamientoFuerza(Base):
 
 class SerieFuerza(Base):
     __tablename__="serie_fuerza"
-    __table_args__ = {"schema": ENTRENAMIENTOS_SCHEMA}
+    __table_args__ = (
+        CheckConstraint(
+            "repeticiones_negativas BETWEEN 0 AND 50",
+            name="ck_serie_fuerza_negativas_rango",
+        ),
+        {"schema": ENTRENAMIENTOS_SCHEMA},
+    )
 
     id_fuerza_detalle: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     id_entrenamiento_fuerza: Mapped[int] = mapped_column(ForeignKey(table_ref(ENTRENAMIENTOS_SCHEMA, "entrenamiento_fuerza.id_entrenamiento_fuerza")))
@@ -154,6 +161,11 @@ class SerieFuerza(Base):
     es_calentamiento: Mapped[bool] = mapped_column(Boolean)
     cantidad_peso: Mapped[float] = mapped_column(Float, nullable=False)
     repeticiones: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Repeticiones negativas (solo la fase excentrica, normalmente asistidas al llegar al
+    # fallo) hechas al final de la serie, aparte de `repeticiones`. 0 = ninguna.
+    repeticiones_negativas: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
     client_request_id: Mapped[UUID | None] = mapped_column(Uuid(), nullable=True)
 
     entrenamiento_fuerza = relationship(
