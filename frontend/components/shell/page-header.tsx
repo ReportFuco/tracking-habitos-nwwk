@@ -31,7 +31,9 @@ export function PageHeader({
         ) : null}
         <h1 className="font-display text-[1.75rem] leading-[1.05] text-balance break-words sm:text-4xl">{title}</h1>
         {description ? (
-          <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">{description}</p>
+          // En movil la descripcion se omite: empuja el contenido bajo el pliegue y las
+          // pestañas del modulo ya dicen donde estas.
+          <p className="hidden max-w-2xl text-sm text-muted-foreground sm:block sm:text-base">{description}</p>
         ) : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}

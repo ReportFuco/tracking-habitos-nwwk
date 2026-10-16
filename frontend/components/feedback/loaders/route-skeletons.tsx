@@ -65,11 +65,26 @@ export function GenericAppSkeleton() {
 
 export function ModuleHomeSkeleton({ module = "neutral" }: { module?: ModuleTone }) {
   return (
-    <div className="flex flex-col gap-5">
-      <ContextNavSkeleton />
+    <div className="flex flex-col gap-4 sm:gap-6">
       <PageHeaderSkeleton module={module} />
-      <TileGridSkeleton count={4} module={module} />
-      <SkeletonCard tone="lowest" className="h-28" />
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-3 w-20 rounded-sm" />
+        <SkeletonCard tone="low" className="h-18 p-0" />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-3 w-24 rounded-sm" />
+        <SkeletonCard className="flex flex-col gap-0 p-0">
+          {[1, 2, 3, 4].map((item) => (
+            <div key={item} className="flex h-14 items-center gap-3 px-3">
+              <Skeleton className="size-9 rounded-md" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-3.5 w-28 rounded-sm" />
+                <Skeleton className="h-3 w-44 rounded-sm" />
+              </div>
+            </div>
+          ))}
+        </SkeletonCard>
+      </div>
     </div>
   )
 }

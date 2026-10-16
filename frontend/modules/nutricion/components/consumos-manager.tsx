@@ -43,10 +43,10 @@ const initialForm = {
   observacion: "",
 }
 
-export function ConsumosManager() {
+export function ConsumosManager({ abrirFormulario = false }: { abrirFormulario?: boolean }) {
   const { consumos, submitting, loading, crearConsumo, eliminarConsumo } = useNutricion()
   const [form, setForm] = useState(initialForm)
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] = useState(abrirFormulario)
 
   const sortedConsumos = useMemo(
     () => [...consumos].sort((a, b) => (a.fecha_consumo < b.fecha_consumo ? 1 : -1)),

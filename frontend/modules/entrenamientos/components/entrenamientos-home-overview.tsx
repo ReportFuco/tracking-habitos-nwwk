@@ -1,118 +1,88 @@
 "use client"
 
 import Link from "next/link"
-import { Activity, ArrowUpRight, Dumbbell, History, MapPin } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { Activity, ChevronRight, Dumbbell, History, MapPin, Play } from "lucide-react"
+import { MenuGroup, MenuList, MenuRow } from "@/components/shell/menu-group"
+import { datePart, formatShortDate, startOfWeek, toLocalIsoDate } from "@/lib/dates"
 import { useEntrenamientos } from "@/modules/entrenamientos/hooks/useEntrenamientos"
+import { entrenosFuerzaQueryOptions } from "@/modules/entrenamientos/queries"
 
+/**
+ * Portada de entrenamientos en dos grupos: registrar (abrir o retomar la sesion) y
+ * consultar (lo demas, una fila por seccion con su dato del momento). Cabe en una
+ * pantalla de telefono sin scroll.
+ */
 export function EntrenamientosHomeOverview() {
   const { entrenamientoActivo } = useEntrenamientos()
+  const entrenosQuery = useQuery(entrenosFuerzaQueryOptions())
 
-  const primaryHref = entrenamientoActivo
-    ? "/app/entrenamientos/activo"
-    : "/app/entrenamientos/registrar"
-  const primaryLabel = entrenamientoActivo
-    ? "Continuar entrenamiento activo"
-    : "Registrar entrenamiento"
-  const primaryEyebrow = entrenamientoActivo ? "Sesion en curso" : "Siguiente paso"
-  const primaryDescription = entrenamientoActivo
-    ? `Tu sesion actual esta abierta${
-        entrenamientoActivo.nombre_gimnasio ? ` en ${entrenamientoActivo.nombre_gimnasio}` : ""
-      }. Retomamos desde donde lo dejaste para seguir cargando series.`
-    : "Abre una nueva sesion de gym y deja el espacio listo para ir registrando cada serie."
-
-  const secondaryCards = [
-    {
-      eyebrow: "Indicadores",
-      title: "Seguimiento",
-      description: "Mira en tu cuerpo la carga de cada musculo y las sugerencias de tu asistente.",
-      href: "/app/entrenamientos/seguimiento",
-      icon: Activity,
-    },
-    {
-      eyebrow: "Catalogo",
-      title: "Ejercicios",
-      description: "Busca por musculo o equipo y mira como se ejecuta cada movimiento.",
-      href: "/app/entrenamientos/ejercicios",
-      icon: Dumbbell,
-    },
-    {
-      eyebrow: "Contexto",
-      title: "Ver gimnasios",
-      description: "Revisa el directorio y elige el lugar que mejor acompana tu rutina.",
-      href: "/app/entrenamientos/gimnasios",
-      icon: MapPin,
-    },
-    {
-      eyebrow: "Diario",
-      title: "Entrenamientos anteriores",
-      description: "Consulta sesiones cerradas y retoma el hilo de tus ultimos registros.",
-      href: "/app/entrenamientos/historico",
-      icon: History,
-    },
-  ]
+  const entrenos = entrenosQuery.data ?? []
+  const weekStart = startOfWeek(toLocalIsoDate())
+  const semana = entrenos.filter((entreno) => datePart(entreno.inicio_at) >= weekStart).length
+  const ultimo = entrenos
+    .filter((entreno) => entreno.fin_at !== null)
+    .sort((a, b) => b.inicio_at.localeCompare(a.inicio_at))[0]
+  const historialDetalle = entrenosQuery.data
+    ? `${semana} ${semana === 1 ? "sesion" : "sesiones"} esta semana${ultimo ? ` · ultima el ${formatShortDate(ultimo.inicio_at)}` : ""}`
+    : "Sesiones cerradas y sus series"
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-5">
-      <Link
-        href={primaryHref}
-        className="group relative overflow-hidden rounded-2xl bg-[color:var(--module-entrenamientos-fill)] p-5 text-[color:var(--module-entrenamientos-on)] transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transition-none sm:rounded-3xl sm:p-7"
-      >
-        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
-          <div className="max-w-lg space-y-3">
-            <p className="font-label text-[0.65rem] uppercase tracking-[0.22em] opacity-80 sm:text-[0.72rem] sm:tracking-[0.24em]">
-              {primaryEyebrow}
-            </p>
-            <h2 className="font-display text-2xl leading-[1.05] sm:text-[2.25rem]">
-              {primaryLabel}
-            </h2>
-            <p className="text-sm leading-6 opacity-85">{primaryDescription}</p>
-          </div>
-          <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:gap-4">
-            <span className="flex size-11 items-center justify-center rounded-lg bg-black/15 sm:size-14">
-              <Dumbbell className="size-5 sm:size-6" />
+    <div className="flex flex-col gap-5">
+      <MenuGroup title="Registrar">
+        <Link
+          href={entrenamientoActivo ? "/app/entrenamientos/activo" : "/app/entrenamientos/registrar"}
+          className="group flex min-h-18 items-center gap-3 rounded-xl bg-[color:var(--module-entrenamientos-fill)] px-4 py-3 text-[color:var(--module-entrenamientos-on)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-md bg-black/15">
+            {entrenamientoActivo ? <Play className="size-5" aria-hidden /> : <Dumbbell className="size-5" aria-hidden />}
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="font-display text-lg leading-tight">
+              {entrenamientoActivo ? "Continuar sesion" : "Empezar entrenamiento"}
             </span>
-            <span className="inline-flex items-center gap-2 text-sm font-medium transition group-hover:translate-x-0.5">
-              Ir ahora
-              <ArrowUpRight className="size-4" />
+            <span className="truncate text-xs opacity-85">
+              {entrenamientoActivo
+                ? `En curso${entrenamientoActivo.nombre_gimnasio ? ` en ${entrenamientoActivo.nombre_gimnasio}` : ""}`
+                : "Abre la sesion y carga las series ahi mismo"}
             </span>
-          </div>
-        </div>
-      </Link>
+          </span>
+          <ChevronRight className="size-5 shrink-0 transition group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
+        </Link>
+      </MenuGroup>
 
-      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-        {secondaryCards.map((card) => {
-          const Icon = card.icon
-          return (
-            <Link
-              key={card.href}
-              href={card.href}
-              className="group flex flex-col gap-3 rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-airy-lg)] sm:gap-4 sm:rounded-2xl sm:p-5"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <span
-                  className="flex size-10 items-center justify-center rounded-lg sm:size-11"
-                  style={{
-                    background: "color-mix(in oklch, var(--module-entrenamientos) 12%, transparent)",
-                    color: "var(--module-entrenamientos)",
-                  }}
-                >
-                  <Icon className="size-4 sm:size-5" />
-                </span>
-                <ArrowUpRight className="size-4 text-muted-foreground transition group-hover:text-[color:var(--module-entrenamientos)]" />
-              </div>
-              <div className="space-y-1.5">
-                <p className="font-label text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground">
-                  {card.eyebrow}
-                </p>
-                <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-                  {card.title}
-                </h3>
-                <p className="text-sm leading-6 text-muted-foreground">{card.description}</p>
-              </div>
-            </Link>
-          )
-        })}
-      </div>
+      <MenuGroup title="Consultar">
+        <MenuList>
+          <MenuRow
+            href="/app/entrenamientos/seguimiento"
+            icon={Activity}
+            title="Seguimiento"
+            detail="Carga por musculo y sugerencias"
+            module="entrenamientos"
+          />
+          <MenuRow
+            href="/app/entrenamientos/historico"
+            icon={History}
+            title="Historial"
+            detail={historialDetalle}
+            module="entrenamientos"
+          />
+          <MenuRow
+            href="/app/entrenamientos/ejercicios"
+            icon={Dumbbell}
+            title="Ejercicios"
+            detail="Tecnica por musculo o equipo"
+            module="entrenamientos"
+          />
+          <MenuRow
+            href="/app/entrenamientos/gimnasios"
+            icon={MapPin}
+            title="Gimnasios"
+            detail="Directorio de gimnasios"
+            module="entrenamientos"
+          />
+        </MenuList>
+      </MenuGroup>
     </div>
   )
 }

@@ -21,10 +21,10 @@ function formatDate(value: string) {
   return `${day}-${month}-${year}`
 }
 
-export function PesoManager() {
+export function PesoManager({ abrirFormulario = false }: { abrirFormulario?: boolean }) {
   const { pesos, submitting, loading, crearPeso, eliminarPeso } = useNutricion()
   const [form, setForm] = useState({ fecha_registro: todayISO(), peso_kg: "" })
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] = useState(abrirFormulario)
 
   const sortedPesos = useMemo(
     () => [...pesos].sort((a, b) => (a.fecha_registro < b.fecha_registro ? 1 : -1)),

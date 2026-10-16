@@ -16,11 +16,11 @@ export default function DashboardPage() {
       <PageHeader
         eyebrow={formatLongToday()}
         title={nombre ? `Hola, ${nombre}` : "Tu ritmo"}
-        className="pb-2 sm:pb-4"
+        className="pb-0 sm:pb-2"
       />
+      <QuickActions />
       <DashboardHero />
       <ModuleBlocks />
-      <QuickActions />
     </div>
   )
 }

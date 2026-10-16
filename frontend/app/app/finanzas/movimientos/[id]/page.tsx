@@ -1,5 +1,4 @@
-import { PageHeader } from "@/components/shell/page-header"
-import { FinanzasMenuLinks } from "@/modules/finanzas/components/menu-links"
+import { FinanzasHeader } from "@/modules/finanzas/components/finanzas-header"
 import { MovimientoDetailView } from "@/modules/finanzas/components/movimiento-detail-view"
 
 export default async function MovimientoDetallePage({
@@ -12,9 +11,7 @@ export default async function MovimientoDetallePage({
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6">
-      <PageHeader eyebrow="Finanzas" title={`Movimiento #${id}`} className="pb-0" />
-      <FinanzasMenuLinks />
-
+      <FinanzasHeader title={`Movimiento #${id}`} back={{ href: "/app/finanzas/movimientos", label: "Movimientos" }} />
       <MovimientoDetailView idMovimiento={idMovimiento} />
     </div>
   )
