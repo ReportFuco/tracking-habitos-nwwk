@@ -19,7 +19,7 @@ const initialForm = {
 }
 
 const textareaClassName =
-  "min-h-28 w-full rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-b-2 focus:border-[color:var(--module-entrenamientos)] sm:min-h-32"
+  "min-h-20 w-full rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-b-2 focus:border-[color:var(--module-entrenamientos)] sm:min-h-32"
 
 const steps = [
   {
@@ -91,13 +91,10 @@ export function EntrenoFuerzaFormCard() {
     label: gimnasio.nombre_gimnasio,
     description: gimnasio.comuna || undefined,
   }))
-  const selectedGym = availableGimnasios.find(
-    (gimnasio) => String(gimnasio.id_gimnasio) === form.id_gimnasio
-  )
 
   return (
     <section className="grid gap-4 sm:gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-      <FormPanel eyebrow="Registro" accent="tertiary">
+      <FormPanel accent="tertiary">
         <div className="space-y-5 sm:space-y-6">
           {entrenamientoActivo ? (
             <div className="rounded-xl bg-[color:var(--surface-low)] p-4 sm:rounded-2xl sm:p-5">
@@ -148,35 +145,14 @@ export function EntrenoFuerzaFormCard() {
                 />
               </FieldGroup>
 
-              {selectedGym ? (
-                <FormNote>
-                  Vas a abrir la sesion en{" "}
-                  <span className="font-medium text-foreground">{selectedGym.nombre_gimnasio}</span>
-                  {selectedGym.comuna ? `, ${selectedGym.comuna}` : ""}.
-                </FormNote>
-              ) : (
-                <FormNote>
-                  Cuando actives esta sesion, el entrenamiento quedara vinculado al gimnasio y tus registros se armaran desde ese contexto.
-                </FormNote>
-              )}
-
               <FormSubmitBar>
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
-                  <Button
-                    type="submit"
-                    disabled={submitting || availableGimnasios.length === 0}
-                    className="w-full bg-[color:var(--module-entrenamientos)] text-[color:var(--module-entrenamientos-foreground)] hover:bg-[color:var(--module-entrenamientos)]/90 sm:w-auto"
-                  >
-                    {submitting ? "Abriendo sesion..." : "Registrar entrenamiento"}
-                  </Button>
-                  <Button
-                    asChild
-                    variant="ghost"
-                    className="w-full text-foreground hover:text-[color:var(--module-entrenamientos)] sm:w-auto"
-                  >
-                    <Link href="/app/entrenamientos/gimnasios">Ver gimnasios</Link>
-                  </Button>
-                </div>
+                <Button
+                  type="submit"
+                  disabled={submitting || availableGimnasios.length === 0}
+                  className="w-full bg-[color:var(--module-entrenamientos)] text-[color:var(--module-entrenamientos-foreground)] hover:bg-[color:var(--module-entrenamientos)]/90 sm:w-auto"
+                >
+                  {submitting ? "Abriendo sesion..." : "Registrar entrenamiento"}
+                </Button>
               </FormSubmitBar>
             </form>
           )}
@@ -209,39 +185,6 @@ export function EntrenoFuerzaFormCard() {
           </div>
         </article>
 
-        <details className="group rounded-xl bg-[color:var(--surface-low)] p-4 xl:hidden">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-            <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <Flame className="size-4 text-[color:var(--module-entrenamientos)]" />
-              Paso a paso
-            </span>
-            <span className="font-label text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground transition group-open:rotate-180">
-              Ver
-            </span>
-          </summary>
-          <ol className="mt-4 space-y-2.5">
-            {steps.map((step) => (
-              <li
-                key={step.index}
-                className="flex items-start gap-3 rounded-lg bg-[color:var(--surface-lowest)] p-3"
-              >
-                <span
-                  className="flex size-7 shrink-0 items-center justify-center rounded-md font-label text-[0.65rem] font-semibold tracking-[0.1em]"
-                  style={{
-                    background: "color-mix(in oklch, var(--module-entrenamientos) 12%, transparent)",
-                    color: "var(--module-entrenamientos)",
-                  }}
-                >
-                  {Number(step.index)}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground">{step.title}</p>
-                  <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{step.description}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </details>
       </section>
     </section>
   )
