@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { isAxiosError } from "axios"
 import { clearStoredSession } from "@/lib/auth-session"
 import { clearPersistedQueryCache } from "@/lib/query-persistence"
 import { getFriendlyErrorMessage } from "@/lib/error-messages"
@@ -123,12 +124,19 @@ export const useAuth = () => {
     }
   }
 
+  // React Query conserva el perfil persistido aunque el servidor ya rechace la sesion (por
+  // ejemplo, tras cerrar sesion en Safari, que en iOS comparte la cookie con la app
+  // instalada). Sin esto, login muestra "Ya estas dentro" con una sesion muerta y "Ir a mi
+  // app" vuelve a rebotar a login.
+  const sessionRejected =
+    isAxiosError(profileQuery.error) && profileQuery.error.response?.status === 401
+
   return {
-    profile: profileQuery.data ?? null,
+    profile: sessionRejected ? null : (profileQuery.data ?? null),
     loadingProfile: profileQuery.isLoading || profileQuery.isFetching,
     submitting: loginMutation.isPending || registerMutation.isPending || logoutMutation.isPending,
     error,
-    isAuthenticated: Boolean(profileQuery.data),
+    isAuthenticated: Boolean(profileQuery.data) && !sessionRejected,
     fetchProfile: profileQuery.refetch,
     login,
     register,

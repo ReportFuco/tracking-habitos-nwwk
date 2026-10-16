@@ -81,12 +81,13 @@ api.interceptors.response.use(
       isHandlingUnauthorized = true
 
       clearStoredSession()
-      void clearPersistedQueryCache()
 
       const currentPath = `${window.location.pathname}${window.location.search}`
       const nextParam = `?next=${encodeURIComponent(currentPath)}`
 
-      window.location.replace(`${LOGIN_PATH}${nextParam}`)
+      // Se espera a borrar el cache persistido: si la navegacion gana, login lo restaura con
+      // el perfil de la sesion muerta.
+      void clearPersistedQueryCache().finally(() => window.location.replace(`${LOGIN_PATH}${nextParam}`))
     }
 
     return Promise.reject(error)
