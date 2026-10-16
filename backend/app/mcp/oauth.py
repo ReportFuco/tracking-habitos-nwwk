@@ -116,12 +116,6 @@ def validar_redirect_uri(uri: str) -> None:
     )
 
 
-def normalizar_scopes(pedidos: list[str] | None) -> list[str]:
-    """Scopes de Ritmo dentro de lo pedido. Sin pedido (o sin ninguno conocido), todos."""
-    conocidos = [scope for scope in (pedidos or []) if scope in SCOPES_OAUTH]
-    return conocidos or list(SCOPES_OAUTH)
-
-
 # ---------------------------------------------------------------------------
 # Limite del registro dinamico
 # ---------------------------------------------------------------------------
@@ -366,7 +360,9 @@ class RitmoOAuthProvider:
             if id_autorizacion is None:
                 raise TokenError("invalid_grant", "El refresh token ya fue usado.")
             autorizacion = await db.get(OAuthAutorizacion, id_autorizacion)
-            tokens = await _emitir_tokens(db, autorizacion, scopes, refresh_token.resource)
+            # Lo que aprobo el usuario manda sobre el scope que reenvia el cliente, que puede
+            # ser el de su registro y recortaria los modulos otorgados de mas.
+            tokens = await _emitir_tokens(db, autorizacion, autorizacion.scopes, refresh_token.resource)
             await db.commit()
         return tokens
 
@@ -426,7 +422,10 @@ class Solicitud:
 
     @property
     def scopes_disponibles(self) -> list[str]:
-        return normalizar_scopes(self.scopes_pedidos)
+        # Se ofrecen todos aunque la app haya pedido menos: los clientes reusan el scope con
+        # el que se registraron (Claude.ai pide solo finanzas si se conecto antes de existir
+        # entrenamientos) y el usuario no tendria como dar acceso a un modulo nuevo.
+        return list(SCOPES_OAUTH)
 
 
 async def leer_solicitud(token: str) -> Solicitud:

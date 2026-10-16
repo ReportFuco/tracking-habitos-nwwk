@@ -18,6 +18,7 @@ from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
 
 from app.main import app
+from app.mcp.oauth import SCOPES_OAUTH
 from app.mcp.server import crear_app_mcp, crear_servidor_mcp
 from app.mcp.urls import CONSENTIMIENTO_URL, ISSUER_URL, MCP_PATH, MCP_URL
 
@@ -179,7 +180,6 @@ async def test_flujo_completo_de_autorizacion(usuario):
         destino = autorizar.headers["location"]
         solicitud = query(destino)["solicitud"]
         detalle = await c.get("/auth/oauth/solicitud", params={"solicitud": solicitud})
-        # Pedir escritura sin que la aplicacion la haya pedido no se acepta.
         aprobado = await c.post(
             "/auth/oauth/solicitud/aprobar", json={"solicitud": solicitud, "scopes": ["finanzas:read"]}
         )
@@ -196,7 +196,7 @@ async def test_flujo_completo_de_autorizacion(usuario):
     assert destino.startswith(CONSENTIMIENTO_URL)
     assert detalle.json() == {
         "cliente_nombre": "Claude", "cliente_uri": None, "redirect_host": "claude.ai",
-        "scopes_disponibles": ["finanzas:read", "finanzas:write"],
+        "scopes_disponibles": list(SCOPES_OAUTH),
     }
     assert aprobado.json()["redirect_url"].startswith(REDIRECT)
     assert vuelta["state"] == "estado-123"
@@ -264,6 +264,26 @@ async def test_refresh_rota_y_el_reuso_corta_la_conexion(usuario):
     assert despues.status_code == 401
     assert 'error="invalid_token"' in despues.headers["www-authenticate"]
     assert refresco_nuevo.status_code == 400
+
+
+@requiere_db
+async def test_cliente_que_pidio_solo_finanzas_puede_recibir_entrenamientos(usuario):
+    # Claude.ai reusa el scope de su registro: si se conecto antes de existir entrenamientos,
+    # sigue pidiendo solo finanzas, tambien al refrescar.
+    async with cliente() as c:
+        client_id, tokens = await conectar(c, usuario, ["finanzas:write", "entrenamientos:read"])
+        nuevos = await c.post("/token", data={
+            "grant_type": "refresh_token", "refresh_token": tokens["refresh_token"],
+            "client_id": client_id, "scope": "finanzas:read finanzas:write",
+        })
+    async with cliente_mcp(nuevos.json()["access_token"]) as mcp:
+        sesiones = await mcp.call_tool("listar_sesiones_fuerza", {})
+
+    otorgados = "entrenamientos:read finanzas:read finanzas:write"
+    assert tokens["scope"] == otorgados
+    assert nuevos.status_code == 200, nuevos.text
+    assert nuevos.json()["scope"] == otorgados
+    assert not sesiones.is_error, sesiones.content
 
 
 @requiere_db
