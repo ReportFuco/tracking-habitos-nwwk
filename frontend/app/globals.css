@@ -86,7 +86,12 @@
    * pagina vuelve a extenderse bajo la barra ("black-translucent"), donde iOS
    * difumina lo que queda detras.
    */
-  --app-header-h: calc(4rem + env(safe-area-inset-top));
+  --app-header-h: calc(4rem + env(safe-area-inset-top) + var(--app-header-extra));
+  /*
+   * Aire extra sobre el topbar en la app instalada: iOS 26 difumina una franja bajo la
+   * barra de estado que alcanza el logo y los botones, y no se puede apagar desde la web.
+   */
+  --app-header-extra: 0px;
 
   --background: #f4f4f2;
   --foreground: #111111;
@@ -544,4 +549,10 @@
 @keyframes ritmo-flash {
   0% { background-color: color-mix(in oklch, var(--highlight) 45%, transparent); }
   100% { background-color: transparent; }
+}
+
+@media (display-mode: standalone) and (max-width: 63.999rem) {
+  :root {
+    --app-header-extra: 0.75rem;
+  }
 }

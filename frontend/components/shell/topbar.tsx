@@ -64,11 +64,12 @@ export function Topbar({
       {/*
         Sin sidebar el header es fixed, no sticky: iOS 26 pinta la barra de estado con el
         fondo opaco de un elemento fixed pegado arriba; si no lo encuentra, difumina lo que
-        queda debajo (el logo y el escudo). app-shell deja un espaciador del mismo alto.
+        queda debajo (el logo y el escudo). app-shell deja un espaciador del mismo alto, que
+        incluye el aire extra de la app instalada (--app-header-extra en globals.css).
       */}
       <header
         className={cn(
-          "fixed inset-x-0 top-0 z-30 flex h-(--app-header-h) items-center gap-3 border-b border-transparent bg-[color:var(--background)] px-4 pt-[env(safe-area-inset-top)] sm:px-8",
+          "fixed inset-x-0 top-0 z-30 flex h-(--app-header-h) items-center gap-3 border-b border-transparent bg-[color:var(--background)] px-4 pt-[calc(env(safe-area-inset-top)+var(--app-header-extra))] sm:px-8",
           variant === "admin" ? "md:sticky" : "lg:sticky",
         )}
       >
