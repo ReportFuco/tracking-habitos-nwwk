@@ -9,7 +9,7 @@ from app.models.finanzas import (
     EnumTipoMovimiento, 
     EnumTipoGasto
 )
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -217,6 +217,10 @@ class MovimientoCreate(BaseModel):
         examples=["2025-12-15T10:30:00"],
         description="Fecha del movimiento. Si no se envía, se usa la fecha actual."
     )
+    hora_conocida: bool = Field(
+        True,
+        description="False si de created_at solo se conoce el día.",
+    )
     id_deuda: Optional[int] = Field(
         None,
         ge=1,
@@ -264,7 +268,9 @@ class MovimientoCreate(BaseModel):
 
 
 # Columnas NOT NULL: en el PATCH un null explicito no significa "borrar", es invalido.
-CAMPOS_PATCH_NO_NULOS = ("tipo_movimiento", "tipo_gasto", "id_categoria", "id_cuenta", "monto", "created_at")
+CAMPOS_PATCH_NO_NULOS = (
+    "tipo_movimiento", "tipo_gasto", "id_categoria", "id_cuenta", "monto", "created_at", "hora_conocida",
+)
 
 
 class MovimientoPatch(BaseModel):
@@ -276,6 +282,9 @@ class MovimientoPatch(BaseModel):
     # null borra la descripcion (la columna es nullable).
     descripcion: Optional[str] = Field(None, max_length=250)
     created_at: Optional[datetime] = None
+    hora_conocida: Optional[bool] = None
+    # null lo deja pendiente de conciliar con la cartola.
+    fecha_contable: Optional[date] = None
     # null desvincula el movimiento de la deuda.
     id_deuda: Optional[int] = Field(None, ge=1)
 

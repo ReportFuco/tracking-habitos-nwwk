@@ -3,7 +3,8 @@
 Las respuestas REST traen campos que al LLM no le sirven (ubicacion, timestamps de
 creacion) y le gastan contexto; aqui va solo lo necesario para razonar.
 """
-from datetime import datetime
+from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -15,15 +16,26 @@ class CuentaMCP(BaseModel):
     nombre_cuenta: str
     producto: str | None = None
     banco: str | None = None
+    saldo_inicial: int | None = Field(None, description="Saldo en CLP al cierre de fecha_saldo_inicial.")
+    fecha_saldo_inicial: date | None = None
+    saldo_actual: int = Field(
+        description=(
+            "Saldo inicial más todos los movimientos posteriores, por fecha contable. En una "
+            "tarjeta de crédito queda negativo: su valor absoluto es lo que se debe."
+        ),
+    )
 
     @classmethod
-    def desde_modelo(cls, cuenta: CuentaUsuario) -> "CuentaMCP":
+    def desde_modelo(cls, cuenta: CuentaUsuario, saldo_actual: int) -> "CuentaMCP":
         producto = cuenta.producto_financiero
         return cls(
             id_cuenta=cuenta.id_cuenta,
             nombre_cuenta=cuenta.nombre_cuenta,
             producto=producto.nombre_producto if producto else None,
             banco=producto.banco.nombre_banco if producto and producto.banco else None,
+            saldo_inicial=cuenta.saldo_inicial,
+            fecha_saldo_inicial=cuenta.fecha_saldo_inicial,
+            saldo_actual=saldo_actual,
         )
 
 
@@ -97,7 +109,17 @@ class ItemMCP(BaseModel):
 
 class MovimientoMCP(BaseModel):
     id_movimiento: int
-    fecha: datetime = Field(description="Fecha y hora en calendario de Chile (sin zona horaria).")
+    fecha: datetime = Field(description="Fecha y hora de la operación, en hora de Chile.")
+    hora_conocida: bool = Field(description="False si solo se conoce el día (la hora de fecha no es real).")
+    fecha_contable: date | None = Field(
+        None,
+        description="Día en que el banco lo registró, según la cartola. El saldo se calcula con esta fecha.",
+    )
+    estado: Literal["pendiente", "conciliado"] = Field(
+        description="'conciliado' si ya calzó con una fila de cartola (tiene fecha_contable).",
+    )
+    origen: Literal["manual", "importado"]
+    id_importacion: int | None = None
     tipo_movimiento: str = Field(description="'gasto' o 'ingreso'.")
     tipo_gasto: str = Field(description="'fijo' o 'variable'.")
     monto: int = Field(description="Monto en CLP, entero y siempre positivo.")
@@ -106,6 +128,11 @@ class MovimientoMCP(BaseModel):
     cuenta: str | None = None
     id_cuenta: int
     descripcion: str | None = None
+    descripcion_original: str | None = Field(None, description="Glosa de la cartola con la que calzó.")
+    id_transferencia: str | None = Field(
+        None,
+        description="Si es una transferencia entre cuentas propias: une este movimiento con su espejo.",
+    )
     id_deuda: int | None = Field(None, description="Deuda que abona este movimiento.")
     deuda: str | None = None
     productos: list[ItemMCP] = Field(
@@ -118,6 +145,11 @@ class MovimientoMCP(BaseModel):
         return cls(
             id_movimiento=movimiento.id_transaccion,
             fecha=movimiento.created_at,
+            hora_conocida=movimiento.hora_conocida,
+            fecha_contable=movimiento.fecha_contable,
+            estado="conciliado" if movimiento.fecha_contable else "pendiente",
+            origen="importado" if movimiento.id_importacion else "manual",
+            id_importacion=movimiento.id_importacion,
             tipo_movimiento=movimiento.tipo_movimiento.value,
             tipo_gasto=movimiento.tipo_gasto.value,
             monto=movimiento.monto,
@@ -126,6 +158,8 @@ class MovimientoMCP(BaseModel):
             cuenta=movimiento.cuenta.nombre_cuenta if movimiento.cuenta else None,
             id_cuenta=movimiento.id_cuenta,
             descripcion=movimiento.descripcion,
+            descripcion_original=movimiento.descripcion_original,
+            id_transferencia=str(movimiento.id_transferencia) if movimiento.id_transferencia else None,
             id_deuda=movimiento.id_deuda,
             deuda=movimiento.deuda.nombre if movimiento.deuda else None,
             productos=[ItemMCP.desde_modelo(item) for item in movimiento.items],
@@ -134,6 +168,7 @@ class MovimientoMCP(BaseModel):
 
 class MovimientosMCP(BaseModel):
     items: list[MovimientoMCP]
+    total: int = Field(description="Movimientos que cumplen los filtros, en todas las páginas.")
     offset: int
     limit: int
     hay_mas: bool = Field(description="True si existen más resultados: repetir con offset + limit.")
@@ -142,6 +177,34 @@ class MovimientosMCP(BaseModel):
 class MovimientoEliminadoMCP(BaseModel):
     id_movimiento: int
     eliminado: bool = True
+    id_espejo_eliminado: int | None = Field(
+        None,
+        description="Si era una transferencia, el movimiento espejo de la otra cuenta, que también se eliminó.",
+    )
+
+
+class SaldoCuentaMCP(BaseModel):
+    id_cuenta: int
+    cuenta: str
+    al: date | None = Field(description="Saldo al cierre de este día. Null: con todos los movimientos.")
+    saldo: int = Field(description="CLP. En una tarjeta de crédito, negativo = deuda.")
+    saldo_inicial: int | None = None
+    fecha_saldo_inicial: date | None = None
+    ingresos: int = Field(description="Suma de ingresos considerados (desde fecha_saldo_inicial, excluida).")
+    gastos: int = Field(description="Suma de gastos considerados.")
+    cantidad_movimientos: int
+    pendientes: int = Field(
+        description=(
+            "Movimientos considerados que aún no calzan con la cartola (sin fecha contable): "
+            "el saldo usa su fecha de operación y pueden explicar una diferencia con el banco."
+        ),
+    )
+
+
+class TransferenciaMCP(BaseModel):
+    id_transferencia: str
+    origen: MovimientoMCP = Field(description="Gasto en la cuenta de origen.")
+    destino: MovimientoMCP = Field(description="Ingreso en la cuenta de destino.")
 
 
 class DeudaEliminadaMCP(BaseModel):
@@ -152,3 +215,6 @@ class DeudaEliminadaMCP(BaseModel):
 class ImportacionDeshechaMCP(BaseModel):
     id_importacion: int
     movimientos_eliminados: int
+    conciliaciones_revertidas: int = Field(
+        description="Movimientos registrados a mano que vuelven a quedar pendientes de conciliar.",
+    )

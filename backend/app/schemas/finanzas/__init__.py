@@ -30,8 +30,12 @@ from .categoria import (
 from .deudas import DeudaCreate, DeudaListResponse, DeudaPatch, DeudaResponse
 from .importacion import (
     MAX_FILAS_IMPORTACION,
+    CadenaSaldo,
+    ControlSaldo,
     FilaImportacion,
     FilaPrevisualizada,
+    MovimientoCoincidente,
+    MovimientoPendiente,
     ImportacionesLista,
     ImportacionResumen,
     PrevisualizacionImportacion,
@@ -75,7 +79,11 @@ __all__ = [
     # Importación (MCP)
     "MAX_FILAS_IMPORTACION",
     "FilaImportacion",
+    "CadenaSaldo",
+    "ControlSaldo",
     "FilaPrevisualizada",
+    "MovimientoCoincidente",
+    "MovimientoPendiente",
     "ImportacionesLista",
     "ImportacionResumen",
     "PrevisualizacionImportacion",

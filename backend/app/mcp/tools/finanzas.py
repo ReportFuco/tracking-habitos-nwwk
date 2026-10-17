@@ -6,7 +6,7 @@ la API REST.
 """
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.scopes import FINANZAS_READ, FINANZAS_WRITE, tiene_scope
 from app.db.session import AsyncSessionLocal
 from app.mcp.auth import SCOPE_API_KEY_SCOPES, SCOPE_AUTH_USER_ID
+from app.mcp.fechas import adaptar_fechas
 from app.mcp.schemas import (
     CategoriaMCP,
     CategoriasMCP,
@@ -85,8 +86,13 @@ Mes = Annotated[
 TipoMovimiento = Literal["gasto", "ingreso"]
 TipoGasto = Literal["variable", "fijo"]
 Fecha = Annotated[
-    datetime | None,
-    Field(description="Fecha y hora del movimiento en hora de Chile, ej. 2026-09-27T13:30:00."),
+    date | datetime | None,
+    Field(
+        description=(
+            "Fecha y hora del movimiento en hora de Chile, ej. 2026-09-27T13:30:00. Solo la "
+            "fecha (2026-09-27) si no se conoce la hora."
+        ),
+    ),
 ]
 
 
@@ -116,11 +122,22 @@ async def sesion_usuario(
             raise ToolError(exc.mensaje) from exc
 
 
-def _fecha_chile(fecha: datetime | None) -> datetime | None:
-    """created_at es naive en hora de Chile: una fecha con zona se convierte y se le quita."""
-    if fecha is None or fecha.tzinfo is None:
+def _fecha_chile(fecha: date | datetime | None) -> datetime | None:
+    """created_at es naive en hora de Chile: una fecha con zona se convierte y se le quita.
+    Una fecha sin hora queda a las 00:00 (ver _hora_conocida)."""
+    if fecha is None:
+        return None
+    if not isinstance(fecha, datetime):
+        return datetime.combine(fecha, datetime.min.time())
+    if fecha.tzinfo is None:
         return fecha
     return fecha.astimezone(CHILE_TZ).replace(tzinfo=None)
+
+
+def _hora_conocida(fecha: date | datetime | None) -> bool | None:
+    if fecha is None:
+        return None
+    return isinstance(fecha, datetime)
 
 
 def _validar(modelo, **datos):
@@ -132,14 +149,18 @@ def _validar(modelo, **datos):
 
 
 async def listar_cuentas(ctx: Context) -> CuentasMCP:
-    """Cuentas activas del usuario (id, nombre, producto y banco).
+    """Cuentas activas del usuario (id, nombre, producto, banco y saldo).
 
     Úsala para traducir el nombre de una cuenta ("la débito", "la tarjeta de crédito")
-    a su id_cuenta antes de filtrar o registrar movimientos.
+    a su id_cuenta antes de filtrar o registrar movimientos. saldo_actual solo es
+    comparable con el banco si la cuenta tiene saldo inicial (ver editar_cuenta).
     """
     async with sesion_usuario(ctx) as (db, usuario):
         items = await cuentas.listar_cuentas(db, usuario, solo_activas=True)
-        return CuentasMCP(items=[CuentaMCP.desde_modelo(cuenta) for cuenta in items])
+        saldos = await cuentas.saldos(db, items)
+        return CuentasMCP(
+            items=[CuentaMCP.desde_modelo(cuenta, saldos[cuenta.id_cuenta].saldo) for cuenta in items]
+        )
 
 
 async def listar_categorias(ctx: Context) -> CategoriasMCP:
@@ -257,7 +278,20 @@ async def buscar_movimientos(
         Field(min_length=1, max_length=100, description="Busca en la descripción y en el nombre de la categoría."),
     ] = None,
     id_deuda: Annotated[int | None, Field(ge=1, description="Solo los abonos de esta deuda (ver listar_deudas).")] = None,
-    limit: Annotated[int, Field(ge=1, le=100, description="Máximo de movimientos a devolver.")] = 30,
+    fecha_desde: Annotated[
+        date | None,
+        Field(description="Desde este día, incluido (fecha de operación). Se combina con year/month."),
+    ] = None,
+    fecha_hasta: Annotated[date | None, Field(description="Hasta este día, incluido (fecha de operación).")] = None,
+    origen: Annotated[
+        Literal["manual", "importado"] | None,
+        Field(description="'importado' si lo creó una carga de cartola; 'manual' si se registró a mano."),
+    ] = None,
+    estado: Annotated[
+        Literal["pendiente", "conciliado"] | None,
+        Field(description="'pendiente' si aún no calza con una fila de cartola (sin fecha contable)."),
+    ] = None,
+    limit: Annotated[int, Field(ge=1, le=200, description="Máximo de movimientos a devolver.")] = 30,
     offset: Annotated[int, Field(ge=0, description="Movimientos a omitir, para paginar.")] = 0,
 ) -> MovimientosMCP:
     """Lista movimientos del usuario, del más reciente al más antiguo, con filtros opcionales.
@@ -265,26 +299,28 @@ async def buscar_movimientos(
     Para totales o comparaciones entre meses es mejor resumen_mes o las distribuciones:
     ya vienen agregadas y no requieren paginar.
     """
+    filtros = dict(
+        year=year,
+        month=month,
+        tipo_movimiento=EnumTipoMovimiento(tipo_movimiento) if tipo_movimiento else None,
+        id_categoria=id_categoria,
+        id_cuenta=id_cuenta,
+        q=texto,
+        id_deuda=id_deuda,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        origen=origen,
+        estado=estado,
+    )
     async with sesion_usuario(ctx) as (db, usuario):
-        # Se pide uno extra para saber si hay otra pagina sin contar el total.
-        items = await movimientos.listar_movimientos(
-            db,
-            usuario,
-            offset=offset,
-            limit=limit + 1,
-            year=year,
-            month=month,
-            tipo_movimiento=EnumTipoMovimiento(tipo_movimiento) if tipo_movimiento else None,
-            id_categoria=id_categoria,
-            id_cuenta=id_cuenta,
-            q=texto,
-            id_deuda=id_deuda,
-        )
+        items = await movimientos.listar_movimientos(db, usuario, offset=offset, limit=limit, **filtros)
+        total = await movimientos.contar_movimientos(db, usuario, **filtros)
         return MovimientosMCP(
-            items=[MovimientoMCP.desde_modelo(movimiento) for movimiento in items[:limit]],
+            items=[MovimientoMCP.desde_modelo(movimiento) for movimiento in items],
+            total=total,
             offset=offset,
             limit=limit,
-            hay_mas=len(items) > limit,
+            hay_mas=offset + len(items) < total,
         )
 
 
@@ -390,6 +426,7 @@ async def registrar_movimiento(
         monto=monto,
         descripcion=descripcion,
         created_at=_fecha_chile(fecha),
+        hora_conocida=_hora_conocida(fecha) is not False,
         id_deuda=id_deuda,
     )
     async with sesion_usuario(ctx, FINANZAS_WRITE) as (db, usuario):
@@ -410,6 +447,10 @@ async def editar_movimiento(
         Field(max_length=250, description="Nueva descripción. Un texto vacío la borra."),
     ] = None,
     fecha: Fecha = None,
+    fecha_contable: Annotated[
+        date | None,
+        Field(description="Día en que el banco lo registró. Lo deja conciliado; el saldo usa esta fecha."),
+    ] = None,
     id_deuda: Annotated[int | None, Field(ge=1, description="Vincula el movimiento como abono a esta deuda.")] = None,
     quitar_deuda: Annotated[bool, Field(description="True desvincula el movimiento de su deuda.")] = False,
 ) -> MovimientoMCP:
@@ -421,6 +462,8 @@ async def editar_movimiento(
         "id_categoria": id_categoria,
         "id_cuenta": id_cuenta,
         "created_at": _fecha_chile(fecha),
+        "hora_conocida": _hora_conocida(fecha),
+        "fecha_contable": fecha_contable,
     }
     cambios = {campo: valor for campo, valor in cambios.items() if valor is not None}
     if descripcion is not None:
@@ -444,11 +487,12 @@ async def eliminar_movimiento(
     ctx: Context,
     id_movimiento: Annotated[int, Field(ge=1)],
 ) -> MovimientoEliminadoMCP:
-    """Elimina definitivamente un movimiento del usuario. No se puede deshacer: confirma
-    con el usuario antes de llamarla."""
+    """Elimina definitivamente un movimiento del usuario. Si es una transferencia entre
+    cuentas propias elimina también su espejo en la otra cuenta. No se puede deshacer:
+    confirma con el usuario antes de llamarla."""
     async with sesion_usuario(ctx, FINANZAS_WRITE) as (db, usuario):
-        await movimientos.eliminar_movimiento(db, usuario, id_movimiento)
-        return MovimientoEliminadoMCP(id_movimiento=id_movimiento)
+        id_espejo = await movimientos.eliminar_movimiento(db, usuario, id_movimiento)
+        return MovimientoEliminadoMCP(id_movimiento=id_movimiento, id_espejo_eliminado=id_espejo)
 
 
 HERRAMIENTAS = (
@@ -473,7 +517,12 @@ HERRAMIENTAS = (
 
 def registrar_herramientas_finanzas(servidor: MCPServer) -> None:
     # Import diferido: esos modulos reutilizan sesion_usuario y las anotaciones de este.
-    from app.mcp.tools import deudas, importacion
+    from app.mcp.tools import cuentas, deudas, importacion
 
-    for funcion, titulo, anotaciones in (*HERRAMIENTAS, *deudas.HERRAMIENTAS, *importacion.HERRAMIENTAS):
-        servidor.add_tool(funcion, title=titulo, annotations=anotaciones)
+    for funcion, titulo, anotaciones in (
+        *HERRAMIENTAS,
+        *cuentas.HERRAMIENTAS,
+        *deudas.HERRAMIENTAS,
+        *importacion.HERRAMIENTAS,
+    ):
+        servidor.add_tool(adaptar_fechas(funcion), title=titulo, annotations=anotaciones)

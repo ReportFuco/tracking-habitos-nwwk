@@ -2,7 +2,8 @@
 
 Solo existen por MCP: el modelo conectado lee el Excel que sube el usuario (cada banco
 tiene columnas distintas), lo normaliza a filas y las envía. Flujo: previsualizar,
-confirmar con el usuario, importar; y deshacer si algo salió mal.
+confirmar con el usuario, importar (concilia lo registrado a mano y compara el saldo con
+el banco); y deshacer si algo salió mal.
 """
 from typing import Annotated
 
@@ -41,8 +42,9 @@ Filas = Annotated[
 
 async def previsualizar_importacion(ctx: Context, id_cuenta: IdCuenta, filas: Filas) -> PrevisualizacionImportacion:
     """Revisa una cartola normalizada sin guardar nada: cuántas filas son nuevas, cuáles ya
-    se importaron antes, cuáles parecen duplicar un movimiento registrado a mano y cuáles
-    son inválidas (categoría o deuda que no corresponde). Úsala siempre antes de
+    se importaron antes, cuáles calzan con un movimiento registrado a mano (se conciliarán
+    con él) y cuáles son inválidas (categoría, cuenta o deuda que no corresponde). Si las
+    filas traen saldo, valida la cadena de saldos. Úsala siempre antes de
     importar_movimientos y muéstrale el resumen al usuario.
     """
     async with sesion_usuario(ctx) as (db, usuario):
@@ -62,14 +64,18 @@ async def importar_movimientos(
         Field(
             description=(
                 "Índices de filas marcadas 'posible_duplicado' que el usuario confirmó que son "
-                "movimientos distintos y sí deben importarse. El resto de posibles duplicados se omite."
+                "movimientos distintos y deben importarse aparte. El resto se concilia con el "
+                "movimiento registrado a mano con el que calza."
             ),
         ),
     ] = None,
 ) -> ResultadoImportacion:
     """Importa la cartola en una sola transacción: si alguna fila es inválida no se crea
-    nada. Omite las filas ya importadas y los posibles duplicados no confirmados. Llámala
-    solo después de previsualizar_importacion y de que el usuario apruebe el resumen.
+    nada. Omite las filas ya importadas, concilia las que calzan con un movimiento
+    registrado a mano y vincula las transferencias. Si las filas traen saldo, devuelve el
+    control contra el saldo de Ritmo y los movimientos aún pendientes, que suelen explicar
+    una diferencia. Llámala solo después de previsualizar_importacion y de que el usuario
+    apruebe el resumen. Para más de 500 filas, importa en lotes en orden cronológico.
     """
     async with sesion_usuario(ctx, FINANZAS_WRITE) as (db, usuario):
         return await importacion.importar(
@@ -92,10 +98,16 @@ async def deshacer_importacion(
     id_importacion: Annotated[int, Field(ge=1)],
 ) -> ImportacionDeshechaMCP:
     """Elimina todos los movimientos que creó una importación (incluidos los que se
-    editaron después). No se puede deshacer: confirma con el usuario antes de llamarla."""
+    editaron después y los espejos de transferencias en otras cuentas) y deja otra vez
+    pendientes los registrados a mano que había conciliado. No se puede deshacer: confirma
+    con el usuario antes de llamarla."""
     async with sesion_usuario(ctx, FINANZAS_WRITE) as (db, usuario):
-        borrados = await importacion.deshacer_importacion(db, usuario, id_importacion)
-        return ImportacionDeshechaMCP(id_importacion=id_importacion, movimientos_eliminados=borrados)
+        borrados, revertidas = await importacion.deshacer_importacion(db, usuario, id_importacion)
+        return ImportacionDeshechaMCP(
+            id_importacion=id_importacion,
+            movimientos_eliminados=borrados,
+            conciliaciones_revertidas=revertidas,
+        )
 
 
 HERRAMIENTAS = (

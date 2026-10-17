@@ -74,9 +74,11 @@ el `issuer` que los clientes comparan carácter a carácter.
 
 | Herramienta | Qué devuelve |
 |---|---|
-| `listar_cuentas` | Cuentas activas: id, nombre, producto, banco |
+| `listar_cuentas` | Cuentas activas: id, nombre, producto, banco, saldo inicial y saldo actual |
+| `editar_cuenta` | Nombre y saldo inicial (`saldo_inicial` al cierre de `fecha_saldo_inicial`) |
+| `saldo_cuenta` | Saldo al cierre de un día, por fecha contable, con los pendientes de conciliar |
 | `listar_categorias` | Categorías: id, nombre |
-| `buscar_movimientos` | Movimientos con filtros (año, mes, tipo, categoría, cuenta, texto) y paginación |
+| `buscar_movimientos` | Movimientos con filtros (año, mes, rango de fechas, tipo, categoría, cuenta, texto, origen, estado), `total` y paginación |
 | `resumen_mes` | Gasto, ingreso, balance, fijo/variable, ahorro, variación y proyección |
 | `tendencia_mensual` | Últimos N meses |
 | `distribucion_por_categoria` | Total y % por categoría en un mes |
@@ -84,12 +86,13 @@ el `issuer` que los clientes comparan carácter a carácter.
 | `gasto_diario` | Gasto/ingreso por día del mes |
 | `registrar_movimiento` | Crea un gasto o ingreso (idempotente con `client_request_id`) |
 | `editar_movimiento` | Cambia solo los campos enviados |
-| `eliminar_movimiento` | Borra un movimiento (marcada como destructiva) |
+| `eliminar_movimiento` | Borra un movimiento, y el espejo si es una transferencia (marcada como destructiva) |
+| `registrar_transferencia` | Gasto en el origen + ingreso en el destino, unidos por `id_transferencia` |
 | `listar_deudas` | Deudas con monto total, abonado, saldo y estado, más totales pendientes |
 | `crear_deuda` / `editar_deuda` / `eliminar_deuda` | Deudas `debo` o `me_deben`; se abonan con movimientos que llevan `id_deuda` |
-| `previsualizar_importacion` | Revisa una cartola normalizada sin guardar: nuevas, ya importadas, posibles duplicados e inválidas |
-| `importar_movimientos` | Importa la cartola en una transacción (todo o nada) |
-| `listar_importaciones` / `deshacer_importacion` | Cargas anteriores y su reversión completa |
+| `previsualizar_importacion` | Revisa una cartola normalizada sin guardar: nuevas, ya importadas, las que calzan con un manual, inválidas y la cadena de saldos |
+| `importar_movimientos` | Importa la cartola en una transacción (todo o nada), concilia los manuales y compara el saldo con el banco |
+| `listar_importaciones` / `deshacer_importacion` | Cargas anteriores y su reversión completa (también revierte conciliaciones y espejos) |
 
 ### Entrenamientos
 
@@ -117,10 +120,35 @@ Crear, editar, eliminar e importar requieren `finanzas:write` (ver el listado co
 `app/mcp/tools/`). Montos en CLP enteros; fechas en calendario de Chile (una fecha con
 zona horaria se convierte).
 
-La carga masiva existe solo por MCP: el modelo lee el Excel del banco, lo normaliza a
-filas (`FilaImportacion`) y asigna categorías. Cada fila recibe un `client_request_id`
-determinista (UUID5 de usuario, cuenta, fecha, tipo, monto y glosa original), así que
-subir cartolas que se solapan no duplica movimientos.
+Las salidas llevan las fecha-hora con offset de Chile (`2026-09-25T13:00:00-03:00`): el
+`outputSchema` declara `format: date-time` (RFC 3339) y claude.ai rechaza la respuesta
+entera si falta el offset. La BD y la API REST siguen con fechas naive;
+`app/mcp/fechas.py` envuelve cada herramienta al registrarla. Los tests validan cada
+respuesta contra su `outputSchema` con chequeo de formatos (`ClienteValidado`).
+
+### Saldo y conciliación con cartolas
+
+- **Saldo**: `saldo_inicial` + ingresos − gastos con fecha posterior a
+  `fecha_saldo_inicial`. Cada movimiento cuenta por su `fecha_contable` (la de la
+  cartola) o, si aún está pendiente, por su fecha de operación. En tarjetas de crédito
+  queda negativo (lo que se debe).
+- **Fecha contable**: la pone la importación. La analítica sigue usando la fecha de
+  operación, así el gasto cae el día en que se hizo. Un movimiento sin fecha contable está
+  `pendiente`; con ella, `conciliado`.
+- **Carga masiva**: solo por MCP. El modelo lee el Excel del banco, lo normaliza a filas
+  (`FilaImportacion`) y asigna categorías. Cada fila tiene una clave determinista (UUID5
+  de usuario, cuenta, fecha contable, tipo, monto, glosa y número de aparición) guardada en
+  `clave_cartola`, así que subir cartolas que se solapan no duplica movimientos.
+- **Conciliación**: una fila que calza con un movimiento pendiente de la misma cuenta,
+  tipo y monto (registrado entre 4 días antes y 1 después de su fecha contable) no crea
+  otro: el existente conserva su fecha y toma la fecha contable y la glosa. Deshacer la
+  importación lo deja pendiente otra vez.
+- **Transferencias** (`id_transferencia`): dos movimientos espejo entre cuentas propias.
+  Mueven el saldo de ambas y la analítica los excluye. Una fila con
+  `id_cuenta_contraparte` se vincula con el espejo que ya exista en la otra cuenta o le
+  crea uno pendiente.
+- **Control**: si las filas traen `saldo`, se valida la cadena y al importar se devuelve
+  `saldo_banco`, `saldo_ritmo`, `diferencia` y los movimientos que siguen pendientes.
 
 ## Conectar un cliente
 

@@ -1,5 +1,6 @@
 from sqlalchemy import (
     CheckConstraint,
+    Date,
     Integer, 
     String, 
     Text, 
@@ -15,7 +16,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 from app.db.base import Base
@@ -95,6 +96,10 @@ class CuentaUsuario(Base):
     )
     nombre_cuenta: Mapped[str] = mapped_column(String(100))
     activo: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), default=True)
+    # Saldo al cierre de fecha_saldo_inicial. El saldo a otra fecha suma los movimientos
+    # posteriores (ver services.finanzas.cuentas.saldos). Sin fecha cuentan todos.
+    saldo_inicial: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    fecha_saldo_inicial: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, 
         server_default=text("now()"), 
@@ -162,6 +167,7 @@ class Movimiento(Base):
             "client_request_id",
             name="uq_movimiento_client_request_id",
         ),
+        UniqueConstraint("clave_cartola", name="uq_movimiento_clave_cartola"),
         CheckConstraint(
             "(en_lugar_compra AND latitud IS NOT NULL AND longitud IS NOT NULL "
             "AND precision_ubicacion IS NOT NULL) OR "
@@ -204,6 +210,16 @@ class Movimiento(Base):
         nullable=True,
         index=True,
     )
+    # Importación que concilió este movimiento registrado a mano con una fila de cartola.
+    id_importacion_conciliacion: Mapped[int | None] = mapped_column(
+        ForeignKey(table_ref(FINANZAS_SCHEMA, "importacion.id_importacion"), ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    # Une los dos movimientos espejo de una transferencia entre cuentas propias (un gasto
+    # en el origen y un ingreso en el destino). Mueven el saldo pero no cuentan como gasto
+    # ni ingreso en la analítica.
+    id_transferencia: Mapped[UUID | None] = mapped_column(Uuid, nullable=True, index=True)
     tipo_movimiento: Mapped[EnumTipoMovimiento] = mapped_column(
         SQLEnum(
             EnumTipoMovimiento,
@@ -225,6 +241,18 @@ class Movimiento(Base):
     )
     monto: Mapped[int] = mapped_column(Integer, nullable=False)
     descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Glosa y clave de la fila de cartola que lo creó o con la que se concilió.
+    descripcion_original: Mapped[str | None] = mapped_column(Text, nullable=True)
+    clave_cartola: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
+    # Día en que el banco lo registró (la operación puede ser anterior: después de las
+    # 14:00 o en día inhábil pasa al día hábil siguiente). Null = pendiente de conciliar.
+    fecha_contable: Mapped[date | None] = mapped_column(Date, nullable=True)
+    hora_conocida: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=text("true"),
+    )
     en_lugar_compra: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

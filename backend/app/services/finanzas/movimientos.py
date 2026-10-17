@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, desc, func, or_, select
@@ -53,16 +53,33 @@ def rango_mes(year: int, month: int) -> tuple[datetime, datetime]:
 
 def filtros_listado_movimientos(
     *,
-    year: int | None,
-    month: int | None,
-    tipo_movimiento: EnumTipoMovimiento | None,
-    id_categoria: int | None,
-    id_cuenta: int | None,
-    q: str | None,
+    year: int | None = None,
+    month: int | None = None,
+    tipo_movimiento: EnumTipoMovimiento | None = None,
+    id_categoria: int | None = None,
+    id_cuenta: int | None = None,
+    q: str | None = None,
     id_deuda: int | None = None,
+    fecha_desde: date | None = None,
+    fecha_hasta: date | None = None,
+    origen: str | None = None,
+    estado: str | None = None,
 ) -> list:
-    """Condiciones WHERE del listado. Un mes sin año usa el año actual de Chile."""
+    """Condiciones WHERE del listado. Un mes sin año usa el año actual de Chile. El rango
+    fecha_desde/fecha_hasta incluye ambos días (fecha de operación)."""
     filtros = []
+    if fecha_desde is not None:
+        filtros.append(Movimiento.created_at >= datetime.combine(fecha_desde, datetime.min.time()))
+    if fecha_hasta is not None:
+        filtros.append(Movimiento.created_at < datetime.combine(fecha_hasta + timedelta(days=1), datetime.min.time()))
+    if origen == "manual":
+        filtros.append(Movimiento.id_importacion.is_(None))
+    elif origen == "importado":
+        filtros.append(Movimiento.id_importacion.is_not(None))
+    if estado == "pendiente":
+        filtros.append(Movimiento.fecha_contable.is_(None))
+    elif estado == "conciliado":
+        filtros.append(Movimiento.fecha_contable.is_not(None))
     if month is not None:
         anio = year or datetime.now(CHILE_TZ).year
         inicio, fin = rango_mes(anio, month)
@@ -82,7 +99,11 @@ def filtros_listado_movimientos(
         filtros.append(Movimiento.id_deuda == id_deuda)
     if q:
         patron = f"%{q.strip()}%"
-        filtros.append(or_(Movimiento.descripcion.ilike(patron), CategoriaFinanza.nombre.ilike(patron)))
+        filtros.append(or_(
+            Movimiento.descripcion.ilike(patron),
+            Movimiento.descripcion_original.ilike(patron),
+            CategoriaFinanza.nombre.ilike(patron),
+        ))
     return filtros
 
 
@@ -118,6 +139,22 @@ def _get_current_chile_month_range() -> tuple[datetime, datetime]:
     return month_start.replace(tzinfo=None), next_month.replace(tzinfo=None)
 
 
+def _consulta_listado(usuario: Usuario, columnas, filtros: dict):
+    consulta = (
+        select(columnas)
+        .join(CuentaUsuario, Movimiento.id_cuenta == CuentaUsuario.id_cuenta)
+        .where(CuentaUsuario.id_usuario == usuario.id_usuario, *filtros_listado_movimientos(**filtros))
+    )
+    if filtros.get("q"):
+        consulta = consulta.join(CategoriaFinanza, Movimiento.id_categoria == CategoriaFinanza.id_categoria)
+    return consulta
+
+
+async def contar_movimientos(db: AsyncSession, usuario: Usuario, **filtros) -> int:
+    """Total de movimientos con los mismos filtros de ``listar_movimientos``."""
+    return await db.scalar(_consulta_listado(usuario, func.count(Movimiento.id_transaccion), filtros))
+
+
 async def listar_movimientos(
     db: AsyncSession,
     usuario: Usuario,
@@ -131,9 +168,13 @@ async def listar_movimientos(
     id_cuenta: int | None = None,
     q: str | None = None,
     id_deuda: int | None = None,
+    fecha_desde: date | None = None,
+    fecha_hasta: date | None = None,
+    origen: str | None = None,
+    estado: str | None = None,
 ) -> list[Movimiento]:
     """Movimientos del usuario, más recientes primero. Sin resultados es una lista vacía."""
-    filtros = filtros_listado_movimientos(
+    filtros = dict(
         year=year,
         month=month,
         tipo_movimiento=tipo_movimiento,
@@ -141,16 +182,12 @@ async def listar_movimientos(
         id_cuenta=id_cuenta,
         q=q,
         id_deuda=id_deuda,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        origen=origen,
+        estado=estado,
     )
-
-    consulta = (
-        select(Movimiento)
-        .execution_options(populate_existing=True)
-        .join(CuentaUsuario, Movimiento.id_cuenta == CuentaUsuario.id_cuenta)
-        .where(CuentaUsuario.id_usuario == usuario.id_usuario, *filtros)
-    )
-    if q:
-        consulta = consulta.join(CategoriaFinanza, Movimiento.id_categoria == CategoriaFinanza.id_categoria)
+    consulta = _consulta_listado(usuario, Movimiento, filtros).execution_options(populate_existing=True)
 
     return (
         await db.execute(
@@ -172,6 +209,7 @@ async def gasto_mes_actual(db: AsyncSession, usuario: Usuario) -> float:
         .where(
             CuentaUsuario.id_usuario == usuario.id_usuario,
             Movimiento.tipo_movimiento == EnumTipoMovimiento.GASTO,
+            Movimiento.id_transferencia.is_(None),
             Movimiento.created_at >= rango_inicio,
             Movimiento.created_at < rango_fin,
         )
@@ -313,7 +351,9 @@ async def editar_movimiento(
     return await _recargar_con_detalle(db, id_movimiento)
 
 
-async def eliminar_movimiento(db: AsyncSession, usuario: Usuario, id_movimiento: int) -> None:
+async def eliminar_movimiento(db: AsyncSession, usuario: Usuario, id_movimiento: int) -> int | None:
+    """Borra el movimiento. Si es parte de una transferencia borra también su espejo (sin
+    él quedaría plata que sale de una cuenta y no llega a ninguna) y devuelve su id."""
     movimiento = await db.scalar(
         select(Movimiento)
         .join(CuentaUsuario, Movimiento.id_cuenta == CuentaUsuario.id_cuenta)
@@ -325,6 +365,19 @@ async def eliminar_movimiento(db: AsyncSession, usuario: Usuario, id_movimiento:
     if not movimiento:
         raise NoEncontrado("Movimiento no encontrado.")
 
+    id_espejo = None
+    if movimiento.id_transferencia is not None:
+        espejo = await db.scalar(
+            select(Movimiento).where(
+                Movimiento.id_transferencia == movimiento.id_transferencia,
+                Movimiento.id_transaccion != movimiento.id_transaccion,
+            )
+        )
+        if espejo is not None:
+            id_espejo = espejo.id_transaccion
+            await db.delete(espejo)
+
     # Sus productos detallados se borran en cascada (ON DELETE CASCADE).
     await db.delete(movimiento)
     await db.commit()
+    return id_espejo

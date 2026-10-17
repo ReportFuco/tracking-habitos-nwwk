@@ -9,6 +9,7 @@ from pydantic import Field
 
 from app.auth.scopes import ENTRENAMIENTOS_READ, ENTRENAMIENTOS_WRITE
 from app.mcp.auth import SCOPE_CLIENTE_NOMBRE
+from app.mcp.fechas import adaptar_fechas
 from app.mcp.tools.finanzas import CREA, SOLO_LECTURA, sesion_usuario
 from app.schemas.entrenamientos.analisis import (
     CargaMuscularResponse,
@@ -200,4 +201,4 @@ HERRAMIENTAS = (
 
 def registrar_herramientas_entrenamientos(servidor) -> None:
     for funcion, titulo, anotaciones in HERRAMIENTAS:
-        servidor.add_tool(funcion, title=titulo, annotations=anotaciones)
+        servidor.add_tool(adaptar_fechas(funcion), title=titulo, annotations=anotaciones)

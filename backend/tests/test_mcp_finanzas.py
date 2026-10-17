@@ -8,9 +8,11 @@ import os
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import httpx
 import httpx2
+import jsonschema
 import pytest
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
@@ -36,6 +38,7 @@ LECTURA = {
     "listar_deudas",
     "previsualizar_importacion",
     "listar_importaciones",
+    "saldo_cuenta",
 }
 ESCRITURA = {
     "registrar_movimiento",
@@ -50,6 +53,8 @@ ESCRITURA = {
     "eliminar_deuda",
     "importar_movimientos",
     "deshacer_importacion",
+    "editar_cuenta",
+    "registrar_transferencia",
 }
 # Del modulo de entrenamientos (tests/test_entrenamientos_seguimiento_db.py).
 ENTRENAMIENTOS_LECTURA = {
@@ -64,6 +69,36 @@ ENTRENAMIENTOS_LECTURA = {
 ENTRENAMIENTOS_ESCRITURA = {"publicar_seguimiento", "eliminar_seguimiento"}
 
 
+# Como claude.ai: valida el formato de los strings. RFC 3339 exige offset en date-time.
+FORMATOS = jsonschema.FormatChecker()
+
+
+@FORMATOS.checks("date-time", raises=ValueError)
+def _fecha_hora_rfc3339(valor) -> bool:
+    return not isinstance(valor, str) or datetime.fromisoformat(valor).tzinfo is not None
+
+
+class ClienteValidado:
+    """Cliente MCP que valida cada structuredContent contra el outputSchema de su
+    herramienta, con chequeo de formatos: el contrato que exigen los clientes reales."""
+
+    def __init__(self, cliente: Client):
+        self._cliente = cliente
+        self._esquemas: dict | None = None
+
+    def __getattr__(self, nombre):
+        return getattr(self._cliente, nombre)
+
+    async def call_tool(self, nombre: str, argumentos: dict | None = None):
+        resultado = await self._cliente.call_tool(nombre, argumentos)
+        if self._esquemas is None:
+            self._esquemas = {h.name: h.output_schema for h in (await self._cliente.list_tools()).tools}
+        esquema = self._esquemas.get(nombre)
+        if esquema and not resultado.is_error:
+            jsonschema.validate(resultado.structured_content, esquema, format_checker=FORMATOS)
+        return resultado
+
+
 @asynccontextmanager
 async def cliente_mcp(api_key: str):
     # Servidor nuevo por test: el session manager solo puede arrancar una vez por instancia.
@@ -75,7 +110,7 @@ async def cliente_mcp(api_key: str):
     )
     async with servidor.session_manager.run(), http:
         async with Client(streamable_http_client(f"http://test{MCP_PATH}", http_client=http)) as cliente:
-            yield cliente
+            yield ClienteValidado(cliente)
 
 
 async def test_endpoint_montado_en_la_app_exige_api_key():
@@ -310,14 +345,16 @@ async def test_registrar_editar_y_eliminar_movimiento(escenario):
     assert not creado.is_error, creado.content
     movimiento = creado.structured_content
     assert movimiento["cuenta"] == "TC" and movimiento["monto"] == 5990
-    # 16:30 UTC son las 13:30 en Chile (UTC-3 en septiembre).
-    assert movimiento["fecha"].startswith("2026-09-27T13:30")
+    # 16:30 UTC son las 13:30 en Chile (UTC-3 en septiembre), y sale con su offset.
+    assert movimiento["fecha"] == "2026-09-27T13:30:00-03:00"
+    assert movimiento["hora_conocida"] is True
+    assert (movimiento["estado"], movimiento["origen"]) == ("pendiente", "manual")
     # El mismo client_request_id devuelve el movimiento ya creado, no uno nuevo.
     assert reintento.structured_content["id_movimiento"] == id_mov
     assert editado.structured_content["monto"] == 6500
     assert editado.structured_content["descripcion"] is None
     assert sin_cambios.is_error
-    assert eliminado.structured_content == {"id_movimiento": id_mov, "eliminado": True}
+    assert eliminado.structured_content == {"id_movimiento": id_mov, "eliminado": True, "id_espejo_eliminado": None}
     assert otra_vez.is_error
     assert "no encontrado" in otra_vez.content[0].text
 
@@ -432,7 +469,7 @@ async def test_deudas_por_mcp(escenario):
 
 
 @requiere_db
-async def test_importar_cartola_omite_duplicados_y_se_puede_deshacer(escenario):
+async def test_importar_cartola_concilia_manuales_y_se_puede_deshacer(escenario):
     comida = escenario["comida"]
 
     def fila(fecha, glosa, monto, tipo="gasto", **extra):
@@ -442,18 +479,19 @@ async def test_importar_cartola_omite_duplicados_y_se_puede_deshacer(escenario):
         }
 
     cartola = [
-        # Parecido al "Almuerzo" de 8.500 registrado a mano el 25-09 en la misma cuenta.
+        # Calza con el "Almuerzo" de 8.500 registrado a mano el 25-09 en la misma cuenta.
         fila("2026-09-26", "COMPRA NAC RESTAURANT", 8500, descripcion="Restaurant"),
         # Dos pasajes identicos el mismo dia son dos movimientos distintos.
         fila("2026-09-10", "PASAJE METRO", 800),
         fila("2026-09-10", "PASAJE  metro", 800),
-        # El ingreso manual del 01-09 esta a mas de 3 dias: no es duplicado.
+        # El ingreso manual del 01-09 esta a mas de 4 dias: no calza.
         fila("2026-09-15T09:00:00", "TRANSF DE EMPLEADOR", 850000, "ingreso"),
     ]
     invalida = fila("2026-09-11", "OTRA", 1000)
     invalida["id_categoria"] = 999999999
 
     async with cliente_mcp(escenario["key_escritura"]) as cliente:
+        almuerzo = (await cliente.call_tool("buscar_movimientos", {"texto": "almuerzo"})).structured_content["items"][0]
         previa = await cliente.call_tool("previsualizar_importacion", {
             "id_cuenta": escenario["rut"], "filas": [*cartola, invalida],
         })
@@ -465,9 +503,8 @@ async def test_importar_cartola_omite_duplicados_y_se_puede_deshacer(escenario):
             "id_cuenta": escenario["rut"], "filas": cartola, "nombre": "Cartola sept",
         })
         repetida = await cliente.call_tool("importar_movimientos", {"id_cuenta": escenario["rut"], "filas": cartola})
-        confirmada = await cliente.call_tool("importar_movimientos", {
-            "id_cuenta": escenario["rut"], "filas": cartola, "confirmar_duplicados": [0],
-        })
+        conciliado = await cliente.call_tool("buscar_movimientos", {"texto": "restaurant"})
+        importados = await cliente.call_tool("buscar_movimientos", {"origen": "importado"})
         en_cuenta_ajena = await cliente.call_tool("previsualizar_importacion", {
             "id_cuenta": escenario["ajena"], "filas": cartola,
         })
@@ -476,35 +513,54 @@ async def test_importar_cartola_omite_duplicados_y_se_puede_deshacer(escenario):
             "id_importacion": primera.structured_content["id_importacion"],
         })
         metro_despues = await cliente.call_tool("buscar_movimientos", {"texto": "metro"})
-        restaurant = await cliente.call_tool("buscar_movimientos", {"texto": "restaurant"})
+        pendientes = await cliente.call_tool("buscar_movimientos", {"texto": "almuerzo", "estado": "pendiente"})
+        # Confirmar que la fila es distinta del manual la importa aparte, sin conciliar.
+        distinta = await cliente.call_tool("importar_movimientos", {
+            "id_cuenta": escenario["rut"], "filas": cartola[:1], "confirmar_duplicados": [0],
+        })
 
     assert not previa.is_error, previa.content
     resumen = previa.structured_content
     assert (resumen["nuevas"], resumen["posibles_duplicados"], resumen["invalidas"]) == (3, 1, 1)
     assert resumen["total_gastos"] == 1600 and resumen["total_ingresos"] == 850000
+    assert resumen["cadena_saldo"] is None
     estados = {f["indice"]: f for f in resumen["filas"]}
-    assert estados[0]["estado"] == "posible_duplicado" and estados[0]["coincidencias"]
+    assert estados[0]["estado"] == "posible_duplicado"
+    assert estados[0]["manual"]["id_movimiento"] == almuerzo["id_movimiento"]
+    assert estados[0]["manual"]["fecha"] == "2026-09-25T13:00:00-03:00"
+    assert estados[0]["fecha_contable"] == "2026-09-26"
     assert estados[4]["estado"] == "invalida" and "Categoría" in estados[4]["detalle"]
 
     assert rechazada.is_error and "fila 4" in rechazada.content[0].text
     assert metro_antes.structured_content["items"] == []
 
     assert not primera.is_error, primera.content
-    assert (primera.structured_content["creados"], primera.structured_content["omitidos_posibles_duplicados"]) == (3, 1)
+    resultado = primera.structured_content
+    assert (resultado["creados"], resultado["conciliados"]) == (3, 1)
+    assert resultado["total_pendientes"] == 0
     assert repetida.structured_content["creados"] == 0
-    assert repetida.structured_content["omitidos_ya_importados"] == 3
+    assert repetida.structured_content["omitidos_ya_importados"] == 4
     assert repetida.structured_content["id_importacion"] is None
-    assert confirmada.structured_content["creados"] == 1
+
+    # El manual conserva su fecha y su descripcion; toma la fecha contable y la glosa.
+    [restaurant] = conciliado.structured_content["items"]
+    assert restaurant["id_movimiento"] == almuerzo["id_movimiento"]
+    assert (restaurant["descripcion"], restaurant["descripcion_original"]) == ("Almuerzo", "COMPRA NAC RESTAURANT")
+    assert (restaurant["estado"], restaurant["fecha_contable"]) == ("conciliado", "2026-09-26")
+    assert restaurant["fecha"] == "2026-09-25T13:00:00-03:00"
+    pasajes = [m for m in importados.structured_content["items"] if m["monto"] == 800]
+    assert len(pasajes) == 2 and importados.structured_content["total"] == 3
+    assert {m["hora_conocida"] for m in pasajes} == {False}
 
     assert en_cuenta_ajena.is_error and "Cuenta no encontrada" in en_cuenta_ajena.content[0].text
-    nombres = [i["nombre"] for i in importaciones.structured_content["items"]]
-    assert nombres == [None, "Cartola sept"]
-    assert importaciones.structured_content["items"][1]["fecha_desde"].startswith("2026-09-10")
+    [registro] = importaciones.structured_content["items"]
+    assert registro["nombre"] == "Cartola sept" and registro["fecha_desde"].startswith("2026-09-10")
 
     assert deshecha.structured_content["movimientos_eliminados"] == 3
+    assert deshecha.structured_content["conciliaciones_revertidas"] == 1
     assert metro_despues.structured_content["items"] == []
-    # La fila confirmada vino en otra importacion: sigue ahi, con la descripcion legible.
-    assert [m["descripcion"] for m in restaurant.structured_content["items"]] == ["Restaurant"]
+    assert [m["id_movimiento"] for m in pendientes.structured_content["items"]] == [almuerzo["id_movimiento"]]
+    assert (distinta.structured_content["creados"], distinta.structured_content["conciliados"]) == (1, 0)
 
 
 @requiere_db
@@ -526,3 +582,160 @@ async def test_importar_abonos_no_supera_el_saldo_de_la_deuda(escenario):
     assert invalida["indice"] == 1 and "supera el saldo" in invalida["detalle"]
     assert solo_una.structured_content["creados"] == 1
     assert deudas.structured_content["items"][0]["saldo"] == 4000
+
+
+@requiere_db
+async def test_cuadrar_cuenta_con_cartola_saldo_y_transferencias(escenario):
+    rut, tc, comida = escenario["rut"], escenario["tc"], escenario["comida"]
+
+    def fila(fecha, glosa, monto, saldo, tipo="gasto", **extra):
+        categoria = {} if "id_cuenta_contraparte" in extra else {"id_categoria": comida}
+        return {
+            "fecha": fecha, "descripcion_original": glosa, "monto": monto, "tipo_movimiento": tipo,
+            "saldo": saldo, **categoria, **extra,
+        }
+
+    # El gasto manual del 30-08 queda antes del saldo inicial: sigue en los reportes, no en el saldo.
+    cartola = [
+        fila("2026-09-01", "TRANSF DE EMPLEADOR", 850000, 950000, "ingreso"),  # manual del 01-09
+        fila("2026-09-08", "PAGO ARRIENDO", 50000, 900000),                     # manual del 05-09
+        fila("2026-09-10", "PAGO TARJETA", 20000, 880000, id_cuenta_contraparte=tc),
+        fila("2026-09-26", "COMPRA NAC RESTAURANT", 8500, 871500),              # manual del 25-09
+        fila("2026-09-27", "COMPRA X", 1000, 870500),
+    ]
+    async with cliente_mcp(escenario["key_escritura"]) as cliente:
+        inicial = await cliente.call_tool("editar_cuenta", {
+            "id_cuenta": rut, "saldo_inicial": 100000, "fecha_saldo_inicial": "2026-08-31",
+        })
+        al_4 = await cliente.call_tool("saldo_cuenta", {"id_cuenta": rut, "al": "2026-09-04"})
+        previa = await cliente.call_tool("previsualizar_importacion", {"id_cuenta": rut, "filas": cartola[::-1]})
+        rota = await cliente.call_tool("previsualizar_importacion", {
+            "id_cuenta": rut, "filas": [cartola[0], *cartola[2:]],
+        })
+        importada = await cliente.call_tool("importar_movimientos", {"id_cuenta": rut, "filas": cartola})
+        cuentas = await cliente.call_tool("listar_cuentas", {})
+        resumen = await cliente.call_tool("resumen_mes", {"year": 2026, "month": 9})
+        transferencias = await cliente.call_tool("buscar_movimientos", {"texto": "PAGO TARJETA"})
+        deshecha = await cliente.call_tool("deshacer_importacion", {
+            "id_importacion": importada.structured_content["id_importacion"],
+        })
+        despues = await cliente.call_tool("listar_cuentas", {})
+
+    assert not inicial.is_error, inicial.content
+    assert inicial.structured_content["saldo_actual"] == 100000 + 850000 - 50000 - 8500
+    assert al_4.structured_content["saldo"] == 950000
+    assert al_4.structured_content["pendientes"] == 1
+
+    # La cartola viene de la más nueva a la más antigua: la cadena se lee al revés.
+    cadena = previa.structured_content["cadena_saldo"]
+    assert cadena == {"cuadra": True, "quiebres": [], "orden": "descendente", "al": "2026-09-27", "saldo_final": 870500}
+    assert previa.structured_content["posibles_duplicados"] == 3
+    # Sin el arriendo, el saldo del pago a la tarjeta ya no sigue al anterior.
+    assert rota.structured_content["cadena_saldo"]["quiebres"] == [1]
+
+    resultado = importada.structured_content
+    assert not importada.is_error, importada.content
+    assert (resultado["creados"], resultado["conciliados"]) == (2, 3)
+    assert (resultado["transferencias_creadas"], resultado["transferencias_vinculadas"]) == (1, 0)
+    assert resultado["control_saldo"] == {
+        "al": "2026-09-27", "saldo_banco": 870500, "saldo_ritmo": 870500, "diferencia": 0,
+    }
+    assert resultado["total_pendientes"] == 0
+    # La transferencia no es gasto: el gasto importado es solo la "COMPRA X".
+    assert resultado["total_gastos"] == 1000
+
+    saldos = {c["id_cuenta"]: c["saldo_actual"] for c in cuentas.structured_content["items"]}
+    # La tarjeta no tiene saldo inicial: compras -18.990 y el pago la sube 20.000.
+    assert saldos == {rut: 870500, tc: -18990 + 20000}
+    assert resumen.structured_content["gasto_total"] == 8500 + 18990 + 50000 + 1000
+    assert resumen.structured_content["ingreso_total"] == 850000
+    pago, espejo = sorted(transferencias.structured_content["items"], key=lambda m: m["tipo_movimiento"])
+    assert (pago["id_cuenta"], pago["tipo_movimiento"], pago["estado"]) == (rut, "gasto", "conciliado")
+    assert (espejo["id_cuenta"], espejo["tipo_movimiento"], espejo["estado"]) == (tc, "ingreso", "pendiente")
+    assert pago["id_transferencia"] is not None and pago["id_transferencia"] == espejo["id_transferencia"]
+    assert pago["categoria"] == espejo["categoria"] == "Transferencias"
+
+    assert deshecha.structured_content == {
+        "id_importacion": importada.structured_content["id_importacion"],
+        "movimientos_eliminados": 3,
+        "conciliaciones_revertidas": 3,
+    }
+    saldos = {c["id_cuenta"]: c["saldo_actual"] for c in despues.structured_content["items"]}
+    assert saldos == {rut: 100000 + 850000 - 50000 - 8500, tc: -18990}
+
+
+@requiere_db
+async def test_importar_vincula_el_espejo_ya_registrado(escenario):
+    rut, tc = escenario["rut"], escenario["tc"]
+    async with cliente_mcp(escenario["key_escritura"]) as cliente:
+        # El abono a la tarjeta ya estaba registrado a mano como ingreso en ella.
+        await cliente.call_tool("registrar_movimiento", {
+            "tipo_movimiento": "ingreso", "monto": 30000, "id_categoria": escenario["comida"],
+            "id_cuenta": tc, "fecha": "2026-09-14",
+        })
+        importada = await cliente.call_tool("importar_movimientos", {"id_cuenta": rut, "filas": [{
+            "fecha": "2026-09-15", "descripcion_original": "PAGO CMR", "monto": 30000,
+            "tipo_movimiento": "gasto", "id_cuenta_contraparte": tc,
+        }]})
+        misma_cuenta = await cliente.call_tool("previsualizar_importacion", {"id_cuenta": rut, "filas": [{
+            "fecha": "2026-09-16", "descripcion_original": "X", "monto": 1, "tipo_movimiento": "gasto",
+            "id_cuenta_contraparte": rut,
+        }]})
+        ingresos_tc = await cliente.call_tool("buscar_movimientos", {"id_cuenta": tc, "tipo_movimiento": "ingreso"})
+
+    resultado = importada.structured_content
+    assert (resultado["transferencias_vinculadas"], resultado["transferencias_creadas"]) == (1, 0)
+    [ingreso] = ingresos_tc.structured_content["items"]
+    assert ingreso["id_transferencia"] is not None and ingreso["hora_conocida"] is False
+    [fila] = misma_cuenta.structured_content["filas"]
+    assert fila["estado"] == "invalida" and "dos cuentas distintas" in fila["detalle"]
+
+
+@requiere_db
+async def test_registrar_y_eliminar_transferencia(escenario):
+    rut, tc = escenario["rut"], escenario["tc"]
+    datos = {
+        "id_cuenta_origen": rut, "id_cuenta_destino": tc, "monto": 5000,
+        "fecha": "2026-09-20", "descripcion": "Pago tarjeta", "client_request_id": str(uuid.uuid4()),
+    }
+    async with cliente_mcp(escenario["key_escritura"]) as cliente:
+        creada = await cliente.call_tool("registrar_transferencia", datos)
+        reintento = await cliente.call_tool("registrar_transferencia", datos)
+        misma = await cliente.call_tool("registrar_transferencia", {
+            **datos, "id_cuenta_destino": rut, "client_request_id": None,
+        })
+        resumen = await cliente.call_tool("resumen_mes", {"year": 2026, "month": 9})
+        eliminada = await cliente.call_tool("eliminar_movimiento", {
+            "id_movimiento": creada.structured_content["origen"]["id_movimiento"],
+        })
+        quedan = await cliente.call_tool("buscar_movimientos", {"texto": "Pago tarjeta"})
+
+    assert not creada.is_error, creada.content
+    transferencia = creada.structured_content
+    assert transferencia["origen"]["fecha"] == "2026-09-20T00:00:00-03:00"
+    assert transferencia["origen"]["hora_conocida"] is False
+    assert transferencia["destino"]["id_cuenta"] == tc and transferencia["destino"]["tipo_movimiento"] == "ingreso"
+    assert reintento.structured_content == transferencia
+    assert misma.is_error
+    assert resumen.structured_content["gasto_total"] == 8500 + 18990 + 50000
+    assert eliminada.structured_content["id_espejo_eliminado"] == transferencia["destino"]["id_movimiento"]
+    assert quedan.structured_content["items"] == []
+
+
+@requiere_db
+async def test_cartola_con_fecha_futura_y_filtros_de_fecha(escenario):
+    hoy = datetime.now(ZoneInfo("America/Santiago")).date()
+    async with cliente_mcp(escenario["key_escritura"]) as cliente:
+        await cliente.call_tool("importar_movimientos", {"id_cuenta": escenario["tc"], "filas": [{
+            "fecha": "2099-01-02", "descripcion_original": "COMPRA FUTURA", "monto": 3290,
+            "tipo_movimiento": "gasto", "id_categoria": escenario["comida"],
+        }]})
+        futura = await cliente.call_tool("buscar_movimientos", {"texto": "futura"})
+        rango = await cliente.call_tool("buscar_movimientos", {"fecha_desde": "2026-09-05", "fecha_hasta": "2026-09-22"})
+
+    [movimiento] = futura.structured_content["items"]
+    # La operación no puede ser posterior a hoy; la fecha contable conserva la del banco.
+    assert movimiento["fecha"].startswith(hoy.isoformat()) and movimiento["hora_conocida"] is False
+    assert movimiento["fecha_contable"] == "2099-01-02"
+    assert sorted(m["monto"] for m in rango.structured_content["items"]) == [18990, 50000]
+    assert rango.structured_content["total"] == 2

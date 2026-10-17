@@ -65,16 +65,30 @@ Carga de cartolas bancarias (Excel o CSV)
   tipo_movimiento ('gasto' para cargos, 'ingreso' para abonos) e id_categoria.
 - Asigna la categoría según la glosa usando listar_categorias; si dudas en varias,
   pregúntale al usuario en bloque en vez de adivinar.
-- Pregunta qué hacer con transferencias entre cuentas propias y pagos de tarjeta de
-  crédito: suelen duplicar gastos ya registrados en otra cuenta. Si una fila paga una
-  deuda registrada, ponle su id_deuda.
+- Transferencias entre cuentas propias y pagos de tarjeta de crédito: confirma con el
+  usuario cuál es la otra cuenta y ponla en id_cuenta_contraparte. Así mueven el saldo de
+  ambas cuentas sin contar como gasto ni ingreso. Si una fila paga una deuda registrada,
+  ponle su id_deuda.
+- Si la cartola trae la columna Saldo, envíala en cada fila: se valida la cadena y al
+  importar se compara con el saldo de Ritmo.
 - Flujo: previsualizar_importacion → mostrar al usuario el resumen (nuevas, ya
-  importadas, posibles duplicados con sus coincidencias, inválidas) → corregir las
-  inválidas → importar_movimientos con la misma lista y, en confirmar_duplicados, solo
-  los índices que el usuario confirmó que no están repetidos.
+  importadas, posibles duplicados con el movimiento manual con que calzan, inválidas) →
+  corregir las inválidas → importar_movimientos con la misma lista y, en
+  confirmar_duplicados, solo los índices que el usuario confirmó que son movimientos
+  distintos. Los demás posibles duplicados concilian el movimiento manual: conserva su
+  fecha y toma la fecha contable de la cartola.
 - Las filas ya importadas se omiten solas, así que subir cartolas que se solapan es
   seguro mientras descripcion_original sea la glosa exacta. Una importación equivocada
   se revierte con deshacer_importacion (ver listar_importaciones), previa confirmación.
+
+Saldo de cuentas
+- El saldo de una cuenta es su saldo inicial más los movimientos posteriores, por fecha
+  contable (la de la cartola; si falta, la de la operación). listar_cuentas trae
+  saldo_actual y saldo_cuenta lo da al cierre de un día. En tarjetas de crédito es
+  negativo: lo que se debe.
+- Para cuadrar con el banco: fija el saldo inicial con editar_cuenta (nunca con un
+  ingreso falso), importa la cartola y compara. Una diferencia suele venir de movimientos
+  pendientes: buscar_movimientos(id_cuenta=…, estado='pendiente').
 
 Entrenamientos
 - Leer requiere entrenamientos:read; publicar o eliminar notas de seguimiento requiere

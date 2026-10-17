@@ -80,6 +80,8 @@ async def _get_movimientos_periodo(
         .join(CuentaUsuario, Movimiento.id_cuenta == CuentaUsuario.id_cuenta)
         .where(
             CuentaUsuario.id_usuario == id_usuario,
+            # Una transferencia entre cuentas propias no es gasto ni ingreso.
+            Movimiento.id_transferencia.is_(None),
             Movimiento.created_at >= start,
             Movimiento.created_at < end,
         )

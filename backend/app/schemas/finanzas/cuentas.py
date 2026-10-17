@@ -1,5 +1,5 @@
 from pydantic import BaseModel, model_validator, Field, ConfigDict
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Optional
 from .movimientos import MovimientoResponse
 
@@ -80,3 +80,13 @@ class CuentaUsuarioPatch(BaseModel):
 
     nombre_cuenta: Optional[str] = Field(None, examples=["Nuevo nombre de cuenta"])
     id_producto_financiero: Optional[int] = Field(None, examples=[1])
+    saldo_inicial: Optional[int] = Field(
+        None,
+        examples=[782612],
+        description="Saldo en CLP al cierre de fecha_saldo_inicial. Puede ser negativo (sobregiro).",
+    )
+    fecha_saldo_inicial: Optional[date] = Field(
+        None,
+        examples=["2025-11-02"],
+        description="Día del saldo inicial. Los movimientos de ese día o anteriores no cuentan en el saldo.",
+    )

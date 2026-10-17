@@ -1,10 +1,86 @@
-from sqlalchemy import select
+from dataclasses import dataclass
+from datetime import date
+
+from sqlalchemy import Date, case, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models import CuentaUsuario, Movimiento, ProductoFinanciero, Usuario
+from app.models.finanzas import EnumTipoMovimiento
 from app.schemas.finanzas import CuentaUsuarioCreate, CuentaUsuarioPatch
 from app.services.errores import Conflicto, NoEncontrado
+
+
+# El saldo sigue al banco: un movimiento cuenta el día en que el banco lo registró. Si aún
+# no calza con la cartola, se usa el día de la operación.
+FECHA_SALDO = func.coalesce(Movimiento.fecha_contable, cast(Movimiento.created_at, Date))
+
+
+@dataclass
+class Saldo:
+    saldo: int
+    ingresos: int = 0
+    gastos: int = 0
+    cantidad_movimientos: int = 0
+    pendientes: int = 0
+
+
+async def saldos(db: AsyncSession, cuentas: list[CuentaUsuario], al: date | None = None) -> dict[int, Saldo]:
+    """Saldo de cada cuenta al cierre del día ``al`` (sin ``al``: con todos los movimientos).
+
+    Es ``saldo_inicial`` más ingresos menos gastos con fecha de saldo posterior a
+    ``fecha_saldo_inicial``. Las transferencias cuentan: mueven plata de verdad. En una
+    tarjeta de crédito las compras dejan el saldo negativo (lo que se debe).
+    """
+    if not cuentas:
+        return {}
+    es_ingreso = Movimiento.tipo_movimiento == EnumTipoMovimiento.INGRESO
+    consulta = (
+        select(
+            Movimiento.id_cuenta,
+            func.coalesce(func.sum(case((es_ingreso, Movimiento.monto), else_=0)), 0),
+            func.coalesce(func.sum(case((es_ingreso, 0), else_=Movimiento.monto)), 0),
+            func.count(Movimiento.id_transaccion),
+            func.count(Movimiento.id_transaccion).filter(Movimiento.fecha_contable.is_(None)),
+        )
+        .join(CuentaUsuario, CuentaUsuario.id_cuenta == Movimiento.id_cuenta)
+        .where(
+            Movimiento.id_cuenta.in_([cuenta.id_cuenta for cuenta in cuentas]),
+            or_(CuentaUsuario.fecha_saldo_inicial.is_(None), FECHA_SALDO > CuentaUsuario.fecha_saldo_inicial),
+        )
+        .group_by(Movimiento.id_cuenta)
+    )
+    if al is not None:
+        consulta = consulta.where(FECHA_SALDO <= al)
+    totales = {fila[0]: fila[1:] for fila in (await db.execute(consulta)).all()}
+
+    resultado = {}
+    for cuenta in cuentas:
+        ingresos, gastos, cantidad, pendientes = totales.get(cuenta.id_cuenta, (0, 0, 0, 0))
+        resultado[cuenta.id_cuenta] = Saldo(
+            saldo=(cuenta.saldo_inicial or 0) + int(ingresos) - int(gastos),
+            ingresos=int(ingresos),
+            gastos=int(gastos),
+            cantidad_movimientos=cantidad,
+            pendientes=pendientes,
+        )
+    return resultado
+
+
+async def obtener_cuenta(db: AsyncSession, usuario: Usuario, id_cuenta: int) -> CuentaUsuario:
+    """Cuenta activa del usuario, con su producto y banco."""
+    cuenta = await db.scalar(
+        select(CuentaUsuario)
+        .where(
+            CuentaUsuario.id_cuenta == id_cuenta,
+            CuentaUsuario.activo.is_(True),
+            CuentaUsuario.id_usuario == usuario.id_usuario,
+        )
+        .options(_con_producto_y_banco())
+    )
+    if not cuenta:
+        raise NoEncontrado("Cuenta no encontrada.")
+    return cuenta
 
 
 def _con_producto_y_banco():
