@@ -188,6 +188,12 @@ class ResultadoImportacion(BaseModel):
     creados: int
     conciliados: int = Field(description="Movimientos registrados a mano que calzaron con una fila y se conciliaron.")
     omitidos_ya_importados: int
+    omitidos_posibles_duplicados: int = Field(
+        description=(
+            "Igual a conciliados: filas que no crearon movimiento porque calzaron con uno "
+            "registrado a mano. Se mantiene para clientes con el esquema anterior."
+        ),
+    )
     transferencias_vinculadas: int = Field(
         description="Transferencias cuyo movimiento espejo ya existía en la otra cuenta.",
     )

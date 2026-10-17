@@ -53,6 +53,7 @@ NAMESPACE_IMPORTACION = uuid.UUID("5b0f1a52-9c1e-4c55-8f0e-7d2a3c6e9a41")
 # manual tardío.
 VENTANA_ANTES = timedelta(days=1)
 VENTANA_DESPUES = timedelta(days=4)
+HORA_CORTE_BANCO = 14
 MAX_ERRORES_EN_MENSAJE = 10
 MAX_PENDIENTES = 50
 
@@ -82,6 +83,18 @@ def _fecha_chile(fila: FilaImportacion) -> datetime:
     if fecha.tzinfo is not None:
         fecha = fecha.astimezone(CHILE_TZ).replace(tzinfo=None)
     return fecha
+
+
+def _fecha_contable_esperada(movimiento: Movimiento) -> date:
+    """Día en que el banco registraría el movimiento: el mismo día hábil si fue antes de
+    las 14:00 y, si no o si fue fin de semana, el día hábil siguiente. No considera
+    feriados: solo ordena candidatos, la ventana de calce los cubre igual."""
+    dia = movimiento.created_at.date()
+    if movimiento.hora_conocida and movimiento.created_at.hour >= HORA_CORTE_BANCO and dia.weekday() < 5:
+        dia += timedelta(days=1)
+    while dia.weekday() >= 5:
+        dia += timedelta(days=1)
+    return dia
 
 
 def _clave_base(usuario: Usuario, id_cuenta: int, fila: FilaImportacion, fecha_contable: date) -> str:
@@ -181,20 +194,24 @@ async def _analizar(
         for manual in manuales:
             por_monto[(manual.tipo_movimiento, manual.monto)].append(manual)
 
-        # Cada movimiento calza con una sola fila: la más cercana en fecha, prefiriendo que
-        # el banco lo registre el mismo día o después.
-        usados: set[int] = set()
-        for fila in sorted(candidatas, key=lambda f: (f.fecha_contable, f.indice)):
-            opciones = []
+        # Asignación 1 a 1 global: primero los pares más cercanos al día en que el banco
+        # habría registrado el manual. Ir fila por fila dejaría que una fila anterior se
+        # quede con un manual que calza mejor con otra posterior (compras repetidas).
+        pares = []
+        for fila in candidatas:
             for manual in por_monto[(fila.datos.tipo_movimiento, fila.datos.monto)]:
                 atraso = fila.fecha_contable - manual.created_at.date()
-                if manual.id_transaccion in usados or not -VENTANA_ANTES <= atraso <= VENTANA_DESPUES:
+                if not -VENTANA_ANTES <= atraso <= VENTANA_DESPUES:
                     continue
-                opciones.append((atraso < timedelta(0), abs(atraso), manual.id_transaccion, manual))
-            if not opciones:
+                desvio = abs((fila.fecha_contable - _fecha_contable_esperada(manual)).days)
+                pares.append(((atraso < timedelta(0), desvio, fila.indice, manual.id_transaccion), fila, manual))
+        filas_usadas: set[int] = set()
+        manuales_usados: set[int] = set()
+        for _, fila, manual in sorted(pares, key=lambda par: par[0]):
+            if fila.indice in filas_usadas or manual.id_transaccion in manuales_usados:
                 continue
-            manual = min(opciones, key=lambda opcion: opcion[:3])[3]
-            usados.add(manual.id_transaccion)
+            filas_usadas.add(fila.indice)
+            manuales_usados.add(manual.id_transaccion)
             fila.manual = manual
             if fila.indice not in confirmar_duplicados:
                 fila.estado = "posible_duplicado"
@@ -471,6 +488,7 @@ async def importar(
         creados=len(nuevas),
         conciliados=len(por_conciliar),
         omitidos_ya_importados=_contar(analisis, "ya_importada"),
+        omitidos_posibles_duplicados=len(por_conciliar),
         transferencias_vinculadas=vinculadas,
         transferencias_creadas=creadas,
         total_gastos=gastos,

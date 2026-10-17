@@ -739,3 +739,27 @@ async def test_cartola_con_fecha_futura_y_filtros_de_fecha(escenario):
     assert movimiento["fecha_contable"] == "2099-01-02"
     assert sorted(m["monto"] for m in rango.structured_content["items"]) == [18990, 50000]
     assert rango.structured_content["total"] == 2
+
+
+@requiere_db
+async def test_calce_prefiere_el_dia_en_que_el_banco_registra_el_manual(escenario):
+    # Jueves 15-10 a las 23:38: pasadas las 14:00, el banco lo registra el viernes 16-10.
+    # Hay compras iguales el 14 y el 15; ninguna debe quedarse con el manual.
+    async with cliente_mcp(escenario["key_escritura"]) as cliente:
+        manual = await cliente.call_tool("registrar_movimiento", {
+            "tipo_movimiento": "gasto", "monto": 1463, "id_categoria": escenario["comida"],
+            "id_cuenta": escenario["tc"], "fecha": "2026-10-15T23:38:00", "descripcion": "Scooter",
+        })
+        filas = [
+            {"fecha": fecha, "descripcion_original": "JET SMART", "monto": 1463,
+             "tipo_movimiento": "gasto", "id_categoria": escenario["comida"]}
+            for fecha in ("2026-10-14", "2026-10-14", "2026-10-15", "2026-10-16")
+        ]
+        previa = await cliente.call_tool("previsualizar_importacion", {"id_cuenta": escenario["tc"], "filas": filas})
+        importada = await cliente.call_tool("importar_movimientos", {"id_cuenta": escenario["tc"], "filas": filas})
+
+    [calce] = previa.structured_content["filas"]
+    assert calce["indice"] == 3
+    assert calce["manual"]["id_movimiento"] == manual.structured_content["id_movimiento"]
+    resultado = importada.structured_content
+    assert (resultado["creados"], resultado["conciliados"], resultado["omitidos_posibles_duplicados"]) == (3, 1, 1)
