@@ -312,6 +312,11 @@ const useFinanzasState = () => {
       FinanzasAPI.updateCuenta(idCuenta, payload),
     onSuccess: () => invalidateFinanzas(queryKeys.finanzas.cuentas),
   })
+  const cuentaSaldoMutation = useMutation({
+    mutationFn: ({ idCuenta, saldo }: { idCuenta: number; saldo: number }) =>
+      FinanzasAPI.declararSaldoCuenta(idCuenta, saldo),
+    onSuccess: () => invalidateFinanzas(queryKeys.finanzas.cuentas),
+  })
   const cuentaDeleteMutation = useMutation({
     mutationFn: FinanzasAPI.deleteCuenta,
     onSuccess: () => invalidateFinanzas(queryKeys.finanzas.cuentas),
@@ -336,14 +341,24 @@ const useFinanzasState = () => {
     }) => FinanzasAPI.updateMovimiento(idMovimiento, payload),
     onSuccess: (movimiento) => {
       queryClient.setQueryData(queryKeys.finanzas.movimiento(movimiento.id_transaccion), movimiento)
-      return invalidateFinanzas(queryKeys.finanzas.movimientos, queryKeys.finanzas.analitica, queryKeys.finanzas.deudas)
+      return invalidateFinanzas(
+        queryKeys.finanzas.movimientos,
+        queryKeys.finanzas.analitica,
+        queryKeys.finanzas.deudas,
+        queryKeys.finanzas.cuentas,
+      )
     },
   })
   const movimientoDeleteMutation = useMutation({
     mutationFn: FinanzasAPI.deleteMovimiento,
     onSuccess: (_data, idMovimiento) => {
       queryClient.removeQueries({ queryKey: queryKeys.finanzas.movimiento(idMovimiento) })
-      return invalidateFinanzas(queryKeys.finanzas.movimientos, queryKeys.finanzas.analitica, queryKeys.finanzas.deudas)
+      return invalidateFinanzas(
+        queryKeys.finanzas.movimientos,
+        queryKeys.finanzas.analitica,
+        queryKeys.finanzas.deudas,
+        queryKeys.finanzas.cuentas,
+      )
     },
   })
 
@@ -405,6 +420,7 @@ const useFinanzasState = () => {
     submittingCuenta:
       cuentaCreateMutation.isPending ||
       cuentaUpdateMutation.isPending ||
+      cuentaSaldoMutation.isPending ||
       cuentaDeleteMutation.isPending,
     submittingMovimiento:
       (movimientoCreateMutation.isPending && !movimientoCreateMutation.isPaused) ||
@@ -433,6 +449,8 @@ const useFinanzasState = () => {
     crearCuenta: (payload: CuentaCreate) => runOnlineOnlyAction(() => cuentaCreateMutation.mutateAsync(payload)),
     editarCuenta: (idCuenta: number, payload: CuentaPatch) =>
       runOnlineOnlyAction(() => cuentaUpdateMutation.mutateAsync({ idCuenta, payload })),
+    declararSaldo: (idCuenta: number, saldo: number) =>
+      runOnlineOnlyAction(() => cuentaSaldoMutation.mutateAsync({ idCuenta, saldo })),
     eliminarCuenta: (idCuenta: number) => runOnlineOnlyAction(() => cuentaDeleteMutation.mutateAsync(idCuenta)),
     crearMovimiento: async (payload: MovimientoCreate): ActionResult => {
       if (!onlineManager.isOnline()) {

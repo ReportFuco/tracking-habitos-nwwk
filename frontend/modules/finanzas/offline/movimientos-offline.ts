@@ -210,6 +210,7 @@ export const registerFinanzasMutationDefaults = (queryClient: QueryClient) => {
         queryClient.invalidateQueries({ queryKey: movimientosKey }),
         queryClient.invalidateQueries({ queryKey: queryKeys.finanzas.analitica }),
         queryClient.invalidateQueries({ queryKey: queryKeys.finanzas.deudas }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.finanzas.cuentas }),
       ])
     },
   })

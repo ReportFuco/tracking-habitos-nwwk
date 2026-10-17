@@ -30,6 +30,8 @@ comprobar a mano y fácil de romper sin darse cuenta:
 - `tests/sync-fallidos.test.ts` — qué errores se reintentan y que un alta que la cola no
   logra sincronizar quede en la bandeja de "sin sincronizar" (y sobreviva a una recarga)
   en vez de perderse.
+- `tests/finanzas-saldo.test.ts` — la regla del saldo al anotar: no se anota en una cuenta
+  sin saldo declarado ni se gasta más de lo que hay (salvo en tarjetas de crédito).
 
 ## Architecture
 

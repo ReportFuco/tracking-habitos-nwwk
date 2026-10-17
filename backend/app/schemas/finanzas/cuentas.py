@@ -11,6 +11,16 @@ class CuentaUsuarioResponse(BaseModel):
     id_producto_financiero: int = Field(..., examples=[1])
     nombre_producto: str = Field(..., examples=["Cuenta Corriente"])
     nombre_banco: Optional[str] = Field(None, examples=["Falabella"])
+    saldo_inicial: Optional[int] = Field(None, description="Saldo al cierre de fecha_saldo_inicial.")
+    fecha_saldo_inicial: Optional[date] = None
+    saldo_actual: Optional[int] = Field(
+        None,
+        examples=[362875],
+        description=(
+            "Saldo inicial más los movimientos posteriores. Null si el usuario aún no declara "
+            "cuánto tiene en la cuenta. En tarjetas de crédito es negativo (lo que se debe)."
+        ),
+    )
     created_at : datetime
 
     @model_validator(mode="before")
@@ -69,10 +79,27 @@ class CuentaUsuarioCreate(BaseModel):
     
     id_producto_financiero: int = Field(..., examples=[1])
     nombre_cuenta: str = Field(..., examples=["Tu nombre de cuenta"])
+    saldo_actual: Optional[int] = Field(
+        None,
+        examples=[150000],
+        description="Cuánto hay hoy en la cuenta (negativo si es lo que se debe). Opcional.",
+    )
 
     model_config = ConfigDict(
         title="Crear cuenta"
     )
+
+
+class CuentaSaldoDeclarar(BaseModel):
+    """Cuánto hay hoy en la cuenta, según el banco."""
+
+    saldo: int = Field(
+        ...,
+        examples=[362875],
+        description="CLP. Negativo si es lo que se debe (tarjeta de crédito) o un sobregiro.",
+    )
+
+    model_config = ConfigDict(title="Declarar saldo de hoy")
 
 
 class CuentaUsuarioPatch(BaseModel):

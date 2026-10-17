@@ -16,6 +16,7 @@ from .producto_financiero import (
 )
 
 from .cuentas import (
+    CuentaSaldoDeclarar,
     CuentaUsuarioCreate,
     CuentaUsuarioMovimientosResponse,
     CuentaUsuarioResponse,
@@ -92,6 +93,7 @@ __all__ = [
     # Cuentas
     "CuentaUsuarioResponse",
     "CuentaUsuarioCreate",
+    "CuentaSaldoDeclarar",
     "CuentaUsuarioPatch",
     "CuentaUsuarioMovimientosResponse",
 

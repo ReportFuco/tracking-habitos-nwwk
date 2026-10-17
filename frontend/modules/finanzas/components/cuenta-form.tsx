@@ -8,6 +8,7 @@ import { FormNote, FormPanel, FieldGroup, FormSubmitBar } from "@/components/for
 import { SearchableCombobox } from "@/components/forms/searchable-combobox"
 import { Input } from "@/components/ui/input"
 import { useFinanzas } from "@/modules/finanzas/hooks/useFinanzas"
+import { esProductoCredito } from "@/modules/finanzas/saldo"
 import { cuentaCreateSchema } from "@/modules/finanzas/schemas/finanzas.schema"
 import { ProductoFinancieroResponse } from "@/modules/finanzas/types/finanzas"
 
@@ -15,7 +16,10 @@ const initialCuentaForm = {
   id_banco: "",
   id_producto_financiero: "",
   nombre_cuenta: "",
+  saldo: "",
 }
+
+const milesFormatter = new Intl.NumberFormat("es-CL")
 
 export function CuentaFormCard() {
   const { bancos, loadingCatalogos, submittingCuenta, crearCuenta, getProductosByBanco } =
@@ -47,6 +51,10 @@ export function CuentaFormCard() {
   const bancoSeleccionado = bancos.find(
     (banco) => String(banco.id_banco) === form.id_banco
   )
+  const productoSeleccionado = productos.find(
+    (producto) => String(producto.id_producto_financiero) === form.id_producto_financiero
+  )
+  const credito = esProductoCredito(productoSeleccionado?.nombre_producto)
 
   const handleBancoChange = (value: string) => {
     const requestId = productosRequestRef.current + 1
@@ -97,7 +105,12 @@ export function CuentaFormCard() {
       return
     }
 
-    const result = await crearCuenta(parsed.data)
+    // Con el saldo de hoy la cuenta parte cuadrada; sin el, se puede declarar despues.
+    const saldo = form.saldo === "" ? null : Number(form.saldo)
+    const result = await crearCuenta({
+      ...parsed.data,
+      saldo_actual: saldo === null ? null : credito ? -saldo : saldo,
+    })
 
     if (result.ok) {
       setForm(initialCuentaForm)
@@ -190,6 +203,25 @@ export function CuentaFormCard() {
             value={form.nombre_cuenta}
             onChange={(event) => setForm((prev) => ({ ...prev, nombre_cuenta: event.target.value }))}
             className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
+          />
+        </FieldGroup>
+
+        <FieldGroup
+          label={credito ? "Cuánto debes hoy" : "Cuánto tienes hoy"}
+          hint="Opcional · desde ahí Ritmo te lleva el saldo"
+        >
+          <Input
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="$ 0"
+            value={form.saldo ? `$ ${milesFormatter.format(Number(form.saldo))}` : ""}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                saldo: event.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 11),
+              }))
+            }
+            className="h-13 rounded-lg border-0 bg-[color:var(--surface-variant)] px-4 tabular-nums shadow-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:ring-0"
           />
         </FieldGroup>
 

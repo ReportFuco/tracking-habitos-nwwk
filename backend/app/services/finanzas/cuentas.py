@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import Date, case, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +11,8 @@ from app.models.finanzas import EnumTipoMovimiento
 from app.schemas.finanzas import CuentaUsuarioCreate, CuentaUsuarioPatch
 from app.services.errores import Conflicto, NoEncontrado
 
+
+CHILE_TZ = ZoneInfo("America/Santiago")
 
 # El saldo sigue al banco: un movimiento cuenta el día en que el banco lo registró. Si aún
 # no calza con la cartola, se usa el día de la operación.
@@ -65,6 +68,32 @@ async def saldos(db: AsyncSession, cuentas: list[CuentaUsuario], al: date | None
             pendientes=pendientes,
         )
     return resultado
+
+
+async def saldos_actuales(db: AsyncSession, cuentas: list[CuentaUsuario]) -> dict[int, int | None]:
+    """Saldo actual de cada cuenta; None si el usuario no ha declarado su saldo."""
+    calculados = await saldos(db, [cuenta for cuenta in cuentas if cuenta.saldo_inicial is not None])
+    return {
+        cuenta.id_cuenta: calculados[cuenta.id_cuenta].saldo if cuenta.id_cuenta in calculados else None
+        for cuenta in cuentas
+    }
+
+
+async def declarar_saldo(db: AsyncSession, usuario: Usuario, id_cuenta: int, saldo: int) -> CuentaUsuario:
+    """El usuario dice cuánto tiene hoy en la cuenta y desde ahí cada movimiento lo mueve.
+
+    Queda como saldo al cierre de ayer, descontando lo ya registrado desde hoy (y lo que
+    la cartola trae con fecha contable futura): así el saldo actual es exactamente el
+    monto declarado.
+    """
+    cuenta = await obtener_cuenta(db, usuario, id_cuenta)
+    cuenta.saldo_inicial = 0
+    cuenta.fecha_saldo_inicial = datetime.now(CHILE_TZ).date() - timedelta(days=1)
+    await db.flush()
+    desde_hoy = (await saldos(db, [cuenta]))[id_cuenta].saldo
+    cuenta.saldo_inicial = saldo - desde_hoy
+    await db.flush()
+    return cuenta
 
 
 async def obtener_cuenta(db: AsyncSession, usuario: Usuario, id_cuenta: int) -> CuentaUsuario:
@@ -174,6 +203,8 @@ async def crear_cuenta(db: AsyncSession, usuario: Usuario, data: CuentaUsuarioCr
 
     # flush para obtener el id generado
     await db.flush()
+    if data.saldo_actual is not None:
+        await declarar_saldo(db, usuario, nueva_cuenta.id_cuenta, data.saldo_actual)
     return await _recargar_con_producto(db, nueva_cuenta.id_cuenta)
 
 

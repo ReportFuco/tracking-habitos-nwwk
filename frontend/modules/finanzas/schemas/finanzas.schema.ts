@@ -82,6 +82,11 @@ export const cuentaResponseSchema = z.object({
   nombre_banco: z.string().nullish(),
   nombre_producto: z.string(),
   id_producto_financiero: z.number().int(),
+  // Nullish: la cache persistida de versiones anteriores no los trae. Sin saldo_actual
+  // el usuario aun no declara cuanto tiene en la cuenta.
+  saldo_inicial: z.number().int().nullish(),
+  fecha_saldo_inicial: z.string().nullish(),
+  saldo_actual: z.number().int().nullish(),
   created_at: z.string(),
 })
 

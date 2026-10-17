@@ -109,6 +109,8 @@ export interface CategoriaResponse {
 export interface CuentaCreate {
   id_producto_financiero: number
   nombre_cuenta: string
+  /** Cuanto hay hoy en la cuenta; negativo si es lo que se debe. */
+  saldo_actual?: number | null
 }
 
 export interface CuentaPatch {

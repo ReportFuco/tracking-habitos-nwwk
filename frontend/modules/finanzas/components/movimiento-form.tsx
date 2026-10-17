@@ -12,8 +12,12 @@ import { useDeudas, useFinanzas } from "@/modules/finanzas/hooks/useFinanzas"
 import { movimientoCreateSchema } from "@/modules/finanzas/schemas/finanzas.schema"
 import type { TipoGasto, TipoMovimiento } from "@/modules/finanzas/types/finanzas"
 import { MovimientoRegistrado, type MovimientoRegistradoInfo } from "./movimiento-registrado"
+import { SaldoCuentaDialog } from "./saldo-cuenta-dialog"
 import { aItemsCreate, ProductosNuevoGasto, type ProductoPorGuardar } from "./productos-nuevo-gasto"
 import { randomUUID } from "@/lib/uuid"
+import { toLocalIsoDate } from "@/lib/dates"
+import { revisarSaldo, saldoTrasMovimiento, textoSaldo } from "@/modules/finanzas/saldo"
+import type { CuentaResponse } from "@/modules/finanzas/types/finanzas"
 
 type Campo = "monto" | "id_categoria" | "id_cuenta" | "created_at" | "id_deuda"
 
@@ -69,6 +73,7 @@ export function MovimientoFormCard({
   const [capturandoUbicacion, setCapturandoUbicacion] = useState(false)
   const [mostrarFecha, setMostrarFecha] = useState(false)
   const [registrado, setRegistrado] = useState<MovimientoRegistradoInfo | null>(null)
+  const [declarandoSaldo, setDeclarandoSaldo] = useState<CuentaResponse | null>(null)
   const [productos, setProductos] = useState<ProductoPorGuardar[]>([])
   const [agregandoProducto, setAgregandoProducto] = useState(false)
   // "" = no abona ninguna deuda.
@@ -113,7 +118,8 @@ export function MovimientoFormCard({
       cuentas.map((cuenta) => ({
         value: String(cuenta.id_cuenta),
         label: cuenta.nombre_cuenta,
-        hint: cuenta.nombre_banco ?? undefined,
+        // Con el saldo a la vista se nota en que cuenta queda el movimiento.
+        hint: [cuenta.nombre_banco, textoSaldo(cuenta)].filter(Boolean).join(" · ") || undefined,
       })),
     [cuentas],
   )
@@ -126,8 +132,17 @@ export function MovimientoFormCard({
     return match ? String(match.id_cuenta) : ""
   }, [cuentas, movimientos])
   const cuentaSeleccionada = form.id_cuenta || cuentaPorDefecto
+  const cuentaElegida = cuentas.find((cuenta) => String(cuenta.id_cuenta) === cuentaSeleccionada)
 
   const montoNumero = Number(form.monto || 0)
+  // Toda cuenta parte de su saldo real y no se gasta lo que no hay: se avisa en vivo.
+  const problemaSaldo = cuentaElegida
+    ? revisarSaldo(cuentaElegida, {
+        tipo: form.tipo_movimiento,
+        monto: montoNumero,
+        fecha: form.created_at || toLocalIsoDate(),
+      })
+    : null
 
   const actualizar = <K extends keyof typeof initialForm>(campo: K, valor: (typeof initialForm)[K]) => {
     setForm((prev) => ({ ...prev, [campo]: valor }))
@@ -191,6 +206,8 @@ export function MovimientoFormCard({
     if (!montoNumero) nuevosErrores.monto = "Ingresa un monto"
     if (!form.id_categoria) nuevosErrores.id_categoria = "Elige una categoria"
     if (!cuentaSeleccionada) nuevosErrores.id_cuenta = "Elige una cuenta"
+    else if (problemaSaldo?.tipo === "sin_saldo") nuevosErrores.id_cuenta = "Declara su saldo primero"
+    else if (problemaSaldo?.tipo === "no_alcanza" && montoNumero) nuevosErrores.id_cuenta = "No te alcanza"
     if (mostrarDeuda && !deudaSeleccionada) nuevosErrores.id_deuda = "Elige la deuda"
     else if (deudaSeleccionada && montoNumero > deudaSeleccionada.saldo) {
       nuevosErrores.id_deuda = `El saldo es ${formatCLP(deudaSeleccionada.saldo)}`
@@ -238,13 +255,25 @@ export function MovimientoFormCard({
       return
     }
 
+    const cuenta = cuentaElegida
     setRegistrado({
       id: randomUUID(),
       idMovimiento: result.idMovimiento,
       tipo: form.tipo_movimiento,
       monto: montoNumero,
       categoria: categoriaOptions.find((option) => option.value === form.id_categoria)?.label,
-      cuenta: cuentaOptions.find((option) => option.value === cuentaSeleccionada)?.label,
+      cuenta: cuenta?.nombre_cuenta,
+      saldo: cuenta
+        ? cuenta.saldo_actual == null
+          ? { pendiente: true }
+          : {
+              texto: saldoTrasMovimiento(cuenta, {
+                tipo: form.tipo_movimiento,
+                monto: montoNumero,
+                fecha: form.created_at || toLocalIsoDate(),
+              }),
+            }
+        : undefined,
       queued: Boolean(result.queued),
     })
     // Se conserva el tipo (gasto/ingreso) y la cuenta: lo normal es anotar varios seguidos.
@@ -404,6 +433,17 @@ export function MovimientoFormCard({
             errorId={errores.id_cuenta ? "cuenta-error" : undefined}
             emptyMessage="Registra una cuenta para empezar."
           />
+          {cuentaElegida && problemaSaldo && (problemaSaldo.tipo === "sin_saldo" || montoNumero > 0) ? (
+            <AvisoSaldo
+              mensaje={
+                problemaSaldo.tipo === "sin_saldo"
+                  ? `«${cuentaElegida.nombre_cuenta}» aún no tiene saldo. Declara cuánto tienes hoy para anotar en ella.`
+                  : `No te alcanza: en «${cuentaElegida.nombre_cuenta}» tienes ${formatCLP(problemaSaldo.disponible)}. Si tu banco dice otra cosa, ajusta el saldo.`
+              }
+              accion={problemaSaldo.tipo === "sin_saldo" ? "Declarar saldo" : "Ajustar saldo"}
+              onAccion={() => setDeclarandoSaldo(cuentaElegida)}
+            />
+          ) : null}
         </Grupo>
 
         {/* Opciones secundarias en una sola fila de interruptores. */}
@@ -569,7 +609,29 @@ export function MovimientoFormCard({
       {registrado ? (
         <MovimientoRegistrado key={registrado.id} info={registrado} onClose={cerrarConfirmacion} onAnother={resetParaOtro} />
       ) : null}
+      <SaldoCuentaDialog
+        cuenta={declarandoSaldo}
+        onOpenChange={(open) => {
+          if (open) return
+          setDeclarandoSaldo(null)
+          setErrores((prev) => ({ ...prev, id_cuenta: undefined }))
+        }}
+      />
     </>
+  )
+}
+
+function AvisoSaldo({ mensaje, accion, onAccion }: { mensaje: string; accion: string; onAccion: () => void }) {
+  return (
+    <div
+      role="alert"
+      className="flex flex-col gap-2 rounded-md border-l-4 border-[color:var(--gasto)] bg-[color:var(--surface-low)] p-3 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <p className="text-sm">{mensaje}</p>
+      <Button type="button" size="sm" className="shrink-0 self-start sm:self-auto" onClick={onAccion}>
+        {accion}
+      </Button>
+    </div>
   )
 }
 

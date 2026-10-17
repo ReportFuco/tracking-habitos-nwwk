@@ -14,6 +14,8 @@ export interface MovimientoRegistradoInfo {
   monto: number
   categoria?: string
   cuenta?: string
+  /** Saldo de la cuenta tras el movimiento; `pendiente` si aun no tiene saldo declarado. */
+  saldo?: { texto?: string | null; pendiente?: boolean }
   queued: boolean
 }
 
@@ -148,6 +150,12 @@ export function MovimientoRegistrado({ info, onClose, onAnother }: MovimientoReg
             {formatCLP(info.monto)}
           </p>
           {detalle ? <p className="mt-2 text-sm capitalize opacity-90">{detalle}</p> : null}
+          {info.saldo?.texto ? (
+            <p className="mt-1 text-sm font-semibold tabular-nums">Saldo de la cuenta: {info.saldo.texto}</p>
+          ) : null}
+          {info.saldo?.pendiente ? (
+            <p className="mt-1 text-xs opacity-85">Esta cuenta aún no tiene saldo: decláralo en Finanzas › Cuentas.</p>
+          ) : null}
           {info.queued ? (
             <p className="mt-2 text-xs opacity-85">Se envia solo cuando vuelva internet.</p>
           ) : null}

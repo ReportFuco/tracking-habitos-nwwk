@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
 from app.schemas.finanzas import (
+    CuentaSaldoDeclarar,
     CuentaUsuarioCreate,
     CuentaUsuarioResponse,
     CuentaUsuarioPatch,
@@ -13,6 +14,14 @@ from app.services.finanzas import cuentas as servicio
 
 
 router = APIRouter(prefix="/cuentas", tags=["Finanzas · Cuentas"])
+
+
+async def _con_saldo(db: AsyncSession, cuentas: list) -> list[CuentaUsuarioResponse]:
+    saldos = await servicio.saldos_actuales(db, cuentas)
+    return [
+        CuentaUsuarioResponse.model_validate(cuenta).model_copy(update={"saldo_actual": saldos[cuenta.id_cuenta]})
+        for cuenta in cuentas
+    ]
 
 
 @router.get(
@@ -36,7 +45,7 @@ async def obtener_cuentas_usuario(
             detail="Cuentas no Encontradas"
         )
 
-    return cuentas
+    return await _con_saldo(db, cuentas)
 
 
 @router.get(
@@ -70,7 +79,9 @@ async def crear_cuenta_usuario(
 ):
     usuario = await obtener_usuario_actual(user, db)
     with errores_http():
-        return await servicio.crear_cuenta(db, usuario, data)
+        cuenta = await servicio.crear_cuenta(db, usuario, data)
+    [respuesta] = await _con_saldo(db, [cuenta])
+    return respuesta
 
 
 @router.patch(
@@ -88,7 +99,33 @@ async def editar_cuenta(
 ):
     usuario = await obtener_usuario_actual(user, db)
     with errores_http():
-        return await servicio.editar_cuenta(db, usuario, id_cuenta, data)
+        cuenta = await servicio.editar_cuenta(db, usuario, id_cuenta, data)
+    [respuesta] = await _con_saldo(db, [cuenta])
+    return respuesta
+
+
+@router.post(
+    path="/{id_cuenta}/saldo",
+    summary="Declarar saldo de hoy",
+    description=(
+        "Fija cuánto hay hoy en la cuenta. Desde ahí cada gasto lo baja y cada ingreso lo "
+        "sube. Sirve para partir y para volver a cuadrar con el banco."
+    ),
+    status_code=status.HTTP_200_OK,
+    response_model=CuentaUsuarioResponse,
+)
+async def declarar_saldo(
+    id_cuenta: int,
+    data: CuentaSaldoDeclarar,
+    db: AsyncSession = Depends(get_db),
+    user = Depends(current_user_or_api_key),
+):
+    usuario = await obtener_usuario_actual(user, db)
+    with errores_http():
+        await servicio.declarar_saldo(db, usuario, id_cuenta, data.saldo)
+        cuenta = await servicio.obtener_cuenta(db, usuario, id_cuenta)
+    [respuesta] = await _con_saldo(db, [cuenta])
+    return respuesta
 
 
 @router.delete(

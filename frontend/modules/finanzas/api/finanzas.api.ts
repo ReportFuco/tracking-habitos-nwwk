@@ -132,6 +132,12 @@ export const FinanzasAPI = {
     return parseApiResponse(cuentaResponseSchema, data, "PATCH /api/finanzas/cuentas/:id")
   },
 
+  /** Fija cuanto hay hoy en la cuenta; desde ahi cada movimiento lo mueve. */
+  declararSaldoCuenta: async (idCuenta: number, saldo: number): Promise<CuentaResponse> => {
+    const { data } = await api.post(`/api/finanzas/cuentas/${idCuenta}/saldo`, { saldo })
+    return parseApiResponse(cuentaResponseSchema, data, "POST /api/finanzas/cuentas/:id/saldo")
+  },
+
   deleteCuenta: async (idCuenta: number): Promise<void> => {
     await api.delete(`/api/finanzas/cuentas/${idCuenta}`)
   },

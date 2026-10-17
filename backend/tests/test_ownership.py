@@ -5,7 +5,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.db.session import AsyncSessionLocal
-from app.models import Banco, CategoriaFinanza, ProductoFinanciero, User, Usuario
+from app.models import Banco, CategoriaFinanza, CuentaUsuario, ProductoFinanciero, User, Usuario
 from app.models.finanzas import EnumTipoGasto, EnumTipoMovimiento
 from app.routes.finanzas.analitica import (
     obtener_distribucion_categorias,
@@ -102,7 +102,7 @@ async def test_ownership_finanzas_usuarios_end_to_end():
                 db=db,
                 user=user1,
             )
-            assert cuenta.id_usuario == perfil1.id_usuario
+            assert (await db.get(CuentaUsuario, cuenta.id_cuenta)).id_usuario == perfil1.id_usuario
 
             with pytest.raises(HTTPException) as exc_cuentas:
                 await obtener_cuentas_usuario(user=user2, db=db)
