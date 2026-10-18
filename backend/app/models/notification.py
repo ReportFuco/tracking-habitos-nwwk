@@ -58,6 +58,14 @@ class NotificationPreference(Base):
     )
     # Ultimo dia (calendario de Chile) ya procesado: evita avisar dos veces el mismo dia.
     expense_reminder_last_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Alertas de metas de gasto (semana, día y presupuestos por categoría) y el resumen
+    # del domingo. Solo llegan si el usuario fijó una meta o un presupuesto.
+    budget_alerts_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=text("true"),
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -189,3 +197,31 @@ class PushDelivery(Base):
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_error: Mapped[str | None] = mapped_column(String(500))
+
+
+class AlertaGasto(Base):
+    """Alerta de metas de gasto ya enviada, para no repetirla.
+
+    ``clave`` identifica la alerta dentro de su periodo, ej. ``2026-10-12:semana:80`` o
+    ``2026-10-18:dia``. Se inserta antes de enviar (ON CONFLICT DO NOTHING): si dos
+    workers la evalúan a la vez, solo uno la envía.
+    """
+
+    __tablename__ = "alerta_gasto"
+    __table_args__ = (
+        UniqueConstraint("auth_user_id", "clave", name="uq_alerta_gasto_usuario_clave"),
+        {"schema": NOTIFICACIONES_SCHEMA},
+    )
+
+    id_alerta: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    auth_user_id: Mapped[int] = mapped_column(
+        ForeignKey(table_ref(AUTH_SCHEMA, "user.id"), ondelete="CASCADE"),
+        nullable=False,
+    )
+    clave: Mapped[str] = mapped_column(String(80), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=text("now()"),
+    )

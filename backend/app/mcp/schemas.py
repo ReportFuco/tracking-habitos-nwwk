@@ -47,6 +47,7 @@ class CategoriaMCP(BaseModel):
     id_categoria: int
     nombre: str
     es_propia: bool = Field(description="True si la creó el usuario; false si es por defecto.")
+    usos_recientes: int = Field(0, description="Movimientos en ella en los últimos 90 días.")
 
     @classmethod
     def desde_modelo(cls, categoria: CategoriaFinanza) -> "CategoriaMCP":
@@ -54,6 +55,8 @@ class CategoriaMCP(BaseModel):
             id_categoria=categoria.id_categoria,
             nombre=categoria.nombre,
             es_propia=categoria.es_propia,
+            # Lo anota categorias.listar_categorias; una recién creada no lo trae.
+            usos_recientes=getattr(categoria, "usos_recientes", 0),
         )
 
 

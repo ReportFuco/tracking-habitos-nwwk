@@ -77,6 +77,11 @@ export function NotificacionesSettings() {
     }
   }
 
+  const cambiarMetas = async (activo: boolean) => {
+    if (activo && !device.subscribed && !(await activarDispositivo())) return
+    await guardar({ budget_alerts_enabled: activo })
+  }
+
   const cambiarEntrenos = async (activo: boolean) => {
     if (activo && !device.subscribed && !(await activarDispositivo())) return
     await guardar({ training_reminders_enabled: activo })
@@ -174,6 +179,16 @@ export function NotificacionesSettings() {
                 />
               </label>
             ) : null}
+          </li>
+          <li className="py-3">
+            <Preferencia
+              id="pref-metas"
+              titulo="Metas de gasto"
+              descripcion="Al llegar al 80% y al pasarte de tu meta semanal, del tope del dia o de un presupuesto, y el resumen del domingo a las 20:00. Solo si fijaste una meta."
+              activo={status.budget_alerts_enabled}
+              disabled={bloqueado || guardando || device.busy}
+              onChange={cambiarMetas}
+            />
           </li>
           <li className="py-3">
             <Preferencia

@@ -164,7 +164,8 @@ async def listar_cuentas(ctx: Context) -> CuentasMCP:
 
 
 async def listar_categorias(ctx: Context) -> CategoriasMCP:
-    """Categorías que el usuario puede usar: las por defecto y las que creó él (es_propia).
+    """Categorías que el usuario puede usar: las por defecto y las que creó él (es_propia),
+    las más usadas en los últimos 90 días primero. No trae las que el usuario ocultó.
 
     Si ninguna calza con lo que el usuario describe, propónle crear una con crear_categoria.
     """
@@ -382,8 +383,17 @@ async def registrar_movimiento(
     ctx: Context,
     tipo_movimiento: TipoMovimiento,
     monto: Annotated[int, Field(gt=0, description="Monto en CLP, entero y positivo (ej. 5990).")],
-    id_categoria: Annotated[int, Field(ge=1, description="Ver listar_categorias.")],
     id_cuenta: Annotated[int, Field(ge=1, description="Ver listar_cuentas.")],
+    id_categoria: Annotated[
+        int | None,
+        Field(
+            ge=1,
+            description=(
+                "Ver listar_categorias. Si se omite, la decide la regla de categoría que calce "
+                "con la descripción (ver listar_reglas_categoria); sin regla queda en «Otros»."
+            ),
+        ),
+    ] = None,
     tipo_gasto: Annotated[
         TipoGasto,
         Field(description="'fijo' para gastos recurrentes (arriendo, planes); si no, 'variable'."),
@@ -517,12 +527,14 @@ HERRAMIENTAS = (
 
 def registrar_herramientas_finanzas(servidor: MCPServer) -> None:
     # Import diferido: esos modulos reutilizan sesion_usuario y las anotaciones de este.
-    from app.mcp.tools import cuentas, deudas, importacion
+    from app.mcp.tools import cuentas, deudas, importacion, metas, reglas
 
     for funcion, titulo, anotaciones in (
         *HERRAMIENTAS,
         *cuentas.HERRAMIENTAS,
         *deudas.HERRAMIENTAS,
         *importacion.HERRAMIENTAS,
+        *metas.HERRAMIENTAS,
+        *reglas.HERRAMIENTAS,
     ):
         servidor.add_tool(adaptar_fechas(funcion), title=titulo, annotations=anotaciones)

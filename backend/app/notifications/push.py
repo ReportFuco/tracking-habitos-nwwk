@@ -55,6 +55,27 @@ def build_expense_payload() -> str:
     )
 
 
+def build_budget_payload(title: str, body: str) -> str:
+    navigate = urljoin(f"{URL_SITE.rstrip('/')}/", "app/finanzas/semana")
+    return json.dumps(
+        {
+            "web_push": 8030,
+            "notification": {
+                "title": title,
+                "lang": "es-CL",
+                "dir": "ltr",
+                "body": body,
+                "navigate": navigate,
+                "silent": False,
+                "app_badge": "1",
+                # Una alerta nueva de metas reemplaza a la anterior si sigue visible.
+                "tag": "budget-alert",
+            },
+        },
+        ensure_ascii=False,
+    )
+
+
 def send_push(subscription: PushSubscription, payload: str, ttl: int) -> None:
     webpush(
         subscription_info={
@@ -79,3 +100,8 @@ def send_expense_push(subscription: PushSubscription) -> None:
     # Si el telefono esta apagado, el aviso aun sirve unas horas despues; al dia
     # siguiente ya no.
     send_push(subscription, build_expense_payload(), ttl=3 * 60 * 60)
+
+
+def send_budget_push(subscription: PushSubscription, title: str, body: str) -> None:
+    # Una alerta de gasto pierde sentido si llega al dia siguiente.
+    send_push(subscription, build_budget_payload(title, body), ttl=6 * 60 * 60)

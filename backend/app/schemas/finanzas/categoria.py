@@ -20,6 +20,8 @@ class CategoriaResponse(BaseModel):
         description="True si la creó el usuario; false si es una categoría por defecto.",
     )
     activo: bool = Field(True, description="False si está archivada.")
+    oculta: bool = Field(False, description="True si el usuario la ocultó: no se ofrece al registrar.")
+    usos_recientes: int = Field(0, description="Movimientos del usuario en ella en los últimos 90 días.")
     created_at:datetime = Field(..., examples=["2026-01-03T22:11:30.105251"])
 
     model_config = ConfigDict(
@@ -50,3 +52,20 @@ class CategoriaPatch(BaseModel):
     model_config = ConfigDict(
         title="Modificar categoría"
     )
+
+
+class CategoriaOcultar(BaseModel):
+    oculta: bool = Field(..., description="true la saca de las listas para registrar; false la vuelve a mostrar.")
+
+
+class MoverMovimientosRequest(BaseModel):
+    id_categoria_destino: int = Field(..., ge=1)
+    confirmar: bool = Field(False, description="false solo cuenta cuántos se moverían; true los mueve.")
+
+
+class MoverMovimientosResponse(BaseModel):
+    aplicado: bool
+    id_categoria_origen: int
+    id_categoria_destino: int
+    cantidad: int
+    monto_total: int

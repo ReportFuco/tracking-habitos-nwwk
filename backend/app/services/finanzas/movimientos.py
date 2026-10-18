@@ -16,8 +16,8 @@ from app.models import (
 from app.models.finanzas import EnumTipoMovimiento
 from app.schemas.finanzas import MovimientoCreate, MovimientoPatch
 from app.services.catalogo import productos
-from app.services.errores import Conflicto, NoEncontrado
-from app.services.finanzas import categorias, deudas
+from app.services.errores import Conflicto, DatosInvalidos, NoEncontrado
+from app.services.finanzas import categorias, deudas, reglas
 
 
 CHILE_TZ = ZoneInfo("America/Santiago")
@@ -269,6 +269,11 @@ async def crear_movimiento(db: AsyncSession, usuario: Usuario, data: MovimientoC
                 raise Conflicto("El identificador de la solicitud ya fue utilizado.")
             return movimiento_existente
 
+    # Un abono a deuda conserva la categoría enviada: la define la deuda, no el comercio.
+    if data.id_deuda is None:
+        data.id_categoria = await reglas.resolver_categoria(db, usuario, data.id_categoria, data.descripcion)
+    if data.id_categoria is None:
+        raise DatosInvalidos("Falta la categoría del movimiento.")
     await validar_categoria(db, usuario, data.id_categoria)
     await validar_cuenta_activa(db, usuario, data.id_cuenta)
     for item in data.items:

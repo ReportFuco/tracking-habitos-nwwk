@@ -176,7 +176,14 @@ class MovimientoCreate(BaseModel):
         None,
         description="Identificador idempotente generado por el cliente para reintentos offline.",
     )
-    id_categoria: int = Field(..., examples=[1], description="Ingresa el ID de la categoria.")
+    id_categoria: Optional[int] = Field(
+        None,
+        examples=[1],
+        description=(
+            "ID de la categoría. Si se omite o es «Otros», se usa la regla de categoría que "
+            "calce con la descripción (ver /finanzas/reglas-categoria); sin regla queda en «Otros»."
+        ),
+    )
     id_cuenta: int = Field(..., examples=[1], description="ID de la cuenta del usuario.")
     tipo_movimiento: EnumTipoMovimiento = Field(
         ..., 

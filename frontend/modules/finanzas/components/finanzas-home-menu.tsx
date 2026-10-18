@@ -1,15 +1,16 @@
 "use client"
 
-import { ArrowDownLeft, ArrowLeftRight, HandCoins, Landmark, Tags, Wallet } from "lucide-react"
+import { ArrowDownLeft, ArrowLeftRight, HandCoins, Landmark, Tags, Target, Wallet } from "lucide-react"
 import { ActionTile, MenuGroup, MenuList, MenuRow } from "@/components/shell/menu-group"
 import { formatMonth } from "@/lib/dates"
 import { formatCLP } from "@/lib/format"
-import { useAnaliticaResumen, useFinanzas } from "@/modules/finanzas/hooks/useFinanzas"
+import { useAnaliticaResumen, useFinanzas, useResumenSemanal } from "@/modules/finanzas/hooks/useFinanzas"
 import { resumirSaldos } from "@/modules/finanzas/saldo"
 
 /** Portada de finanzas: registrar (gasto o ingreso) y consultar, antes del resumen del mes. */
 export function FinanzasHomeMenu() {
   const { data: resumen } = useAnaliticaResumen()
+  const { data: semana } = useResumenSemanal()
   const { cuentas } = useFinanzas()
   const saldos = resumirSaldos(cuentas)
 
@@ -38,6 +39,13 @@ export function FinanzasHomeMenu() {
                 ? `${resumen.cantidad_movimientos} en ${formatMonth(resumen.year, resumen.month)}`
                 : "Gastos e ingresos registrados"
             }
+            module="finanzas"
+          />
+          <MenuRow
+            href="/app/finanzas/metas"
+            icon={Target}
+            title="Metas de gasto"
+            detail={semana?.meta_semanal ? `${formatCLP(semana.meta_semanal)} a la semana` : "Meta semanal y presupuestos"}
             module="finanzas"
           />
           <MenuRow href="/app/finanzas/deudas" icon={HandCoins} title="Deudas" detail="Lo que debes y lo que te deben" module="finanzas" />

@@ -63,6 +63,7 @@ async def build_status(
         training_reminders_enabled=preference.training_reminders_enabled,
         expense_reminders_enabled=preference.expense_reminders_enabled,
         expense_reminder_time=preference.expense_reminder_time.strftime("%H:%M"),
+        budget_alerts_enabled=preference.budget_alerts_enabled,
         active_subscriptions=subscription_count or 0,
     )
 
@@ -166,6 +167,8 @@ async def update_preferences(
         preference.expense_reminder_time = data.expense_reminder_time
     if data.expense_reminders_enabled is not None:
         preference.expense_reminders_enabled = data.expense_reminders_enabled
+    if data.budget_alerts_enabled is not None:
+        preference.budget_alerts_enabled = data.budget_alerts_enabled
     if preference.expense_reminders_enabled and (
         data.expense_reminders_enabled or data.expense_reminder_time is not None
     ):

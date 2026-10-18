@@ -10,8 +10,11 @@ import {
   cuentasListResponseSchema,
   deudaResponseSchema,
   deudasListResponseSchema,
+  metasGastoResponseSchema,
   movimientoResponseSchema,
   movimientosPageResponseSchema,
+  resumenSemanalResponseSchema,
+  tendenciaSemanalResponseSchema,
 } from "@/modules/finanzas/schemas/finanzas.schema"
 import {
   AnaliticaDiariaResponse,
@@ -38,6 +41,12 @@ import {
   MovimientoPatch,
   MovimientoResponse,
   MovimientosPageResponse,
+  MetasGastoResponse,
+  MetasGastoUpdate,
+  ReglaCategoria,
+  ReglaCategoriaCreate,
+  ResumenSemanalResponse,
+  TendenciaSemanalResponse,
   ProductoFinancieroCreate,
   ProductoFinancieroPatch,
   ProductoFinancieroResponse,
@@ -98,7 +107,7 @@ export const FinanzasAPI = {
     await api.delete(`/api/finanzas/producto-financiero/${idProducto}`)
   },
 
-  getCategorias: async (params?: { incluir_archivadas?: boolean }): Promise<CategoriaResponse[]> => {
+  getCategorias: async (params?: { incluir_archivadas?: boolean; incluir_ocultas?: boolean }): Promise<CategoriaResponse[]> => {
     const { data } = await api.get("/api/finanzas/categoria/", { params })
     return data
   },
@@ -115,6 +124,26 @@ export const FinanzasAPI = {
 
   deleteCategoria: async (idCategoria: number): Promise<void> => {
     await api.delete(`/api/finanzas/categoria/${idCategoria}`)
+  },
+
+  /** Solo para este usuario: una oculta no se ofrece al registrar. */
+  ocultarCategoria: async (idCategoria: number, oculta: boolean): Promise<CategoriaResponse> => {
+    const { data } = await api.put(`/api/finanzas/categoria/${idCategoria}/oculta`, { oculta })
+    return data
+  },
+
+  getReglasCategoria: async (): Promise<ReglaCategoria[]> => {
+    const { data } = await api.get("/api/finanzas/reglas-categoria/")
+    return data
+  },
+
+  guardarReglasCategoria: async (reglas: ReglaCategoriaCreate[]): Promise<ReglaCategoria[]> => {
+    const { data } = await api.post("/api/finanzas/reglas-categoria/", reglas)
+    return data
+  },
+
+  deleteReglaCategoria: async (idRegla: number): Promise<void> => {
+    await api.delete(`/api/finanzas/reglas-categoria/${idRegla}`)
   },
 
   getCuentas: async (): Promise<CuentaResponse[]> => {
@@ -278,5 +307,26 @@ export const FinanzasAPI = {
       data,
       "GET /api/finanzas/analitica/distribucion-cuentas",
     )
+  },
+
+  /** Semana (lunes a domingo) que contiene ``fecha`` (YYYY-MM-DD); sin ella, la actual. */
+  getResumenSemanal: async (fecha?: string): Promise<ResumenSemanalResponse> => {
+    const { data } = await api.get("/api/finanzas/analitica/semanal", { params: fecha ? { fecha } : undefined })
+    return parseApiResponse(resumenSemanalResponseSchema, data, "GET /api/finanzas/analitica/semanal")
+  },
+
+  getTendenciaSemanal: async (semanas = 8): Promise<TendenciaSemanalResponse> => {
+    const { data } = await api.get("/api/finanzas/analitica/semanas", { params: { semanas } })
+    return parseApiResponse(tendenciaSemanalResponseSchema, data, "GET /api/finanzas/analitica/semanas")
+  },
+
+  getMetasGasto: async (): Promise<MetasGastoResponse> => {
+    const { data } = await api.get("/api/finanzas/metas-gasto/")
+    return parseApiResponse(metasGastoResponseSchema, data, "GET /api/finanzas/metas-gasto")
+  },
+
+  updateMetasGasto: async (payload: MetasGastoUpdate): Promise<MetasGastoResponse> => {
+    const { data } = await api.patch("/api/finanzas/metas-gasto/", payload)
+    return parseApiResponse(metasGastoResponseSchema, data, "PATCH /api/finanzas/metas-gasto")
   },
 }

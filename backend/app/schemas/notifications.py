@@ -30,6 +30,7 @@ class NotificationPreferenceUpdate(BaseModel):
     training_reminders_enabled: bool | None = None
     expense_reminders_enabled: bool | None = None
     expense_reminder_time: time | None = None
+    budget_alerts_enabled: bool | None = None
 
     @field_validator("expense_reminder_time")
     @classmethod
@@ -51,4 +52,5 @@ class PushStatusResponse(BaseModel):
     training_reminders_enabled: bool
     expense_reminders_enabled: bool
     expense_reminder_time: str
+    budget_alerts_enabled: bool
     active_subscriptions: int

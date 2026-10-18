@@ -14,6 +14,9 @@ from .finanzas import (
     MovimientoItem,
     Deuda,
     Importacion,
+    MetaGasto,
+    PreferenciaCategoria,
+    ReglaCategoria,
 )
 from .entrenamiento import (
     Ejercicios, 
@@ -40,6 +43,7 @@ from .notification import (
     NotificationPreference,
     PushDelivery,
     PushSubscription,
+    AlertaGasto,
     TrainingReminder,
 )
 
@@ -54,6 +58,7 @@ __all__ = [
     "PushDelivery",
     "PushSubscription",
     "TrainingReminder",
+    "AlertaGasto",
     "Marca",
     "CategoriaProducto",
     "SubcategoriaProducto",
@@ -88,6 +93,9 @@ __all__ = [
     "EnumTipoDeuda",
     "Deuda",
     "Importacion",
+    "MetaGasto",
+    "PreferenciaCategoria",
+    "ReglaCategoria",
     "Lectura",
     "RegistroLectura",
     "CategoriaHabito", 

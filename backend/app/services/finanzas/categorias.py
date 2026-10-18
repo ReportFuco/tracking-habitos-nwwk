@@ -3,12 +3,14 @@
 Un usuario ve las por defecto más las suyas. Solo un superusuario crea o modifica las por
 defecto; cada usuario administra únicamente las suyas.
 """
-from sqlalchemy import func, or_, select
+from datetime import datetime, timedelta
+
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import CategoriaFinanza, Movimiento, Usuario
-from app.schemas.finanzas import CategoriaCreate, CategoriaPatch
-from app.services.errores import Conflicto, NoEncontrado, SinPermiso
+from app.models import CategoriaFinanza, CuentaUsuario, Movimiento, PreferenciaCategoria, Usuario
+from app.schemas.finanzas import CategoriaCreate, CategoriaPatch, MoverMovimientosResponse
+from app.services.errores import Conflicto, DatosInvalidos, NoEncontrado, SinPermiso
 
 
 def condicion_visible(usuario: Usuario):
@@ -18,13 +20,19 @@ def condicion_visible(usuario: Usuario):
     )
 
 
+DIAS_USO_RECIENTE = 90
+
+
 async def listar_categorias(
     db: AsyncSession,
     usuario: Usuario,
     *,
     incluir_archivadas: bool = False,
+    incluir_ocultas: bool = False,
 ) -> list[CategoriaFinanza]:
-    """Por defecto primero y después las propias, cada grupo por nombre."""
+    """Primero las más usadas en los últimos 90 días; a igual uso, por defecto antes que
+    propias y por nombre. Cada una trae ``oculta`` y ``usos_recientes`` (atributos de la
+    instancia, no columnas) para CategoriaResponse."""
     consulta = select(CategoriaFinanza).where(condicion_visible(usuario))
     if not incluir_archivadas:
         consulta = consulta.where(CategoriaFinanza.activo.is_(True))
@@ -32,7 +40,63 @@ async def listar_categorias(
         CategoriaFinanza.id_usuario.is_not(None),
         func.lower(CategoriaFinanza.nombre),
     )
-    return (await db.execute(consulta)).scalars().all()
+    lista = (await db.execute(consulta)).scalars().all()
+
+    ocultas = set(
+        (
+            await db.scalars(
+                select(PreferenciaCategoria.id_categoria).where(
+                    PreferenciaCategoria.id_usuario == usuario.id_usuario,
+                    PreferenciaCategoria.oculta.is_(True),
+                )
+            )
+        ).all()
+    )
+    desde = datetime.now() - timedelta(days=DIAS_USO_RECIENTE)
+    usos = dict(
+        (
+            await db.execute(
+                select(Movimiento.id_categoria, func.count(Movimiento.id_transaccion))
+                .join(CuentaUsuario, Movimiento.id_cuenta == CuentaUsuario.id_cuenta)
+                .where(CuentaUsuario.id_usuario == usuario.id_usuario, Movimiento.created_at >= desde)
+                .group_by(Movimiento.id_categoria)
+            )
+        ).all()
+    )
+    for categoria in lista:
+        categoria.oculta = categoria.id_categoria in ocultas
+        categoria.usos_recientes = usos.get(categoria.id_categoria, 0)
+    if not incluir_ocultas:
+        lista = [categoria for categoria in lista if not categoria.oculta]
+    # sorted es estable: a igual uso se mantiene el orden de la consulta.
+    return sorted(lista, key=lambda categoria: -categoria.usos_recientes)
+
+
+async def ocultar_categoria(
+    db: AsyncSession,
+    usuario: Usuario,
+    id_categoria: int,
+    oculta: bool,
+) -> CategoriaFinanza:
+    """Oculta (o vuelve a mostrar) una categoría solo para este usuario. Sirve también
+    para las por defecto, que son compartidas y no puede archivar."""
+    categoria = await obtener_categoria(db, usuario, id_categoria)
+    preferencia = await db.get(PreferenciaCategoria, (usuario.id_usuario, id_categoria))
+    if preferencia is None:
+        # Import diferido: semanal importa este módulo.
+        from app.services.finanzas.semanal import excluida_por_defecto
+
+        preferencia = PreferenciaCategoria(
+            id_usuario=usuario.id_usuario,
+            id_categoria=id_categoria,
+            excluida=excluida_por_defecto(categoria.nombre),
+        )
+        db.add(preferencia)
+    preferencia.oculta = oculta
+    preferencia.updated_at = datetime.now()
+    await db.flush()
+    categoria.oculta = oculta
+    return categoria
 
 
 async def obtener_categoria(db: AsyncSession, usuario: Usuario, id_categoria: int) -> CategoriaFinanza:
@@ -160,3 +224,41 @@ async def eliminar_categoria(
     await db.delete(categoria)
     await db.flush()
     return False
+
+
+async def mover_movimientos(
+    db: AsyncSession,
+    usuario: Usuario,
+    id_origen: int,
+    id_destino: int,
+    *,
+    confirmar: bool = False,
+) -> MoverMovimientosResponse:
+    """Pasa todos los movimientos del usuario de una categoría a otra (para fusionar
+    categorías antes de ocultar o archivar la de origen). Sin confirmar solo los cuenta.
+    Los de otros usuarios en una categoría por defecto no se tocan."""
+    if id_origen == id_destino:
+        raise DatosInvalidos("La categoría de destino debe ser distinta.")
+    await obtener_categoria(db, usuario, id_origen)
+    destino = await obtener_categoria(db, usuario, id_destino)
+    if not destino.activo:
+        raise Conflicto(f"La categoría «{destino.nombre}» está archivada.")
+
+    del_usuario = select(CuentaUsuario.id_cuenta).where(CuentaUsuario.id_usuario == usuario.id_usuario)
+    filtro = (Movimiento.id_categoria == id_origen, Movimiento.id_cuenta.in_(del_usuario))
+    cantidad, monto = (
+        await db.execute(
+            select(func.count(Movimiento.id_transaccion), func.coalesce(func.sum(Movimiento.monto), 0)).where(*filtro)
+        )
+    ).one()
+    if confirmar and cantidad:
+        await db.execute(
+            update(Movimiento).where(*filtro).values(id_categoria=id_destino).execution_options(synchronize_session=False)
+        )
+    return MoverMovimientosResponse(
+        aplicado=confirmar,
+        id_categoria_origen=id_origen,
+        id_categoria_destino=id_destino,
+        cantidad=cantidad,
+        monto_total=monto,
+    )

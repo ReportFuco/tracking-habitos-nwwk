@@ -262,3 +262,90 @@ export const analiticaDiariaResponseSchema = z.object({
 })
 
 export type AnaliticaDiariaResponse = z.infer<typeof analiticaDiariaResponseSchema>
+
+// Gasto semanal (lunes a domingo): sin transferencias, abonos a deudas ni categorias
+// excluidas. Ver backend services/finanzas/semanal.py.
+const nivelAlertaSchema = z.enum(["info", "aviso", "excedido"])
+
+export const alertaSemanaSchema = z.object({
+  clave: z.string(),
+  nivel: nivelAlertaSchema,
+  titulo: z.string(),
+  mensaje: z.string(),
+})
+
+export const resumenSemanalResponseSchema = z.object({
+  semana_inicio: z.string(),
+  semana_fin: z.string(),
+  es_semana_actual: z.boolean(),
+  dias_transcurridos: z.number().int(),
+  gasto_semana: z.number(),
+  gasto_hoy: z.number().nullable(),
+  promedio_diario: z.number().nullable(),
+  proyeccion_semana: z.number().nullable(),
+  meta_semanal: z.number().nullable(),
+  restante: z.number().nullable(),
+  porcentaje_meta: z.number().nullable(),
+  disponible_hoy: z.number().nullable(),
+  gasto_semana_anterior: z.number(),
+  gasto_semana_anterior_misma_altura: z.number(),
+  variacion_misma_altura: z.number(),
+  variacion_misma_altura_pct: z.number().nullable(),
+  gasto_excluido: z.number(),
+  dias: z.array(
+    z.object({
+      fecha: z.string(),
+      gasto_total: z.number(),
+      es_futuro: z.boolean(),
+    }),
+  ),
+  categorias: z.array(
+    z.object({
+      id_categoria: z.number().int(),
+      categoria: z.string(),
+      total: z.number(),
+      total_semana_anterior: z.number(),
+      presupuesto_semanal: z.number().nullable(),
+      porcentaje_presupuesto: z.number().nullable(),
+    }),
+  ),
+  alertas: z.array(alertaSemanaSchema),
+})
+
+export const tendenciaSemanalResponseSchema = z.object({
+  semanas: z.number().int(),
+  meta_semanal: z.number().nullable(),
+  promedio_semanas_completas: z.number().nullable(),
+  ahorro_vs_meta_acumulado: z.number().nullable(),
+  semanas_cumplidas: z.number().int(),
+  items: z.array(
+    z.object({
+      semana_inicio: z.string(),
+      semana_fin: z.string(),
+      gasto_total: z.number(),
+      meta_semanal: z.number().nullable(),
+      diferencia_meta: z.number().nullable(),
+      es_semana_actual: z.boolean(),
+    }),
+  ),
+})
+
+export const metasGastoResponseSchema = z.object({
+  meta_semanal: z.number().nullable(),
+  sugerencia_semanal: z.number().nullable(),
+  categorias: z.array(
+    z.object({
+      id_categoria: z.number().int(),
+      nombre: z.string(),
+      es_propia: z.boolean(),
+      excluida: z.boolean(),
+      presupuesto_semanal: z.number().nullable(),
+      promedio_semanal: z.number(),
+    }),
+  ),
+})
+
+export type AlertaSemana = z.infer<typeof alertaSemanaSchema>
+export type ResumenSemanalResponse = z.infer<typeof resumenSemanalResponseSchema>
+export type TendenciaSemanalResponse = z.infer<typeof tendenciaSemanalResponseSchema>
+export type MetasGastoResponse = z.infer<typeof metasGastoResponseSchema>

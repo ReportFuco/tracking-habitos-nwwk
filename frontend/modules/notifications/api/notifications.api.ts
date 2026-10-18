@@ -12,11 +12,16 @@ export interface PushStatus {
   expense_reminders_enabled: boolean
   /** "HH:MM", hora de Chile. */
   expense_reminder_time: string
+  /** Alertas de metas de gasto y resumen del domingo. */
+  budget_alerts_enabled: boolean
   active_subscriptions: number
 }
 
 export type PushPreferencesPatch = Partial<
-  Pick<PushStatus, "training_reminders_enabled" | "expense_reminders_enabled" | "expense_reminder_time">
+  Pick<
+    PushStatus,
+    "training_reminders_enabled" | "expense_reminders_enabled" | "expense_reminder_time" | "budget_alerts_enabled"
+  >
 >
 
 interface SerializedSubscription {

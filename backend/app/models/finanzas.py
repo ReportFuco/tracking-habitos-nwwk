@@ -396,3 +396,117 @@ class Importacion(Base):
     )
 
     cuenta: Mapped["CuentaUsuario"] = relationship()
+
+
+class MetaGasto(Base):
+    """Meta de gasto semanal (lunes a domingo, calendario de Chile) del usuario.
+
+    La meta diaria no se guarda: es lo que queda de la semana dividido por los días que
+    faltan, así un día caro se reparte entre los siguientes.
+    """
+
+    __tablename__ = "meta_gasto"
+    __table_args__ = (
+        CheckConstraint(
+            "meta_semanal IS NULL OR meta_semanal > 0",
+            name="ck_meta_gasto_semanal_positiva",
+        ),
+        {"schema": FINANZAS_SCHEMA},
+    )
+
+    id_usuario: Mapped[int] = mapped_column(
+        ForeignKey(table_ref(USUARIOS_SCHEMA, "usuario.id_usuario"), ondelete="CASCADE"),
+        primary_key=True,
+    )
+    meta_semanal: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.now,
+        server_default=text("now()"),
+    )
+
+
+class PreferenciaCategoria(Base):
+    """Preferencias de un usuario sobre una categoría (propia o por defecto).
+
+    - ``excluida``: no cuenta en el gasto semanal (gastos fijos como la universidad o el
+      pago de la tarjeta). Sin fila rige el valor por defecto del servicio
+      (services.finanzas.semanal.excluida_por_defecto).
+    - ``presupuesto_semanal``: tope semanal de la categoría.
+    - ``oculta``: no se ofrece al registrar. Sirve para las categorías por defecto, que son
+      compartidas y el usuario no puede archivar; los movimientos que la usan no cambian.
+    """
+
+    __tablename__ = "preferencia_categoria"
+    __table_args__ = (
+        CheckConstraint(
+            "presupuesto_semanal IS NULL OR presupuesto_semanal > 0",
+            name="ck_preferencia_categoria_presupuesto_positivo",
+        ),
+        {"schema": FINANZAS_SCHEMA},
+    )
+
+    id_usuario: Mapped[int] = mapped_column(
+        ForeignKey(table_ref(USUARIOS_SCHEMA, "usuario.id_usuario"), ondelete="CASCADE"),
+        primary_key=True,
+    )
+    id_categoria: Mapped[int] = mapped_column(
+        ForeignKey(table_ref(FINANZAS_SCHEMA, "categoria_finanza.id_categoria"), ondelete="CASCADE"),
+        primary_key=True,
+    )
+    presupuesto_semanal: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    excluida: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+    oculta: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.now,
+        server_default=text("now()"),
+    )
+
+
+class ReglaCategoria(Base):
+    """Asigna una categoría a los movimientos cuya descripción contiene ``patron``.
+
+    Se aplica al registrar un gasto sin categoría o como «Otros» (el Atajo de Wallet manda
+    «Otros» con el nombre del comercio), a las filas de cartola sin categoría y, a pedido,
+    a movimientos anteriores. La comparación ignora mayúsculas y tildes; si calzan varias,
+    gana el patrón más largo (el más específico).
+    """
+
+    __tablename__ = "regla_categoria"
+    __table_args__ = (
+        Index(
+            "uq_regla_categoria_usuario_patron",
+            "id_usuario",
+            func.lower(text("patron")),
+            unique=True,
+        ),
+        {"schema": FINANZAS_SCHEMA},
+    )
+
+    id_regla: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id_usuario: Mapped[int] = mapped_column(
+        ForeignKey(table_ref(USUARIOS_SCHEMA, "usuario.id_usuario"), ondelete="CASCADE"),
+        index=True,
+    )
+    patron: Mapped[str] = mapped_column(String(80), nullable=False)
+    id_categoria: Mapped[int] = mapped_column(
+        ForeignKey(table_ref(FINANZAS_SCHEMA, "categoria_finanza.id_categoria"), ondelete="CASCADE"),
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.now,
+        server_default=text("now()"),
+    )
+
+    categoria: Mapped["CategoriaFinanza"] = relationship()

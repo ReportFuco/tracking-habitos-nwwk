@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,8 +13,11 @@ from app.schemas.finanzas import (
     AnaliticaDistribucionCuentasResponse,
     AnaliticaResumenResponse,
     AnaliticaTendenciaMensualResponse,
+    ResumenSemanalResponse,
+    TendenciaSemanalResponse,
 )
 from app.services.finanzas import analitica as servicio
+from app.services.finanzas import semanal
 # Reexportado: los tests unitarios lo importan desde este modulo.
 from app.services.finanzas.analitica import agrupar_por_dia  # noqa: F401
 
@@ -99,3 +104,39 @@ async def obtener_analitica_diaria(
 ):
     usuario = await obtener_usuario_actual(user, db)
     return await servicio.analitica_diaria(db, usuario, year, month)
+
+
+@router.get(
+    "/semanal",
+    summary="Gasto semanal contra la meta",
+    description=(
+        "Gasto del día a día de la semana (lunes a domingo, hora de Chile) que contiene "
+        "`fecha` (hoy si se omite): sin transferencias, abonos a deudas ni categorías "
+        "excluidas. Incluye la meta, el tope de hoy, la comparación con la semana anterior a "
+        "la misma altura, los presupuestos por categoría y las alertas vigentes."
+    ),
+    response_model=ResumenSemanalResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def obtener_resumen_semanal(
+    fecha: date | None = Query(default=None, description="Cualquier día de la semana a consultar."),
+    user=Depends(current_user_or_api_key),
+    db: AsyncSession = Depends(get_db),
+):
+    usuario = await obtener_usuario_actual(user, db)
+    return await semanal.resumen_semanal(db, usuario, fecha)
+
+
+@router.get(
+    "/semanas",
+    summary="Gasto de las ultimas semanas",
+    response_model=TendenciaSemanalResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def obtener_tendencia_semanal(
+    semanas: int = Query(default=8, ge=1, le=52),
+    user=Depends(current_user_or_api_key),
+    db: AsyncSession = Depends(get_db),
+):
+    usuario = await obtener_usuario_actual(user, db)
+    return await semanal.tendencia_semanal(db, usuario, semanas)

@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from collections.abc import Callable
 from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
 
@@ -82,8 +83,13 @@ async def registered_expense_on(db: AsyncSession, auth_user_id: int, day: date) 
     )
 
 
-async def send_expense_reminder(db: AsyncSession, auth_user_id: int) -> int:
-    """Envia el aviso a cada dispositivo activo del usuario. Devuelve cuantos lo recibieron."""
+async def send_to_user_devices(
+    db: AsyncSession,
+    auth_user_id: int,
+    send: Callable[[PushSubscription], None],
+    label: str,
+) -> int:
+    """Envia con ``send`` a cada dispositivo activo del usuario. Devuelve cuantos lo recibieron."""
     subscriptions = (
         await db.scalars(
             select(PushSubscription).where(
@@ -98,7 +104,7 @@ async def send_expense_reminder(db: AsyncSession, auth_user_id: int) -> int:
         now = utc_now()
         subscription.updated_at = now
         try:
-            await asyncio.to_thread(send_expense_push, subscription)
+            await asyncio.to_thread(send, subscription)
         except WebPushException as exc:
             status_code = getattr(exc.response, "status_code", None)
             subscription.failure_count += 1
@@ -107,16 +113,24 @@ async def send_expense_reminder(db: AsyncSession, auth_user_id: int) -> int:
                 subscription.enabled = False
                 subscription.disabled_at = now
             else:
-                logger.warning("Push de gastos fallo (%s): %s", status_code, exc)
+                logger.warning("Push de %s fallo (%s): %s", label, status_code, exc)
         except Exception:
             subscription.failure_count += 1
-            logger.exception("Push de gastos fallo")
+            logger.exception("Push de %s fallo", label)
         else:
             sent += 1
             subscription.failure_count = 0
             subscription.last_success_at = now
     await db.commit()
     return sent
+
+
+async def send_expense_reminder(db: AsyncSession, auth_user_id: int) -> int:
+    """Envia el aviso a cada dispositivo activo del usuario. Devuelve cuantos lo recibieron."""
+    # La lambda resuelve send_expense_push al enviar: los tests lo reemplazan en el modulo.
+    return await send_to_user_devices(
+        db, auth_user_id, lambda subscription: send_expense_push(subscription), "gastos"
+    )
 
 
 async def process_expense_reminders(session_factory) -> None:

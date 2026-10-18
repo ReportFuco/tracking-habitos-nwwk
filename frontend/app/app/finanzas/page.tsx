@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/shell/page-header"
 import { MenuGroup } from "@/components/shell/menu-group"
 import { FinanzasHomeMenu } from "@/modules/finanzas/components/finanzas-home-menu"
 import { FinanzasResumen } from "@/modules/finanzas/components/finanzas-resumen"
+import { SemanaPortada } from "@/modules/finanzas/components/gasto-semanal"
 import { SaldoCuentas } from "@/modules/finanzas/components/saldo-cuentas"
 
 export default function FinanzasHomePage() {
@@ -9,6 +10,9 @@ export default function FinanzasHomePage() {
     <div className="flex flex-col gap-5 sm:gap-6">
       <PageHeader title="Finanzas" className="pb-0" />
       <FinanzasHomeMenu />
+      <MenuGroup title="Esta semana">
+        <SemanaPortada />
+      </MenuGroup>
       <MenuGroup title="Saldo">
         <SaldoCuentas />
       </MenuGroup>

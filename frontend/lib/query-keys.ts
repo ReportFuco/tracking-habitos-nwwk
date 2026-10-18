@@ -29,6 +29,11 @@ export const queryKeys = {
       month?: number
       tipo_movimiento?: "gasto" | "ingreso"
     }) => ["finanzas", "analitica", "distribucion-categorias", params ?? {}] as const,
+    // Bajo el prefijo "analitica": un movimiento nuevo los invalida junto con el resto.
+    analiticaSemanal: (fecha?: string) => ["finanzas", "analitica", "semanal", { fecha: fecha ?? null }] as const,
+    analiticaSemanas: (semanas: number) => ["finanzas", "analitica", "semanas", { semanas }] as const,
+    metasGasto: ["finanzas", "metas-gasto"] as const,
+    reglasCategoria: ["finanzas", "reglas-categoria"] as const,
     productosRoot: ["finanzas", "productos"] as const,
     productos: (idBanco: number) => ["finanzas", "productos", { idBanco }] as const,
   },

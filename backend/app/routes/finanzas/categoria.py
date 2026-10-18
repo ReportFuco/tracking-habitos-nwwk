@@ -9,7 +9,10 @@ from app.routes.utils import es_superusuario
 from app.schemas.finanzas import (
     CategoriaResponse,
     CategoriaCreate,
-    CategoriaPatch
+    CategoriaPatch,
+    CategoriaOcultar,
+    MoverMovimientosRequest,
+    MoverMovimientosResponse,
 )
 from app.services.finanzas import categorias as servicio
 
@@ -21,8 +24,9 @@ router = APIRouter(prefix="/categoria", tags=["Finanzas · Categorías"])
     response_model=list[CategoriaResponse],
     summary="Obtener las categorías del usuario",
     description=(
-        "Categorías por defecto más las propias del usuario. Las archivadas solo se "
-        "incluyen con incluir_archivadas=true."
+        "Categorías por defecto más las propias del usuario, las más usadas en los últimos "
+        "90 días primero. Las archivadas solo se incluyen con incluir_archivadas=true y las "
+        "que el usuario ocultó, con incluir_ocultas=true."
     ),
     status_code=status.HTTP_200_OK
 )
@@ -30,9 +34,12 @@ async def obtener_categorias(
     db:AsyncSession = Depends(get_db),
     user = Depends(current_user_or_api_key),
     incluir_archivadas: Annotated[bool, Query()] = False,
+    incluir_ocultas: Annotated[bool, Query()] = False,
 ):
     usuario = await obtener_usuario_actual(user, db)
-    return await servicio.listar_categorias(db, usuario, incluir_archivadas=incluir_archivadas)
+    return await servicio.listar_categorias(
+        db, usuario, incluir_archivadas=incluir_archivadas, incluir_ocultas=incluir_ocultas
+    )
 
 
 @router.get(
@@ -110,3 +117,45 @@ async def eliminar_categoria(
     with errores_http():
         await servicio.eliminar_categoria(db, usuario, id_categoria, es_admin=es_superusuario(user))
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put(
+    "/{id_categoria}/oculta",
+    response_model=CategoriaResponse,
+    summary="Ocultar o mostrar una categoría",
+    description=(
+        "Solo para este usuario: una categoría oculta no se ofrece al registrar ni en las "
+        "metas. Funciona también con las por defecto. Sus movimientos no cambian."
+    ),
+)
+async def ocultar_categoria(
+    id_categoria: int,
+    data: CategoriaOcultar,
+    db: AsyncSession = Depends(get_db),
+    user = Depends(current_user_or_api_key),
+):
+    usuario = await obtener_usuario_actual(user, db)
+    with errores_http():
+        return await servicio.ocultar_categoria(db, usuario, id_categoria, data.oculta)
+
+
+@router.post(
+    "/{id_categoria}/mover-movimientos",
+    response_model=MoverMovimientosResponse,
+    summary="Mover los movimientos a otra categoría",
+    description=(
+        "Pasa todos tus movimientos de esta categoría a la de destino, para fusionarlas. Con "
+        "confirmar=false solo cuenta cuántos se moverían."
+    ),
+)
+async def mover_movimientos(
+    id_categoria: int,
+    data: MoverMovimientosRequest,
+    db: AsyncSession = Depends(get_db),
+    user = Depends(current_user_or_api_key),
+):
+    usuario = await obtener_usuario_actual(user, db)
+    with errores_http():
+        return await servicio.mover_movimientos(
+            db, usuario, id_categoria, data.id_categoria_destino, confirmar=data.confirmar
+        )

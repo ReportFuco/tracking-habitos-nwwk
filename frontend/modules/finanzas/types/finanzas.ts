@@ -20,6 +20,10 @@ export type {
   AnaliticaResumenResponse,
   AnaliticaTendenciaMensualItem,
   AnaliticaTendenciaMensualResponse,
+  AlertaSemana,
+  MetasGastoResponse,
+  ResumenSemanalResponse,
+  TendenciaSemanalResponse,
 } from "@/modules/finanzas/schemas/finanzas.schema"
 
 export type {
@@ -103,7 +107,25 @@ export interface CategoriaResponse {
   es_propia: boolean
   /** false si esta archivada (tiene movimientos, pero ya no se ofrece al registrar). */
   activo: boolean
+  /** true si el usuario la oculto: no se ofrece al registrar (sirve con las por defecto). */
+  oculta?: boolean
+  /** Movimientos del usuario en ella en los ultimos 90 dias. */
+  usos_recientes?: number
   created_at: string
+}
+
+/** Si la descripcion contiene `patron` (sin mayusculas ni tildes), va a esa categoria. */
+export interface ReglaCategoria {
+  id_regla: number
+  patron: string
+  id_categoria: number
+  categoria: string
+  created_at: string
+}
+
+export interface ReglaCategoriaCreate {
+  patron: string
+  id_categoria: number
 }
 
 export interface CuentaCreate {
@@ -174,3 +196,14 @@ export interface MovimientosFiltros {
   id_deuda?: number
 }
 
+
+/** Solo cambia lo enviado: meta_semanal null la quita; omitida no la toca. */
+export interface MetasGastoUpdate {
+  meta_semanal?: number | null
+  categorias?: {
+    id_categoria: number
+    excluida?: boolean
+    /** null quita el presupuesto. */
+    presupuesto_semanal?: number | null
+  }[]
+}

@@ -38,6 +38,12 @@ Finanzas
 - Para preguntas de totales, comparaciones o "en qué gasto más", prefiere resumen_mes,
   distribucion_por_categoria, distribucion_por_cuenta, tendencia_mensual y gasto_diario:
   ya vienen agregadas. buscar_movimientos es para ver movimientos puntuales.
+- Para "cómo voy esta semana", "cuánto puedo gastar hoy" o si está ahorrando, usa
+  resumen_semanal y tendencia_semanal: el gasto del día a día de lunes a domingo, sin
+  abonos a deudas ni las categorías que el usuario excluyó (gastos fijos). El mes trae
+  pagos grandes que no dicen nada de la semana. ver_metas_gasto da la meta semanal, los
+  presupuestos por categoría y una sugerencia; fijar_metas_gasto los cambia, previa
+  confirmación de los montos.
 - Si el usuario nombra una cuenta o categoría, resuelve su id con listar_cuentas o
   listar_categorias antes de filtrar o registrar. Hay categorías por defecto y propias
   del usuario; si ninguna calza, ofrece crear una con crear_categoria.
@@ -47,6 +53,19 @@ Finanzas
   Busca antes por nombre y por marca para no duplicar productos.
 - Al registrar, genera un client_request_id (UUID) y reutilízalo si reintentas la misma
   llamada. Antes de eliminar un movimiento, confirma con el usuario.
+
+Categorías y reglas
+- listar_categorias trae primero las más usadas y omite las que el usuario ocultó
+  (ocultar_categoria, solo para él; sirve con las por defecto, que no puede archivar).
+- Las reglas de categoría (listar_reglas_categoria) asignan la categoría según el comercio:
+  si la descripción contiene el patrón, va a esa categoría. Se aplican solas al registrar
+  sin id_categoria o con «Otros» y a las filas de cartola sin id_categoria, así que en una
+  importación puedes omitir la categoría de los comercios que ya tienen regla.
+- Para ordenar el historial: guardar_reglas_categoria → aplicar_reglas_categoria con
+  confirmar=false → mostrar el resumen → con el visto bueno, confirmar=true. Usa
+  solo_desde_categorias para no pisar lo que el usuario categorizó a propósito.
+- Para fusionar categorías: mover_movimientos_categoria (vista previa y luego confirmar)
+  y después ocultar_categoria con la de origen.
 
 Deudas
 - Una deuda es 'debo' (préstamo, crédito, compra en cuotas) o 'me_deben' (plata que el

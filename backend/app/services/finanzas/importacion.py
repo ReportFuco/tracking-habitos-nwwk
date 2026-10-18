@@ -42,7 +42,7 @@ from app.schemas.finanzas import (
     ResultadoImportacion,
 )
 from app.services.errores import DatosInvalidos, ErrorDominio, NoEncontrado
-from app.services.finanzas import cuentas, deudas, movimientos, transferencias
+from app.services.finanzas import cuentas, deudas, movimientos, reglas, transferencias
 
 
 CHILE_TZ = ZoneInfo("America/Santiago")
@@ -154,11 +154,22 @@ async def _analizar(
             fila.estado = "ya_importada"
 
     # --- Categorías y cuentas de las transferencias -------------------------------------
+    # Sin categoría o como «Otros», la decide la regla que calce con la glosa.
+    lista_reglas = await reglas.reglas_activas(db, usuario)
+    id_otros = await reglas.categoria_otros(db)
     errores: dict = {}
     for fila in analisis:
         if fila.estado != "nueva":
             continue
         datos = fila.datos
+        if datos.id_cuenta_contraparte is None and datos.id_categoria in (None, id_otros):
+            # Un abono a deuda no se recategoriza por el comercio.
+            automatica = (
+                None
+                if datos.id_deuda
+                else reglas.elegir_categoria(lista_reglas, datos.descripcion_original, datos.descripcion)
+            )
+            datos.id_categoria = automatica or datos.id_categoria or id_otros
         if datos.id_cuenta_contraparte is not None:
             error = await _validar_una_vez(
                 errores,

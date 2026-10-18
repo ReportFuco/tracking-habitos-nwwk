@@ -1,10 +1,11 @@
 "use client"
 
 import { FormEvent, useState } from "react"
-import { Archive, ArchiveRestore, Check, Pencil, Plus, X } from "lucide-react"
+import { Archive, ArchiveRestore, Check, Eye, EyeOff, Pencil, Plus, X } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { useCategoriasTodas, useFinanzas } from "@/modules/finanzas/hooks/useFinanzas"
+import { useCategoriasTodas, useFinanzas, useOcultarCategoria } from "@/modules/finanzas/hooks/useFinanzas"
+import { ReglasCategoria } from "./reglas-categoria"
 import type { CategoriaResponse } from "@/modules/finanzas/types/finanzas"
 
 const inputClass =
@@ -12,8 +13,8 @@ const inputClass =
 const tituloClass = "text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
 
 /**
- * Categorias del usuario: crea las suyas, las renombra y las archiva. Las por defecto se
- * muestran como referencia (las administra un administrador).
+ * Categorias del usuario: crea las suyas, las renombra y las archiva. Las por defecto las
+ * administra un administrador, pero cada usuario puede ocultar las que no usa.
  */
 export function MisCategorias() {
   const { crearCategoria, editarCategoria, eliminarCategoria } = useFinanzas()
@@ -21,10 +22,22 @@ export function MisCategorias() {
   const [nombre, setNombre] = useState("")
   const [creando, setCreando] = useState(false)
 
+  const ocultar = useOcultarCategoria()
+
   const todas = todasQuery.data ?? []
-  const porDefecto = todas.filter((categoria) => !categoria.es_propia && categoria.activo)
-  const propias = todas.filter((categoria) => categoria.es_propia && categoria.activo)
+  const porDefecto = todas.filter((categoria) => !categoria.es_propia && categoria.activo && !categoria.oculta)
+  const propias = todas.filter((categoria) => categoria.es_propia && categoria.activo && !categoria.oculta)
+  const ocultas = todas.filter((categoria) => categoria.activo && categoria.oculta)
   const archivadas = todas.filter((categoria) => categoria.es_propia && !categoria.activo)
+
+  const cambiarOculta = async (categoria: CategoriaResponse, oculta: boolean) => {
+    try {
+      await ocultar.mutateAsync({ idCategoria: categoria.id_categoria, oculta })
+      if (oculta) toast.success(`«${categoria.nombre}» oculta`, { description: "Sus movimientos no cambian." })
+    } catch {
+      toast.error("No pudimos cambiar la categoria")
+    }
+  }
 
   const crear = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -117,18 +130,63 @@ export function MisCategorias() {
         </section>
       ) : null}
 
-      <section className="flex flex-col gap-3 rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
+      <section className="flex flex-col gap-2 rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
         <h2 className={tituloClass}>Por defecto</h2>
-        <ul className="flex flex-wrap gap-1.5">
+        <p className="text-xs text-muted-foreground">Oculta las que no usas: dejan de aparecer al registrar.</p>
+        <ul className="divide-y divide-border">
           {porDefecto.map((categoria) => (
-            <li key={categoria.id_categoria} className="rounded-md border border-border px-2.5 py-1 text-sm">
-              {categoria.nombre}
+            <li key={categoria.id_categoria} className="flex items-center gap-2 py-1.5">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">{categoria.nombre}</p>
+                <p className="text-xs text-muted-foreground">{usoTexto(categoria.usos_recientes)}</p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={ocultar.isPending}
+                onClick={() => void cambiarOculta(categoria, true)}
+              >
+                <EyeOff className="size-4" aria-hidden />
+                Ocultar
+              </Button>
             </li>
           ))}
         </ul>
       </section>
+
+      <ReglasCategoria />
+
+      {ocultas.length > 0 ? (
+        <section className="flex flex-col gap-2 rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
+          <h2 className={tituloClass}>Ocultas</h2>
+          <p className="text-xs text-muted-foreground">No aparecen al registrar. Sus movimientos las conservan.</p>
+          <ul className="divide-y divide-border">
+            {ocultas.map((categoria) => (
+              <li key={categoria.id_categoria} className="flex items-center justify-between gap-3 py-2">
+                <span className="truncate text-sm text-muted-foreground">{categoria.nombre}</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={ocultar.isPending}
+                  onClick={() => void cambiarOculta(categoria, false)}
+                >
+                  <Eye className="size-4" aria-hidden />
+                  Mostrar
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>
   )
+}
+
+function usoTexto(usos = 0) {
+  if (usos === 0) return "Sin uso en los ultimos 3 meses"
+  return `${usos} ${usos === 1 ? "movimiento" : "movimientos"} en 3 meses`
 }
 
 function FilaCategoria({

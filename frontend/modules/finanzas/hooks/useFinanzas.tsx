@@ -28,6 +28,7 @@ import {
   DeudaCreate,
   DeudaPatch,
   DeudaResponse,
+  MetasGastoUpdate,
   MovimientoCreate,
   MovimientoItemCreate,
   MovimientoItemPatch,
@@ -35,6 +36,7 @@ import {
   MovimientoResponse,
   MovimientosFiltros,
   ProductoFinancieroResponse,
+  ReglaCategoriaCreate,
 } from "@/modules/finanzas/types/finanzas"
 
 const MOVIMIENTOS_LIMIT = 20
@@ -91,9 +93,43 @@ export function useMovimientosFiltrados(filtros: MovimientosFiltros, enabled = t
 export function useCategoriasTodas() {
   return useQuery({
     queryKey: queryKeys.finanzas.categoriasTodas,
-    queryFn: () => FinanzasAPI.getCategorias({ incluir_archivadas: true }),
+    queryFn: () => FinanzasAPI.getCategorias({ incluir_archivadas: true, incluir_ocultas: true }),
     staleTime: FIVE_MINUTES,
   })
+}
+
+/** Ocultar o mostrar una categoria: cambia la lista del formulario y la de metas. */
+export function useOcultarCategoria() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ idCategoria, oculta }: { idCategoria: number; oculta: boolean }) =>
+      FinanzasAPI.ocultarCategoria(idCategoria, oculta),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.finanzas.categorias }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.finanzas.metasGasto }),
+      ]),
+  })
+}
+
+/** Reglas por comercio que asignan la categoria al registrar sin categoria o como «Otros». */
+export function useReglasCategoria() {
+  const queryClient = useQueryClient()
+  const query = useQuery({
+    queryKey: queryKeys.finanzas.reglasCategoria,
+    queryFn: FinanzasAPI.getReglasCategoria,
+    staleTime: FIVE_MINUTES,
+  })
+  const invalidar = () => queryClient.invalidateQueries({ queryKey: queryKeys.finanzas.reglasCategoria })
+  const guardar = useMutation({
+    mutationFn: (reglas: ReglaCategoriaCreate[]) => FinanzasAPI.guardarReglasCategoria(reglas),
+    onSuccess: invalidar,
+  })
+  const eliminar = useMutation({
+    mutationFn: (idRegla: number) => FinanzasAPI.deleteReglaCategoria(idRegla),
+    onSuccess: invalidar,
+  })
+  return { ...query, guardar, eliminar }
 }
 
 /**
@@ -219,6 +255,41 @@ export function useAnaliticaDistribucionCategorias(params?: {
     queryFn: () => FinanzasAPI.getAnaliticaDistribucionCategorias(params),
     staleTime: FIVE_MINUTES,
   })
+}
+
+/** Gasto de la semana que contiene ``fecha`` (YYYY-MM-DD); sin ella, la actual. */
+export function useResumenSemanal(fecha?: string) {
+  return useQuery({
+    queryKey: queryKeys.finanzas.analiticaSemanal(fecha),
+    queryFn: () => FinanzasAPI.getResumenSemanal(fecha),
+    staleTime: ONE_MINUTE,
+  })
+}
+
+export function useTendenciaSemanal(semanas = 8) {
+  return useQuery({
+    queryKey: queryKeys.finanzas.analiticaSemanas(semanas),
+    queryFn: () => FinanzasAPI.getTendenciaSemanal(semanas),
+    staleTime: FIVE_MINUTES,
+  })
+}
+
+/** Meta semanal y configuracion por categoria. Guardar recalcula toda la analitica semanal. */
+export function useMetasGasto() {
+  const queryClient = useQueryClient()
+  const query = useQuery({
+    queryKey: queryKeys.finanzas.metasGasto,
+    queryFn: FinanzasAPI.getMetasGasto,
+    staleTime: FIVE_MINUTES,
+  })
+  const guardar = useMutation({
+    mutationFn: (payload: MetasGastoUpdate) => FinanzasAPI.updateMetasGasto(payload),
+    onSuccess: async (metas) => {
+      queryClient.setQueryData(queryKeys.finanzas.metasGasto, metas)
+      await queryClient.invalidateQueries({ queryKey: queryKeys.finanzas.analitica })
+    },
+  })
+  return { ...query, guardar }
 }
 
 const useFinanzasState = () => {

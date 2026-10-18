@@ -59,7 +59,10 @@ class FilaImportacion(BaseModel):
     id_categoria: Optional[int] = Field(
         None,
         ge=1,
-        description="Ver listar_categorias. Obligatoria salvo en transferencias (id_cuenta_contraparte).",
+        description=(
+            "Ver listar_categorias. Si se omite o es «Otros», la decide la regla de categoría "
+            "que calce con la glosa (ver listar_reglas_categoria); sin regla queda en «Otros»."
+        ),
     )
     tipo_gasto: EnumTipoGasto = Field(
         EnumTipoGasto.VARIABLE,
@@ -89,8 +92,6 @@ class FilaImportacion(BaseModel):
 
     @model_validator(mode="after")
     def validar_categoria(self):
-        if self.id_categoria is None and self.id_cuenta_contraparte is None:
-            raise ValueError("id_categoria es obligatoria salvo en transferencias (id_cuenta_contraparte).")
         if self.id_cuenta_contraparte is not None and self.id_deuda is not None:
             raise ValueError("Una transferencia entre cuentas propias no abona una deuda.")
         return self

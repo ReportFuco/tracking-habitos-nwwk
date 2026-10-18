@@ -39,6 +39,10 @@ LECTURA = {
     "previsualizar_importacion",
     "listar_importaciones",
     "saldo_cuenta",
+    "resumen_semanal",
+    "tendencia_semanal",
+    "ver_metas_gasto",
+    "listar_reglas_categoria",
 }
 ESCRITURA = {
     "registrar_movimiento",
@@ -55,6 +59,12 @@ ESCRITURA = {
     "deshacer_importacion",
     "editar_cuenta",
     "registrar_transferencia",
+    "fijar_metas_gasto",
+    "guardar_reglas_categoria",
+    "eliminar_regla_categoria",
+    "aplicar_reglas_categoria",
+    "ocultar_categoria",
+    "mover_movimientos_categoria",
 }
 # Del modulo de entrenamientos (tests/test_entrenamientos_seguimiento_db.py).
 ENTRENAMIENTOS_LECTURA = {

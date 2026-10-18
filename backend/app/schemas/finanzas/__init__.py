@@ -26,7 +26,10 @@ from .cuentas import (
 from .categoria import (
     CategoriaResponse, 
     CategoriaPatch, 
-    CategoriaCreate
+    CategoriaCreate,
+    CategoriaOcultar,
+    MoverMovimientosRequest,
+    MoverMovimientosResponse,
 )
 from .deudas import DeudaCreate, DeudaListResponse, DeudaPatch, DeudaResponse
 from .importacion import (
@@ -53,6 +56,25 @@ from .analitica import (
     AnaliticaDiariaItem,
     AnaliticaDiariaResponse,
 )
+from .reglas import (
+    AplicarReglasRequest,
+    AplicarReglasResponse,
+    CambioReglas,
+    ReglaCategoriaCreate,
+    ReglaCategoriaResponse,
+)
+from .semanal import (
+    AlertaSemana,
+    CategoriaMeta,
+    CategoriaMetaUpdate,
+    CategoriaSemana,
+    GastoDiaSemana,
+    MetasGastoResponse,
+    MetasGastoUpdate,
+    ResumenSemanalResponse,
+    SemanaTendencia,
+    TendenciaSemanalResponse,
+)
 
 
 __all__ = [
@@ -61,6 +83,9 @@ __all__ = [
     "CategoriaResponse",
     "CategoriaPatch",
     "CategoriaCreate",
+    "CategoriaOcultar",
+    "MoverMovimientosRequest",
+    "MoverMovimientosResponse",
 
     # Movimientos
     "MovimientoResponse",
@@ -114,4 +139,23 @@ __all__ = [
     "AnaliticaDistribucionCategoriasResponse",
     "AnaliticaDistribucionCuentaItem",
     "AnaliticaDistribucionCuentasResponse",
+
+    # Reglas de categoría
+    "AplicarReglasRequest",
+    "AplicarReglasResponse",
+    "CambioReglas",
+    "ReglaCategoriaCreate",
+    "ReglaCategoriaResponse",
+
+    # Gasto semanal y metas
+    "AlertaSemana",
+    "CategoriaMeta",
+    "CategoriaMetaUpdate",
+    "CategoriaSemana",
+    "GastoDiaSemana",
+    "MetasGastoResponse",
+    "MetasGastoUpdate",
+    "ResumenSemanalResponse",
+    "SemanaTendencia",
+    "TendenciaSemanalResponse",
 ]
