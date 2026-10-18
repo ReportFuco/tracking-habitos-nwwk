@@ -89,8 +89,9 @@ Restart=always
 
 ## Worker de notificaciones (`tracking-push-worker.service`)
 
-Desde el 2026-10-15. Envía los avisos Web Push (entreno abierto y recordatorio diario
-de gastos). Proceso aparte de la API, con el mismo usuario, `.env` y zona horaria:
+Desde el 2026-10-15. Envía los avisos Web Push (entreno abierto, recordatorio diario
+de gastos y, desde el 2026-10-18, alertas de metas de gasto y resumen semanal del
+domingo a las 20:00). Proceso aparte de la API, con el mismo usuario, `.env` y zona horaria:
 
 ```ini
 [Service]
