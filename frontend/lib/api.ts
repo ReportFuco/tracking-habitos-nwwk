@@ -12,6 +12,9 @@ const configuredBaseURL =
   process.env.NEXT_PUBLIC_API_URL?.trim() ||
   (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "")
 const LOGIN_PATH = "/login"
+// Pantallas publicas: consultan el perfil para saber si ya hay sesion, y el 401 de un
+// visitante sin cuenta no puede mandarlo a login (registro quedaria inalcanzable).
+const PUBLIC_AUTH_PATHS = new Set([LOGIN_PATH, "/register"])
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"])
 
 // En desarrollo la app se abre indistintamente desde localhost o desde la IP de la
@@ -70,12 +73,12 @@ api.interceptors.response.use(
     }
 
     const skipAuthRedirect = Boolean(error?.config?.skipAuthRedirect)
-    const isLoginPage = window.location.pathname === LOGIN_PATH
+    const isPublicAuthPage = PUBLIC_AUTH_PATHS.has(window.location.pathname)
 
     if (
       error?.response?.status === 401 &&
       !skipAuthRedirect &&
-      !isLoginPage &&
+      !isPublicAuthPage &&
       !isHandlingUnauthorized
     ) {
       isHandlingUnauthorized = true
