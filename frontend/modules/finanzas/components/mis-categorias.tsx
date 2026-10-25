@@ -1,10 +1,15 @@
 "use client"
 
 import { FormEvent, useState } from "react"
-import { Archive, ArchiveRestore, Check, Eye, EyeOff, Pencil, Plus, X } from "lucide-react"
+import { Archive, ArchiveRestore, Bell, Check, Eye, EyeOff, Pencil, Plus, X } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { useCategoriasTodas, useFinanzas, useOcultarCategoria } from "@/modules/finanzas/hooks/useFinanzas"
+import {
+  useCategoriasTodas,
+  useFinanzas,
+  useOcultarCategoria,
+  usePedirDetalleCategoria,
+} from "@/modules/finanzas/hooks/useFinanzas"
 import { ReglasCategoria } from "./reglas-categoria"
 import type { CategoriaResponse } from "@/modules/finanzas/types/finanzas"
 
@@ -155,6 +160,8 @@ export function MisCategorias() {
         </ul>
       </section>
 
+      <AvisoBoleta categorias={todas.filter((categoria) => categoria.activo && !categoria.oculta)} />
+
       <ReglasCategoria />
 
       {ocultas.length > 0 ? (
@@ -181,6 +188,52 @@ export function MisCategorias() {
         </section>
       ) : null}
     </div>
+  )
+}
+
+/** Categorias cuyos gastos del Atajo de Wallet avisan por Push que detalles la boleta. */
+function AvisoBoleta({ categorias }: { categorias: CategoriaResponse[] }) {
+  const pedirDetalle = usePedirDetalleCategoria()
+
+  const cambiar = async (categoria: CategoriaResponse) => {
+    try {
+      await pedirDetalle.mutateAsync({ idCategoria: categoria.id_categoria, pedirDetalle: !categoria.pedir_detalle })
+    } catch {
+      toast.error("No pudimos cambiar el aviso")
+    }
+  }
+
+  if (categorias.length === 0) return null
+  return (
+    <section className="flex flex-col gap-3 rounded-2xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:p-5">
+      <h2 className={tituloClass}>Aviso para detallar la boleta</h2>
+      <p className="text-xs text-muted-foreground">
+        Cuando pagas con el Atajo en estas categorias te llega un aviso para mandarle la foto de la boleta a
+        Claude. Lo que registras desde la app no avisa.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {categorias.map((categoria) => {
+          const activo = Boolean(categoria.pedir_detalle)
+          return (
+            <button
+              key={categoria.id_categoria}
+              type="button"
+              aria-pressed={activo}
+              disabled={pedirDetalle.isPending}
+              onClick={() => void cambiar(categoria)}
+              className={
+                activo
+                  ? "inline-flex min-h-11 touch-manipulation items-center gap-1.5 rounded-sm bg-[color:var(--module-finanzas)] px-3 text-sm font-medium text-[color:var(--module-finanzas-foreground)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60"
+                  : "inline-flex min-h-11 touch-manipulation items-center gap-1.5 rounded-sm border border-border px-3 text-sm text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-60"
+              }
+            >
+              {activo ? <Bell className="size-3.5" aria-hidden /> : null}
+              {categoria.nombre}
+            </button>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 

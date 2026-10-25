@@ -28,8 +28,17 @@ from .categoria import (
     CategoriaPatch, 
     CategoriaCreate,
     CategoriaOcultar,
+    CategoriaPedirDetalle,
     MoverMovimientosRequest,
     MoverMovimientosResponse,
+)
+from .boletas import (
+    MAX_LINEAS_BOLETA,
+    LineaBoleta,
+    LineaBoletaRevisada,
+    ProductoNuevoBoleta,
+    RevisionBoleta,
+    SugerenciaProducto,
 )
 from .deudas import DeudaCreate, DeudaListResponse, DeudaPatch, DeudaResponse
 from .importacion import (
@@ -84,6 +93,13 @@ __all__ = [
     "CategoriaPatch",
     "CategoriaCreate",
     "CategoriaOcultar",
+    "CategoriaPedirDetalle",
+    "MAX_LINEAS_BOLETA",
+    "LineaBoleta",
+    "LineaBoletaRevisada",
+    "ProductoNuevoBoleta",
+    "RevisionBoleta",
+    "SugerenciaProducto",
     "MoverMovimientosRequest",
     "MoverMovimientosResponse",
 

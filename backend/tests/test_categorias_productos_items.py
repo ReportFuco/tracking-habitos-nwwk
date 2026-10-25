@@ -221,6 +221,11 @@ async def test_producto_de_usuario_queda_pendiente_hasta_que_se_aprueba():
             # Y nadie puede proponer otro con el mismo nombre (sin tildes ni mayúsculas).
             with pytest.raises(Conflicto):
                 await productos.crear_producto(db, e.b, ProductoCreate(nombre_producto=nombre.upper()))
+            # Otro contenido es otro producto: la caja de 200 ml no choca con la de 1 L.
+            chica = await productos.crear_producto(
+                db, e.b, ProductoCreate(nombre_producto=nombre, contenido_neto=Decimal("200"), unidad_contenido="ml")
+            )
+            assert chica.id_producto != propuesta.id_producto
         finally:
             await trans.rollback()
 

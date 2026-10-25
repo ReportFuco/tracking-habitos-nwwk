@@ -17,6 +17,7 @@ from .finanzas import (
     MetaGasto,
     PreferenciaCategoria,
     ReglaCategoria,
+    AvisoDetalleCompra,
 )
 from .entrenamiento import (
     Ejercicios, 
@@ -96,6 +97,7 @@ __all__ = [
     "MetaGasto",
     "PreferenciaCategoria",
     "ReglaCategoria",
+    "AvisoDetalleCompra",
     "Lectura",
     "RegistroLectura",
     "CategoriaHabito", 

@@ -5,7 +5,9 @@ from sqlalchemy import and_, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.texto import normalize_search_text, normalize_sql_text
 from app.models import (
+    AvisoDetalleCompra,
     CategoriaFinanza,
     CuentaUsuario,
     Movimiento,
@@ -23,7 +25,7 @@ from app.services.finanzas import categorias, deudas, reglas
 CHILE_TZ = ZoneInfo("America/Santiago")
 
 
-def _opciones_detalle() -> tuple:
+def opciones_detalle() -> tuple:
     """Relaciones que necesita MovimientoResponse (categoria, cuenta, deuda y productos)."""
     return (
         selectinload(Movimiento.categoria),
@@ -40,7 +42,7 @@ async def _recargar_con_detalle(db: AsyncSession, id_transaccion: int) -> Movimi
         select(Movimiento)
         .execution_options(populate_existing=True)
         .where(Movimiento.id_transaccion == id_transaccion)
-        .options(*_opciones_detalle())
+        .options(*opciones_detalle())
     )
 
 
@@ -195,7 +197,7 @@ async def listar_movimientos(
             .order_by(desc(Movimiento.created_at), desc(Movimiento.id_transaccion))
             .offset(offset)
             .limit(limit)
-            .options(*_opciones_detalle())
+            .options(*opciones_detalle())
         )
     ).scalars().all()
 
@@ -228,18 +230,40 @@ async def obtener_movimiento(db: AsyncSession, usuario: Usuario, id_movimiento: 
                 CuentaUsuario.id_usuario == usuario.id_usuario
             )
         )
-        .options(*_opciones_detalle())
+        .options(*opciones_detalle())
     )
     if not transaccion:
         raise NoEncontrado("Movimiento no encontrado.")
     return transaccion
 
 
-async def validar_categoria(db: AsyncSession, usuario: Usuario, id_categoria: int) -> None:
+async def validar_categoria(db: AsyncSession, usuario: Usuario, id_categoria: int) -> CategoriaFinanza:
     """La categoría debe ser por defecto o del usuario, y no estar archivada."""
     categoria = await categorias.obtener_categoria(db, usuario, id_categoria)
     if not categoria.activo:
         raise Conflicto(f"La categoría «{categoria.nombre}» está archivada.")
+    return categoria
+
+
+async def normalizar_comercio(db: AsyncSession, usuario: Usuario, comercio: str | None) -> str | None:
+    """Reusa la escritura con que el usuario ya registró ese comercio ("LIDER" -> "Líder"),
+    para que las compras de una misma cadena se agrupen al comparar precios."""
+    if comercio is None:
+        return None
+    limpio = " ".join(comercio.split())
+    if not limpio:
+        return None
+    existente = await db.scalar(
+        select(Movimiento.comercio)
+        .join(CuentaUsuario, Movimiento.id_cuenta == CuentaUsuario.id_cuenta)
+        .where(
+            CuentaUsuario.id_usuario == usuario.id_usuario,
+            normalize_sql_text(Movimiento.comercio) == normalize_search_text(limpio),
+        )
+        .order_by(desc(Movimiento.created_at))
+        .limit(1)
+    )
+    return existente or limpio
 
 
 async def validar_cuenta_activa(db: AsyncSession, usuario: Usuario, id_cuenta: int) -> None:
@@ -262,7 +286,7 @@ async def crear_movimiento(db: AsyncSession, usuario: Usuario, data: MovimientoC
         movimiento_existente = await db.scalar(
             select(Movimiento)
             .where(Movimiento.client_request_id == data.client_request_id)
-            .options(*_opciones_detalle())
+            .options(*opciones_detalle())
         )
         if movimiento_existente is not None:
             if movimiento_existente.cuenta.id_usuario != usuario.id_usuario:
@@ -274,7 +298,7 @@ async def crear_movimiento(db: AsyncSession, usuario: Usuario, data: MovimientoC
         data.id_categoria = await reglas.resolver_categoria(db, usuario, data.id_categoria, data.descripcion)
     if data.id_categoria is None:
         raise DatosInvalidos("Falta la categoría del movimiento.")
-    await validar_categoria(db, usuario, data.id_categoria)
+    categoria = await validar_categoria(db, usuario, data.id_categoria)
     await validar_cuenta_activa(db, usuario, data.id_cuenta)
     for item in data.items:
         await validar_producto_activo(db, usuario, item.id_producto)
@@ -283,8 +307,10 @@ async def crear_movimiento(db: AsyncSession, usuario: Usuario, data: MovimientoC
             db, usuario, data.id_deuda, tipo_movimiento=data.tipo_movimiento, monto=data.monto
         )
 
+    data.comercio = await normalizar_comercio(db, usuario, data.comercio)
+
     movimiento = Movimiento(
-        **data.model_dump(exclude_none=True, exclude={"items"})
+        **data.model_dump(exclude_none=True, exclude={"items", "recordar_detalle"})
     )
 
     db.add(movimiento)
@@ -294,6 +320,17 @@ async def crear_movimiento(db: AsyncSession, usuario: Usuario, data: MovimientoC
     for item in data.items:
         db.add(MovimientoItem(id_movimiento=movimiento.id_transaccion, **item.model_dump()))
     if data.items:
+        await db.flush()
+    # El worker manda el Push (notifications.compras); un gasto que ya trae su detalle o
+    # que abona una deuda no tiene boleta que detallar.
+    if (
+        data.recordar_detalle
+        and data.tipo_movimiento == EnumTipoMovimiento.GASTO
+        and data.id_deuda is None
+        and not data.items
+        and await categorias.pide_detalle(db, usuario, categoria)
+    ):
+        db.add(AvisoDetalleCompra(id_movimiento=movimiento.id_transaccion))
         await db.flush()
     return await _recargar_con_detalle(db, movimiento.id_transaccion)
 
@@ -329,6 +366,8 @@ async def editar_movimiento(
         await validar_categoria(db, usuario, update_data["id_categoria"])
     if "id_cuenta" in update_data:
         await validar_cuenta_activa(db, usuario, update_data["id_cuenta"])
+    if "comercio" in update_data:
+        update_data["comercio"] = await normalizar_comercio(db, usuario, update_data["comercio"])
     if update_data.get("tipo_movimiento") == EnumTipoMovimiento.INGRESO:
         tiene_items = await db.scalar(
             select(MovimientoItem.id_item).where(MovimientoItem.id_movimiento == movimiento.id_transaccion).limit(1)

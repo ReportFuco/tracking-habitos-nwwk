@@ -102,6 +102,7 @@ export function MovimientoProductos({ movimiento }: { movimiento: MovimientoResp
                       {cantidadFormatter.format(item.cantidad)}
                       {item.precio_unitario != null && item.cantidad !== 1 ? ` × ${formatCLP(Math.round(item.precio_unitario))}` : ""}
                       {detalle ? ` · ${detalle}` : ""}
+                      {item.descuento ? ` · ahorro ${formatCLP(item.descuento)}` : ""}
                     </p>
                   </div>
                   <span className="shrink-0 text-sm font-semibold tabular-nums">

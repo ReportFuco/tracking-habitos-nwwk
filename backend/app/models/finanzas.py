@@ -241,6 +241,9 @@ class Movimiento(Base):
     )
     monto: Mapped[int] = mapped_column(Integer, nullable=False)
     descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Cadena donde se compró, normalizada al detallar la boleta (Líder, Jumbo...): la glosa
+    # de Wallet o de la cartola trae sucursal y basura, y no sirve para comparar precios.
+    comercio: Mapped[str | None] = mapped_column(String(60), nullable=True)
     # Glosa y clave de la fila de cartola que lo creó o con la que se concilió.
     descripcion_original: Mapped[str | None] = mapped_column(Text, nullable=True)
     clave_cartola: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
@@ -289,6 +292,10 @@ class MovimientoItem(Base):
     El detalle es opcional y puede ser parcial: un gasto de $12.000 puede tener solo dos
     productos detallados. Por eso ``precio_total`` también es opcional y no se exige que
     la suma cuadre con el monto (los descuentos al total del ticket la descuadran).
+
+    ``precio_total`` es lo pagado por la línea ya descontado ``descuento`` (ofertas de la
+    línea). ``descripcion_boleta`` guarda el texto tal como sale impreso: la próxima boleta
+    con el mismo texto calza sola con este producto (services.finanzas.boletas).
     """
 
     __tablename__ = "movimiento_item"
@@ -297,6 +304,10 @@ class MovimientoItem(Base):
         CheckConstraint(
             "precio_total IS NULL OR precio_total >= 0",
             name="ck_movimiento_item_precio_no_negativo",
+        ),
+        CheckConstraint(
+            "descuento IS NULL OR descuento >= 0",
+            name="ck_movimiento_item_descuento_no_negativo",
         ),
         {"schema": FINANZAS_SCHEMA},
     )
@@ -317,6 +328,8 @@ class MovimientoItem(Base):
         server_default=text("1"),
     )
     precio_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    descuento: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    descripcion_boleta: Mapped[str | None] = mapped_column(String(120), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.now,
@@ -435,6 +448,9 @@ class PreferenciaCategoria(Base):
     - ``presupuesto_semanal``: tope semanal de la categoría.
     - ``oculta``: no se ofrece al registrar. Sirve para las categorías por defecto, que son
       compartidas y el usuario no puede archivar; los movimientos que la usan no cambian.
+    - ``pedir_detalle``: un gasto del Atajo en esta categoría avisa por Push que conviene
+      detallar la boleta. Null rige el valor por defecto
+      (services.finanzas.categorias.pide_detalle_por_defecto).
     """
 
     __tablename__ = "preferencia_categoria"
@@ -467,6 +483,7 @@ class PreferenciaCategoria(Base):
         default=False,
         server_default=text("false"),
     )
+    pedir_detalle: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.now,
@@ -510,3 +527,25 @@ class ReglaCategoria(Base):
     )
 
     categoria: Mapped["CategoriaFinanza"] = relationship()
+
+
+class AvisoDetalleCompra(Base):
+    """Push pendiente que pide detallar la boleta de una compra recién pagada.
+
+    Lo crea un gasto registrado con ``recordar_detalle`` (solo lo manda el Atajo de Wallet)
+    en una categoría que pide detalle. El worker lo envía una vez y marca ``enviado_at``.
+    """
+
+    __tablename__ = "aviso_detalle_compra"
+    __table_args__ = {"schema": FINANZAS_SCHEMA}
+
+    id_movimiento: Mapped[int] = mapped_column(
+        ForeignKey(table_ref(FINANZAS_SCHEMA, "movimiento.id_transaccion"), ondelete="CASCADE"),
+        primary_key=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+    )
+    enviado_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

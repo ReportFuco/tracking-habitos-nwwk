@@ -11,6 +11,7 @@ from app.schemas.finanzas import (
     CategoriaCreate,
     CategoriaPatch,
     CategoriaOcultar,
+    CategoriaPedirDetalle,
     MoverMovimientosRequest,
     MoverMovimientosResponse,
 )
@@ -137,6 +138,27 @@ async def ocultar_categoria(
     usuario = await obtener_usuario_actual(user, db)
     with errores_http():
         return await servicio.ocultar_categoria(db, usuario, id_categoria, data.oculta)
+
+
+@router.put(
+    "/{id_categoria}/pedir-detalle",
+    response_model=CategoriaResponse,
+    summary="Pedir detallar la boleta",
+    description=(
+        "Solo para este usuario: un gasto registrado con recordar_detalle=true (el Atajo de "
+        "Wallet) en esta categoría manda un Push para detallar la boleta. Sin configurar, "
+        "solo Supermercado lo pide."
+    ),
+)
+async def pedir_detalle_categoria(
+    id_categoria: int,
+    data: CategoriaPedirDetalle,
+    db: AsyncSession = Depends(get_db),
+    user = Depends(current_user_or_api_key),
+):
+    usuario = await obtener_usuario_actual(user, db)
+    with errores_http():
+        return await servicio.fijar_pedir_detalle(db, usuario, id_categoria, data.pedir_detalle)
 
 
 @router.post(

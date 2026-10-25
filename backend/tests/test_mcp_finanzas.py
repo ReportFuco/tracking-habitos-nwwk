@@ -43,6 +43,7 @@ LECTURA = {
     "tendencia_semanal",
     "ver_metas_gasto",
     "listar_reglas_categoria",
+    "gastos_por_detallar",
 }
 ESCRITURA = {
     "registrar_movimiento",
@@ -65,6 +66,8 @@ ESCRITURA = {
     "aplicar_reglas_categoria",
     "ocultar_categoria",
     "mover_movimientos_categoria",
+    "detallar_boleta",
+    "pedir_detalle_categoria",
 }
 # Del modulo de entrenamientos (tests/test_entrenamientos_seguimiento_db.py).
 ENTRENAMIENTOS_LECTURA = {
@@ -145,7 +148,8 @@ if RUN_DB:
     from app.auth.api_key import generate_api_key
     from app.db.session import AsyncSessionLocal, engine
     from app.models import (
-        ApiKey, Banco, CategoriaFinanza, CuentaUsuario, Importacion, Movimiento, Producto, ProductoFinanciero, Usuario,
+        ApiKey, Banco, CategoriaFinanza, CategoriaProducto, CuentaUsuario, Importacion, Marca, Movimiento, Producto,
+        ProductoFinanciero, Usuario,
     )
     from app.models.finanzas import EnumTipoGasto, EnumTipoMovimiento
     from app.models.usuario_auth import User
@@ -440,6 +444,108 @@ async def test_categoria_propia_y_productos_en_un_gasto(escenario):
             await db.execute(
                 delete(Producto).where(Producto.id_producto == producto.structured_content["id_producto"])
             )
+            await db.commit()
+
+
+@requiere_db
+async def test_detallar_boleta_completa(escenario):
+    sufijo = uuid.uuid4().hex[:6]
+    leche = {
+        "nombre": f"Leche entera {sufijo}", "marca": f"Colun {sufijo}", "categoria": f"Lácteos {sufijo}",
+        "contenido_neto": 1, "unidad_contenido": "L",
+    }
+    lineas = [
+        {"texto": "LECHE ENT COLUN 1L", "precio_total": 1190, "producto_nuevo": leche},
+        {"texto": "LECHE ENT COLUN 1L", "precio_total": 1190, "producto_nuevo": leche},
+        {
+            "texto": "PAN HALLULLA", "cantidad": 0.5, "precio_total": 1500, "descuento": 200,
+            "producto_nuevo": {"nombre": f"Hallulla {sufijo}", "categoria": f"Panadería {sufijo}"},
+        },
+        {"texto": "BOLSA", "precio_total": 50},
+    ]
+    ids_mov = []
+    async with cliente_mcp(escenario["key_escritura"]) as cliente:
+        gasto = await cliente.call_tool("registrar_movimiento", {
+            "tipo_movimiento": "gasto", "monto": 5490, "id_categoria": escenario["comida"],
+            "id_cuenta": escenario["rut"], "descripcion": "LIDER EXPRESS",
+        })
+        id_mov = gasto.structured_content["id_movimiento"]
+        ids_mov.append(id_mov)
+        pide = await cliente.call_tool("pedir_detalle_categoria", {"id_categoria": escenario["comida"]})
+        por_detallar = await cliente.call_tool("gastos_por_detallar", {})
+        # Sin ser administrador no puede crear productos en el catálogo.
+        sin_admin = await cliente.call_tool("detallar_boleta", {"id_movimiento": id_mov, "lineas": lineas})
+        async with AsyncSessionLocal() as db:
+            await db.execute(update(User).where(User.id == escenario["auth_ids"][0]).values(is_superuser=True))
+            await db.commit()
+        vista = await cliente.call_tool("detallar_boleta", {"id_movimiento": id_mov, "lineas": lineas})
+        con_faltante = await cliente.call_tool(
+            "detallar_boleta", {"id_movimiento": id_mov, "lineas": lineas, "confirmar": True}
+        )
+        hecho = await cliente.call_tool("detallar_boleta", {
+            "id_movimiento": id_mov, "lineas": lineas[:3], "comercio": "Líder", "confirmar": True,
+        })
+        repetido = await cliente.call_tool(
+            "detallar_boleta", {"id_movimiento": id_mov, "lineas": lineas[:3], "confirmar": True}
+        )
+
+        # La próxima boleta reconoce la línea por su texto, sin decir qué producto es.
+        otro = await cliente.call_tool("registrar_movimiento", {
+            "tipo_movimiento": "gasto", "monto": 2380, "id_categoria": escenario["comida"],
+            "id_cuenta": escenario["rut"],
+        })
+        id_otro = otro.structured_content["id_movimiento"]
+        ids_mov.append(id_otro)
+        siguiente = await cliente.call_tool("detallar_boleta", {
+            "id_movimiento": id_otro, "comercio": "LIDER", "confirmar": True,
+            "lineas": [{"texto": "leche ent  colun 1l", "cantidad": 2, "precio_total": 2380}],
+        })
+        id_leche = hecho.structured_content["lineas"][0]["id_producto"]
+        reemplazo = await cliente.call_tool("detallar_boleta", {
+            "id_movimiento": id_mov, "reemplazar": True, "confirmar": True,
+            "lineas": [{"texto": "LECHE ENT COLUN 1L", "precio_total": 5490, "id_producto": id_leche}],
+        })
+        despues = await cliente.call_tool("gastos_por_detallar", {})
+        detalle = await cliente.call_tool("buscar_movimientos", {"limit": 50})
+
+    try:
+        assert pide.structured_content["pedir_detalle"] is True
+        assert id_mov in {m["id_movimiento"] for m in por_detallar.structured_content["items"]}
+        assert [l["estado"] for l in sin_admin.structured_content["lineas"]][:3] == ["invalida"] * 3
+
+        revision = vista.structured_content
+        assert revision["aplicado"] is False
+        assert [l["estado"] for l in revision["lineas"]] == ["nuevo", "nuevo", "nuevo", "sin_producto"]
+        assert revision["productos_nuevos"] == 2
+        assert revision["total_lineas"] == 3930 and revision["diferencia"] == 1560
+        assert revision["descuentos"] == 200
+        assert con_faltante.is_error and "3" in con_faltante.content[0].text
+
+        assert not hecho.is_error, hecho.content
+        resultado = hecho.structured_content
+        assert resultado["aplicado"] is True and resultado["comercio"] == "Líder"
+        assert resultado["lineas"][0]["id_producto"] == resultado["lineas"][1]["id_producto"]
+        assert resultado["lineas"][0]["producto"] == f"Leche entera {sufijo} (Colun {sufijo})"
+        assert repetido.is_error
+
+        assert not siguiente.is_error, siguiente.content
+        assert siguiente.structured_content["lineas"][0]["estado"] == "reconocido"
+        assert siguiente.structured_content["lineas"][0]["id_producto"] == id_leche
+        assert siguiente.structured_content["comercio"] == "Líder"
+
+        assert reemplazo.structured_content["detalle_previo"] == 3
+        assert reemplazo.structured_content["lineas"][0]["estado"] == "elegido"
+        assert not {id_mov, id_otro} & {m["id_movimiento"] for m in despues.structured_content["items"]}
+        assert "Líder" in despues.structured_content["comercios_usados"]
+        primero = next(m for m in detalle.structured_content["items"] if m["id_movimiento"] == id_mov)
+        assert primero["comercio"] == "Líder"
+        assert [(p["texto_boleta"], p["precio_total"]) for p in primero["productos"]] == [("LECHE ENT COLUN 1L", 5490)]
+    finally:
+        async with AsyncSessionLocal() as db:
+            await db.execute(delete(Movimiento).where(Movimiento.id_transaccion.in_(ids_mov)))
+            await db.execute(delete(Producto).where(Producto.nombre_producto.like(f"% {sufijo}")))
+            await db.execute(delete(Marca).where(Marca.nombre_marca == f"Colun {sufijo}"))
+            await db.execute(delete(CategoriaProducto).where(CategoriaProducto.nombre_categoria.like(f"% {sufijo}")))
             await db.commit()
 
 

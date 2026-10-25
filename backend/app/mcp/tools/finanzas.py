@@ -399,6 +399,10 @@ async def registrar_movimiento(
         Field(description="'fijo' para gastos recurrentes (arriendo, planes); si no, 'variable'."),
     ] = "variable",
     descripcion: Annotated[str | None, Field(max_length=250, description="Detalle breve, ej. 'Almuerzo'.")] = None,
+    comercio: Annotated[
+        str | None,
+        Field(max_length=60, description="Cadena donde se compró, sin sucursal (ej. 'Líder'), si se conoce."),
+    ] = None,
     fecha: Fecha = None,
     id_deuda: Annotated[
         int | None,
@@ -435,6 +439,7 @@ async def registrar_movimiento(
         tipo_gasto=tipo_gasto,
         monto=monto,
         descripcion=descripcion,
+        comercio=comercio,
         created_at=_fecha_chile(fecha),
         hora_conocida=_hora_conocida(fecha) is not False,
         id_deuda=id_deuda,
@@ -455,6 +460,10 @@ async def editar_movimiento(
     descripcion: Annotated[
         str | None,
         Field(max_length=250, description="Nueva descripción. Un texto vacío la borra."),
+    ] = None,
+    comercio: Annotated[
+        str | None,
+        Field(max_length=60, description="Cadena donde se compró (ej. 'Líder'). Un texto vacío lo borra."),
     ] = None,
     fecha: Fecha = None,
     fecha_contable: Annotated[
@@ -478,6 +487,8 @@ async def editar_movimiento(
     cambios = {campo: valor for campo, valor in cambios.items() if valor is not None}
     if descripcion is not None:
         cambios["descripcion"] = descripcion.strip() or None
+    if comercio is not None:
+        cambios["comercio"] = comercio.strip() or None
     if quitar_deuda and id_deuda is not None:
         raise ToolError("Usa id_deuda o quitar_deuda, no ambos.")
     if id_deuda is not None:
@@ -527,10 +538,11 @@ HERRAMIENTAS = (
 
 def registrar_herramientas_finanzas(servidor: MCPServer) -> None:
     # Import diferido: esos modulos reutilizan sesion_usuario y las anotaciones de este.
-    from app.mcp.tools import cuentas, deudas, importacion, metas, reglas
+    from app.mcp.tools import boletas, cuentas, deudas, importacion, metas, reglas
 
     for funcion, titulo, anotaciones in (
         *HERRAMIENTAS,
+        *boletas.HERRAMIENTAS,
         *cuentas.HERRAMIENTAS,
         *deudas.HERRAMIENTAS,
         *importacion.HERRAMIENTAS,

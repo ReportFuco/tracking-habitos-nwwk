@@ -132,6 +132,14 @@ export const FinanzasAPI = {
     return data
   },
 
+  /** Solo para este usuario: el Atajo de Wallet avisa que detalles la boleta en esta categoria. */
+  pedirDetalleCategoria: async (idCategoria: number, pedirDetalle: boolean): Promise<CategoriaResponse> => {
+    const { data } = await api.put(`/api/finanzas/categoria/${idCategoria}/pedir-detalle`, {
+      pedir_detalle: pedirDetalle,
+    })
+    return data
+  },
+
   getReglasCategoria: async (): Promise<ReglaCategoria[]> => {
     const { data } = await api.get("/api/finanzas/reglas-categoria/")
     return data

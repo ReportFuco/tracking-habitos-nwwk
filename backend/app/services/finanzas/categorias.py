@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.texto import normalize_search_text
 from app.models import CategoriaFinanza, CuentaUsuario, Movimiento, PreferenciaCategoria, Usuario
 from app.schemas.finanzas import CategoriaCreate, CategoriaPatch, MoverMovimientosResponse
 from app.services.errores import Conflicto, DatosInvalidos, NoEncontrado, SinPermiso
@@ -21,6 +22,19 @@ def condicion_visible(usuario: Usuario):
 
 
 DIAS_USO_RECIENTE = 90
+# Sin configuración del usuario, un gasto del Atajo en estas categorías pide detallar la boleta.
+_PIDEN_DETALLE_POR_DEFECTO = {"supermercado"}
+
+
+def pide_detalle_por_defecto(nombre: str) -> bool:
+    return normalize_search_text(nombre) in _PIDEN_DETALLE_POR_DEFECTO
+
+
+async def pide_detalle(db: AsyncSession, usuario: Usuario, categoria: CategoriaFinanza) -> bool:
+    preferencia = await db.get(PreferenciaCategoria, (usuario.id_usuario, categoria.id_categoria))
+    if preferencia is not None and preferencia.pedir_detalle is not None:
+        return preferencia.pedir_detalle
+    return pide_detalle_por_defecto(categoria.nombre)
 
 
 async def listar_categorias(
@@ -42,16 +56,14 @@ async def listar_categorias(
     )
     lista = (await db.execute(consulta)).scalars().all()
 
-    ocultas = set(
-        (
+    preferencias = {
+        preferencia.id_categoria: preferencia
+        for preferencia in (
             await db.scalars(
-                select(PreferenciaCategoria.id_categoria).where(
-                    PreferenciaCategoria.id_usuario == usuario.id_usuario,
-                    PreferenciaCategoria.oculta.is_(True),
-                )
+                select(PreferenciaCategoria).where(PreferenciaCategoria.id_usuario == usuario.id_usuario)
             )
         ).all()
-    )
+    }
     desde = datetime.now() - timedelta(days=DIAS_USO_RECIENTE)
     usos = dict(
         (
@@ -64,7 +76,13 @@ async def listar_categorias(
         ).all()
     )
     for categoria in lista:
-        categoria.oculta = categoria.id_categoria in ocultas
+        preferencia = preferencias.get(categoria.id_categoria)
+        categoria.oculta = bool(preferencia and preferencia.oculta)
+        categoria.pedir_detalle = (
+            preferencia.pedir_detalle
+            if preferencia is not None and preferencia.pedir_detalle is not None
+            else pide_detalle_por_defecto(categoria.nombre)
+        )
         categoria.usos_recientes = usos.get(categoria.id_categoria, 0)
     if not incluir_ocultas:
         lista = [categoria for categoria in lista if not categoria.oculta]
@@ -81,22 +99,46 @@ async def ocultar_categoria(
     """Oculta (o vuelve a mostrar) una categoría solo para este usuario. Sirve también
     para las por defecto, que son compartidas y no puede archivar."""
     categoria = await obtener_categoria(db, usuario, id_categoria)
-    preferencia = await db.get(PreferenciaCategoria, (usuario.id_usuario, id_categoria))
+    preferencia = await _preferencia(db, usuario, categoria)
+    preferencia.oculta = oculta
+    preferencia.updated_at = datetime.now()
+    await db.flush()
+    categoria.oculta = oculta
+    categoria.pedir_detalle = await pide_detalle(db, usuario, categoria)
+    return categoria
+
+
+async def fijar_pedir_detalle(
+    db: AsyncSession,
+    usuario: Usuario,
+    id_categoria: int,
+    pedir_detalle: bool,
+) -> CategoriaFinanza:
+    """Activa o apaga, solo para este usuario, el Push que pide detallar la boleta de los
+    gastos del Atajo en esta categoría."""
+    categoria = await obtener_categoria(db, usuario, id_categoria)
+    preferencia = await _preferencia(db, usuario, categoria)
+    preferencia.pedir_detalle = pedir_detalle
+    preferencia.updated_at = datetime.now()
+    await db.flush()
+    categoria.oculta = preferencia.oculta
+    categoria.pedir_detalle = pedir_detalle
+    return categoria
+
+
+async def _preferencia(db: AsyncSession, usuario: Usuario, categoria: CategoriaFinanza) -> PreferenciaCategoria:
+    preferencia = await db.get(PreferenciaCategoria, (usuario.id_usuario, categoria.id_categoria))
     if preferencia is None:
         # Import diferido: semanal importa este módulo.
         from app.services.finanzas.semanal import excluida_por_defecto
 
         preferencia = PreferenciaCategoria(
             id_usuario=usuario.id_usuario,
-            id_categoria=id_categoria,
+            id_categoria=categoria.id_categoria,
             excluida=excluida_por_defecto(categoria.nombre),
         )
         db.add(preferencia)
-    preferencia.oculta = oculta
-    preferencia.updated_at = datetime.now()
-    await db.flush()
-    categoria.oculta = oculta
-    return categoria
+    return preferencia
 
 
 async def obtener_categoria(db: AsyncSession, usuario: Usuario, id_categoria: int) -> CategoriaFinanza:

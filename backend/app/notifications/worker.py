@@ -16,6 +16,7 @@ from app.models import (
     TrainingReminder,
     Usuario,
 )
+from app.notifications.compras import process_purchase_detail_alerts
 from app.notifications.gastos import process_expense_reminders
 from app.notifications.metas import process_budget_alerts
 from app.notifications.push import send_training_push
@@ -236,14 +237,15 @@ async def run_worker() -> None:
             "Faltan VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY o VAPID_SUBJECT."
         )
 
-    logger.info("Worker de recordatorios Push iniciado (entrenos, gastos y metas)")
+    logger.info("Worker de recordatorios Push iniciado (entrenos, gastos, metas y compras)")
     while True:
         try:
             id_reminder = await claim_due_reminder()
             if id_reminder is None:
-                # Sin entrenos pendientes, toca revisar los avisos de gastos y de metas.
+                # Sin entrenos pendientes, toca revisar los avisos de gastos, metas y compras.
                 await process_expense_reminders(AsyncSessionLocal)
                 await process_budget_alerts(AsyncSessionLocal)
+                await process_purchase_detail_alerts(AsyncSessionLocal)
                 await asyncio.sleep(PUSH_WORKER_POLL_SECONDS)
                 continue
             await process_reminder(id_reminder)

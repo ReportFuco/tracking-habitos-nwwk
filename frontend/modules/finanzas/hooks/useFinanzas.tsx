@@ -112,6 +112,16 @@ export function useOcultarCategoria() {
   })
 }
 
+/** Activa o apaga el aviso para detallar la boleta de los gastos del Atajo en una categoria. */
+export function usePedirDetalleCategoria() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ idCategoria, pedirDetalle }: { idCategoria: number; pedirDetalle: boolean }) =>
+      FinanzasAPI.pedirDetalleCategoria(idCategoria, pedirDetalle),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.finanzas.categorias }),
+  })
+}
+
 /** Reglas por comercio que asignan la categoria al registrar sin categoria o como «Otros». */
 export function useReglasCategoria() {
   const queryClient = useQueryClient()

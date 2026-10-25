@@ -198,24 +198,45 @@ async def _validar_codigo_barra(
         raise Conflicto(f"El código de barra ya corresponde a «{existente.nombre_producto}».")
 
 
-async def _validar_nombre_disponible(
+def _misma_variante(columna, valor, *, texto: bool = True):
+    """Un dato que falta en cualquiera de los dos no distingue: calza con todo."""
+    if valor is None:
+        return literal(True)
+    igual = normalize_sql_text(columna) == normalize_search_text(valor) if texto else columna == valor
+    return or_(columna.is_(None), igual)
+
+
+async def buscar_igual(
     db: AsyncSession,
+    usuario: Usuario | None,
+    *,
     nombre: str,
     id_marca: int | None,
-    *,
-    usuario: Usuario | None,
+    contenido_neto=None,
+    unidad_contenido: str | None = None,
+    sabor: str | None = None,
     excluir_id: int | None = None,
-) -> None:
-    """Evita el duplicado más evidente: mismo nombre (sin tildes ni mayúsculas) y marca."""
+) -> Producto | None:
+    """El producto activo con el mismo nombre y marca (sin tildes ni mayúsculas) y una
+    variante compatible: la leche de 1 L y la de 200 ml de la misma marca son distintas,
+    pero una sin contenido calza con cualquiera de las dos."""
     consulta = select(Producto).where(
         normalize_sql_text(Producto.nombre_producto) == normalize_search_text(nombre),
         Producto.id_marca.is_(None) if id_marca is None else Producto.id_marca == id_marca,
+        _misma_variante(Producto.contenido_neto, contenido_neto, texto=False),
+        _misma_variante(Producto.unidad_contenido, unidad_contenido),
+        _misma_variante(Producto.sabor, sabor),
         Producto.activo.is_(True),
         condicion_visible(usuario),
     )
     if excluir_id is not None:
         consulta = consulta.where(Producto.id_producto != excluir_id)
-    existente = await db.scalar(consulta.limit(1))
+    return await db.scalar(consulta.order_by(Producto.id_producto).limit(1).options(*_opciones()))
+
+
+async def _validar_nombre_disponible(db: AsyncSession, *, usuario: Usuario | None, **variante) -> None:
+    """Evita el duplicado más evidente: mismo nombre, marca y variante (ver buscar_igual)."""
+    existente = await buscar_igual(db, usuario, **variante)
     if existente:
         raise Conflicto(f"Ya existe el producto «{existente.nombre_producto}»: búscalo y úsalo.")
 
@@ -241,7 +262,15 @@ async def crear_producto(
         id_subcategoria=payload["id_subcategoria"],
     )
     await _validar_codigo_barra(db, payload["codigo_barra"], usuario=usuario)
-    await _validar_nombre_disponible(db, payload["nombre_producto"], payload["id_marca"], usuario=usuario)
+    await _validar_nombre_disponible(
+        db,
+        usuario=usuario,
+        nombre=payload["nombre_producto"],
+        id_marca=payload["id_marca"],
+        contenido_neto=payload["contenido_neto"],
+        unidad_contenido=payload["unidad_contenido"],
+        sabor=payload["sabor"],
+    )
 
     producto = Producto(
         **payload,
@@ -297,12 +326,16 @@ async def editar_producto(
     alcance = None if es_admin and producto.estado == EstadoProducto.APROBADO else usuario
     if cambios.get("codigo_barra") is not None:
         await _validar_codigo_barra(db, cambios["codigo_barra"], usuario=alcance, excluir_id=id_producto)
-    if "nombre_producto" in cambios or "id_marca" in cambios:
+    variante = ("nombre_producto", "id_marca", "contenido_neto", "unidad_contenido", "sabor")
+    if any(campo in cambios for campo in variante):
         await _validar_nombre_disponible(
             db,
-            cambios.get("nombre_producto", producto.nombre_producto),
-            cambios.get("id_marca", producto.id_marca),
             usuario=alcance,
+            nombre=cambios.get("nombre_producto", producto.nombre_producto),
+            id_marca=cambios.get("id_marca", producto.id_marca),
+            contenido_neto=cambios.get("contenido_neto", producto.contenido_neto),
+            unidad_contenido=cambios.get("unidad_contenido", producto.unidad_contenido),
+            sabor=cambios.get("sabor", producto.sabor),
             excluir_id=id_producto,
         )
 
@@ -340,7 +373,14 @@ async def aprobar_producto(db: AsyncSession, id_producto: int) -> Producto:
     try:
         await _validar_codigo_barra(db, producto.codigo_barra, usuario=None, excluir_id=id_producto)
         await _validar_nombre_disponible(
-            db, producto.nombre_producto, producto.id_marca, usuario=None, excluir_id=id_producto
+            db,
+            usuario=None,
+            nombre=producto.nombre_producto,
+            id_marca=producto.id_marca,
+            contenido_neto=producto.contenido_neto,
+            unidad_contenido=producto.unidad_contenido,
+            sabor=producto.sabor,
+            excluir_id=id_producto,
         )
     except Conflicto as exc:
         raise Conflicto(f"{exc.mensaje.split(':')[0].rstrip('.')}. Fusiónalo con ese producto en vez de aprobarlo.") from exc

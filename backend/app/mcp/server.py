@@ -47,10 +47,11 @@ Finanzas
 - Si el usuario nombra una cuenta o categoría, resuelve su id con listar_cuentas o
   listar_categorias antes de filtrar o registrar. Hay categorías por defecto y propias
   del usuario; si ninguna calza, ofrece crear una con crear_categoria.
-- Para detallar qué se compró en un gasto: busca cada producto con buscar_productos y
-  agrégalo con agregar_producto_a_gasto. Si no existe, solo un administrador puede
+- Para detallar uno o dos productos sueltos en un gasto: búscalos con buscar_productos y
+  agrégalos con agregar_producto_a_gasto. Si no existe, solo un administrador puede
   crearlo con crear_producto; a un usuario normal dile que lo pida a un administrador.
-  Busca antes por nombre y por marca para no duplicar productos.
+  Busca antes por nombre y por marca para no duplicar productos. Para una boleta
+  completa usa detallar_boleta (ver abajo).
 - Al registrar, genera un client_request_id (UUID) y reutilízalo si reintentas la misma
   llamada. Antes de eliminar un movimiento, confirma con el usuario.
 
@@ -66,6 +67,24 @@ Categorías y reglas
   solo_desde_categorias para no pisar lo que el usuario categorizó a propósito.
 - Para fusionar categorías: mover_movimientos_categoria (vista previa y luego confirmar)
   y después ocultar_categoria con la de origen.
+
+Boletas de compra (foto)
+- Cuando el usuario mande la foto de una boleta, lee el comercio, la fecha, el total y
+  cada línea de producto. Encuentra el gasto con gastos_por_detallar (calza por fecha y
+  total; el Atajo de Wallet lo registra al pagar con la descripción del comercio). Si no
+  está, pregúntale con qué cuenta pagó y regístralo con registrar_movimiento.
+- Pasa cada línea a detallar_boleta con su texto tal cual sale impreso (no lo corrijas:
+  así se reconoce sola en la próxima boleta), cantidad (kilos en lo que va a granel),
+  precio_total ya descontado y descuento. Para lo que no se reconoce, propón
+  producto_nuevo con un nombre legible sin abreviar ("Leche entera", marca "Colun",
+  categoría "Lácteos", 1 L): descifra las abreviaturas de la boleta y, si una no la
+  entiendes, pregunta en vez de inventar.
+- Primero confirmar=false; muestra al usuario un resumen breve (reconocidos, productos
+  nuevos, líneas sin producto y la diferencia con el monto del gasto) y con su visto
+  bueno repite la llamada con confirmar=true. Usa el comercio como está en
+  comercios_usados.
+- pedir_detalle_categoria decide qué categorías avisan por Push que hay una boleta por
+  detallar cuando paga con el Atajo (sin configurar, solo Supermercado).
 
 Deudas
 - Una deuda es 'debo' (préstamo, crédito, compra en cuotas) o 'me_deben' (plata que el

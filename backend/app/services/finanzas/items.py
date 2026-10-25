@@ -13,7 +13,7 @@ from app.services.errores import Conflicto, NoEncontrado
 from app.services.finanzas import movimientos
 
 
-async def _gasto_del_usuario(db: AsyncSession, usuario: Usuario, id_movimiento: int) -> Movimiento:
+async def gasto_del_usuario(db: AsyncSession, usuario: Usuario, id_movimiento: int) -> Movimiento:
     movimiento = await db.scalar(
         select(Movimiento)
         .join(CuentaUsuario, Movimiento.id_cuenta == CuentaUsuario.id_cuenta)
@@ -47,7 +47,7 @@ async def agregar_item(
     id_movimiento: int,
     data: MovimientoItemCreate,
 ) -> Movimiento:
-    movimiento = await _gasto_del_usuario(db, usuario, id_movimiento)
+    movimiento = await gasto_del_usuario(db, usuario, id_movimiento)
     await movimientos.validar_producto_activo(db, usuario, data.id_producto)
 
     db.add(MovimientoItem(id_movimiento=movimiento.id_transaccion, **data.model_dump()))
@@ -62,7 +62,7 @@ async def editar_item(
     id_item: int,
     data: MovimientoItemPatch,
 ) -> Movimiento:
-    await _gasto_del_usuario(db, usuario, id_movimiento)
+    await gasto_del_usuario(db, usuario, id_movimiento)
     item = await _item_del_movimiento(db, id_movimiento, id_item)
 
     cambios = data.model_dump(exclude_unset=True)
@@ -76,7 +76,7 @@ async def editar_item(
 
 
 async def eliminar_item(db: AsyncSession, usuario: Usuario, id_movimiento: int, id_item: int) -> Movimiento:
-    await _gasto_del_usuario(db, usuario, id_movimiento)
+    await gasto_del_usuario(db, usuario, id_movimiento)
     item = await _item_del_movimiento(db, id_movimiento, id_item)
     await db.delete(item)
     await db.flush()

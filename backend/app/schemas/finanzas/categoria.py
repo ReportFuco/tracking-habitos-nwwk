@@ -21,6 +21,10 @@ class CategoriaResponse(BaseModel):
     )
     activo: bool = Field(True, description="False si está archivada.")
     oculta: bool = Field(False, description="True si el usuario la ocultó: no se ofrece al registrar.")
+    pedir_detalle: bool = Field(
+        False,
+        description="True si un gasto del Atajo en esta categoría avisa que conviene detallar la boleta.",
+    )
     usos_recientes: int = Field(0, description="Movimientos del usuario en ella en los últimos 90 días.")
     created_at:datetime = Field(..., examples=["2026-01-03T22:11:30.105251"])
 
@@ -56,6 +60,13 @@ class CategoriaPatch(BaseModel):
 
 class CategoriaOcultar(BaseModel):
     oculta: bool = Field(..., description="true la saca de las listas para registrar; false la vuelve a mostrar.")
+
+
+class CategoriaPedirDetalle(BaseModel):
+    pedir_detalle: bool = Field(
+        ...,
+        description="true: un gasto del Atajo en esta categoría avisa por Push que detalles la boleta.",
+    )
 
 
 class MoverMovimientosRequest(BaseModel):

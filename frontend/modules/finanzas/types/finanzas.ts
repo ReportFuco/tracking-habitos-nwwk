@@ -109,6 +109,8 @@ export interface CategoriaResponse {
   activo: boolean
   /** true si el usuario la oculto: no se ofrece al registrar (sirve con las por defecto). */
   oculta?: boolean
+  /** true si un gasto del Atajo de Wallet en ella avisa por Push que detalles la boleta. */
+  pedir_detalle?: boolean
   /** Movimientos del usuario en ella en los ultimos 90 dias. */
   usos_recientes?: number
   created_at: string

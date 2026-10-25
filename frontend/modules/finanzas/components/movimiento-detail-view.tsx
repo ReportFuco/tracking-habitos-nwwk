@@ -91,6 +91,7 @@ export function MovimientoDetailView({ idMovimiento }: { idMovimiento: number })
     { etiqueta: "Fecha", valor: formatFecha(movimiento.created_at) },
     { etiqueta: "Categoria", valor: <span className="capitalize">{movimiento.categoria ?? "Sin categoria"}</span> },
     { etiqueta: "Cuenta", valor: movimiento.nombre_cuenta ?? "—" },
+    ...(movimiento.comercio ? [{ etiqueta: "Comercio", valor: movimiento.comercio }] : []),
     ...(movimiento.id_deuda
       ? [
           {

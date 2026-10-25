@@ -76,6 +76,27 @@ def build_budget_payload(title: str, body: str) -> str:
     )
 
 
+def build_purchase_detail_payload(id_movimiento: int, title: str, body: str) -> str:
+    navigate = urljoin(f"{URL_SITE.rstrip('/')}/", f"app/finanzas/movimientos/{id_movimiento}")
+    return json.dumps(
+        {
+            "web_push": 8030,
+            "notification": {
+                "title": title,
+                "lang": "es-CL",
+                "dir": "ltr",
+                "body": body,
+                "navigate": navigate,
+                "silent": False,
+                "app_badge": "1",
+                # Una por compra: dos compras seguidas no se pisan.
+                "tag": f"purchase-detail-{id_movimiento}",
+            },
+        },
+        ensure_ascii=False,
+    )
+
+
 def send_push(subscription: PushSubscription, payload: str, ttl: int) -> None:
     webpush(
         subscription_info={
@@ -105,3 +126,8 @@ def send_expense_push(subscription: PushSubscription) -> None:
 def send_budget_push(subscription: PushSubscription, title: str, body: str) -> None:
     # Una alerta de gasto pierde sentido si llega al dia siguiente.
     send_push(subscription, build_budget_payload(title, body), ttl=6 * 60 * 60)
+
+
+def send_purchase_detail_push(subscription: PushSubscription, id_movimiento: int, title: str, body: str) -> None:
+    # La boleta se suele botar el mismo dia: despues de unas horas el aviso ya no sirve.
+    send_push(subscription, build_purchase_detail_payload(id_movimiento, title, body), ttl=4 * 60 * 60)

@@ -102,6 +102,8 @@ export const movimientoItemResponseSchema = z.object({
   cantidad: z.number(),
   precio_total: z.number().int().nullish(),
   precio_unitario: z.number().nullish(),
+  descuento: z.number().int().nullish(),
+  descripcion_boleta: z.string().nullish(),
 })
 
 export const movimientoResponseSchema = z.object({
@@ -118,6 +120,7 @@ export const movimientoResponseSchema = z.object({
   total_detallado: z.number(),
   monto: z.number(),
   descripcion: z.string().nullable(),
+  comercio: z.string().nullish(),
   en_lugar_compra: z.boolean(),
   latitud: z.number().nullish(),
   longitud: z.number().nullish(),

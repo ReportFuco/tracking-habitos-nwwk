@@ -37,6 +37,8 @@ class MovimientoItemResponse(BaseModel):
     cantidad: float = Field(..., examples=[2])
     precio_total: Optional[int] = Field(None, examples=[2380])
     precio_unitario: Optional[float] = Field(None, examples=[1190])
+    descuento: Optional[int] = Field(None, examples=[400], description="Oferta de la línea, ya restada de precio_total.")
+    descripcion_boleta: Optional[str] = Field(None, examples=["LECHE ENT COLUN 1L"])
 
     @model_validator(mode="before")
     @classmethod
@@ -63,6 +65,8 @@ class MovimientoItemResponse(BaseModel):
             "precio_unitario": (
                 round(data.precio_total / cantidad, 2) if data.precio_total is not None and cantidad else None
             ),
+            "descuento": data.descuento,
+            "descripcion_boleta": data.descripcion_boleta,
         }
 
     model_config = ConfigDict(title="Producto de un gasto")
@@ -84,6 +88,18 @@ class MovimientoItemCreate(BaseModel):
         examples=[2380],
         description="Lo que se pagó por esta línea (cantidad × precio unitario), en CLP.",
     )
+    descuento: Optional[int] = Field(
+        None,
+        ge=0,
+        examples=[400],
+        description="Oferta de la línea en CLP, ya restada de precio_total.",
+    )
+    descripcion_boleta: Optional[str] = Field(
+        None,
+        max_length=120,
+        examples=["LECHE ENT COLUN 1L"],
+        description="Texto de la línea tal como sale en la boleta.",
+    )
 
     model_config = ConfigDict(title="Agregar producto a un gasto")
 
@@ -91,8 +107,10 @@ class MovimientoItemCreate(BaseModel):
 class MovimientoItemPatch(BaseModel):
     id_producto: Optional[int] = Field(None, ge=1)
     cantidad: Optional[Decimal] = Field(None, gt=0, le=100000, decimal_places=3)
-    # null borra el precio (la columna es nullable).
+    # null borra el precio, el descuento o el texto (las columnas son nullable).
     precio_total: Optional[int] = Field(None, ge=0)
+    descuento: Optional[int] = Field(None, ge=0)
+    descripcion_boleta: Optional[str] = Field(None, max_length=120)
 
     @model_validator(mode="after")
     def validar_no_nulos(self):
@@ -133,6 +151,7 @@ class MovimientoResponse(BaseModel):
         None,
         examples=["Descripcion del movimiento"],
     )
+    comercio: Optional[str] = Field(None, examples=["Líder"], description="Cadena donde se compró.")
     en_lugar_compra: bool = False
     latitud: Optional[float] = Field(None, ge=-90, le=90)
     longitud: Optional[float] = Field(None, ge=-180, le=180)
@@ -206,6 +225,19 @@ class MovimientoCreate(BaseModel):
         None, 
         examples=["Aquí va la descripción"], 
         description="Ingresa una descripción del gasto, algún detalle."
+    )
+    comercio: Optional[str] = Field(
+        None,
+        max_length=60,
+        examples=["Líder"],
+        description="Cadena donde se compró, sin sucursal (Líder, Jumbo, Unimarc...).",
+    )
+    recordar_detalle: bool = Field(
+        False,
+        description=(
+            "true envía un Push pidiendo detallar la boleta si la categoría final pide detalle "
+            "(ver PUT /categoria/{id}/pedir-detalle). Lo usa el Atajo de Wallet; la app no lo manda."
+        ),
     )
     en_lugar_compra: bool = Field(
         False,
@@ -286,8 +318,9 @@ class MovimientoPatch(BaseModel):
     id_categoria: Optional[int] = None
     id_cuenta: Optional[int] = None
     monto: Optional[int] = Field(None, gt=0)
-    # null borra la descripcion (la columna es nullable).
+    # null borra la descripcion o el comercio (las columnas son nullable).
     descripcion: Optional[str] = Field(None, max_length=250)
+    comercio: Optional[str] = Field(None, max_length=60)
     created_at: Optional[datetime] = None
     hora_conocida: Optional[bool] = None
     # null lo deja pendiente de conciliar con la cartola.

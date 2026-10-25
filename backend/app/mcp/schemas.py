@@ -48,6 +48,10 @@ class CategoriaMCP(BaseModel):
     nombre: str
     es_propia: bool = Field(description="True si la creó el usuario; false si es por defecto.")
     usos_recientes: int = Field(0, description="Movimientos en ella en los últimos 90 días.")
+    pedir_detalle: bool = Field(
+        False,
+        description="True si sus gastos del Atajo avisan al usuario que detalle la boleta (ver gastos_por_detallar).",
+    )
 
     @classmethod
     def desde_modelo(cls, categoria: CategoriaFinanza) -> "CategoriaMCP":
@@ -55,8 +59,9 @@ class CategoriaMCP(BaseModel):
             id_categoria=categoria.id_categoria,
             nombre=categoria.nombre,
             es_propia=categoria.es_propia,
-            # Lo anota categorias.listar_categorias; una recién creada no lo trae.
+            # Los anota categorias.listar_categorias; una recién creada no los trae.
             usos_recientes=getattr(categoria, "usos_recientes", 0),
+            pedir_detalle=getattr(categoria, "pedir_detalle", False),
         )
 
 
@@ -95,7 +100,9 @@ class ItemMCP(BaseModel):
     id_producto: int
     producto: str
     cantidad: float
-    precio_total: int | None = Field(None, description="CLP pagados por la línea completa.")
+    precio_total: int | None = Field(None, description="CLP pagados por la línea completa, ya descontado.")
+    descuento: int | None = Field(None, description="Oferta de la línea en CLP.")
+    texto_boleta: str | None = Field(None, description="Texto de la línea tal como salía en la boleta.")
 
     @classmethod
     def desde_modelo(cls, item: MovimientoItem) -> "ItemMCP":
@@ -107,6 +114,8 @@ class ItemMCP(BaseModel):
             producto=f"{nombre} ({marca})" if marca else nombre,
             cantidad=float(item.cantidad),
             precio_total=item.precio_total,
+            descuento=item.descuento,
+            texto_boleta=item.descripcion_boleta,
         )
 
 
@@ -131,6 +140,7 @@ class MovimientoMCP(BaseModel):
     cuenta: str | None = None
     id_cuenta: int
     descripcion: str | None = None
+    comercio: str | None = Field(None, description="Cadena donde se compró (Líder, Jumbo...), si se detalló la boleta.")
     descripcion_original: str | None = Field(None, description="Glosa de la cartola con la que calzó.")
     id_transferencia: str | None = Field(
         None,
@@ -161,6 +171,7 @@ class MovimientoMCP(BaseModel):
             cuenta=movimiento.cuenta.nombre_cuenta if movimiento.cuenta else None,
             id_cuenta=movimiento.id_cuenta,
             descripcion=movimiento.descripcion,
+            comercio=movimiento.comercio,
             descripcion_original=movimiento.descripcion_original,
             id_transferencia=str(movimiento.id_transferencia) if movimiento.id_transferencia else None,
             id_deuda=movimiento.id_deuda,
@@ -175,6 +186,14 @@ class MovimientosMCP(BaseModel):
     offset: int
     limit: int
     hay_mas: bool = Field(description="True si existen más resultados: repetir con offset + limit.")
+
+
+class GastosPorDetallarMCP(BaseModel):
+    items: list[MovimientoMCP]
+    comercios_usados: list[str] = Field(
+        default_factory=list,
+        description="Comercios que el usuario ya registró: escribe el de la boleta igual que aquí.",
+    )
 
 
 class MovimientoEliminadoMCP(BaseModel):
