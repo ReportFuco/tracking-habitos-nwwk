@@ -11,6 +11,7 @@ import { FullScreenLoader } from "@/components/feedback/loaders/full-screen-load
 import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { clearStoredSession } from "@/lib/auth-session"
+import { olvidarRuta } from "@/lib/ultima-ruta"
 import { cn } from "@/lib/utils"
 import { clearPersistedQueryCache } from "@/lib/query-persistence"
 import { AuthAPI } from "@/modules/auth/api/auth.api"
@@ -43,6 +44,7 @@ export function Topbar({
       // sesion local se limpia igualmente
     }
     clearStoredSession()
+    olvidarRuta()
     queryClient.clear()
     await clearPersistedQueryCache()
     toast.success("Sesion cerrada")

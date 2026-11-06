@@ -94,6 +94,34 @@ type Modo =
   | { tipo: "registro"; idEjercicio: number }
   | { tipo: "reasignar"; idSerie: number; anterior: Modo }
 
+const PANTALLA_LS_KEY = "ritmo:entreno-activo-pantalla"
+
+type VistaMovil = "registro" | "resumen"
+type PantallaGuardada = { idEntreno: number; idEjercicio: number | null; vista: VistaMovil }
+
+/**
+ * Que se estaba haciendo en el entreno: el ejercicio en registro y la pestana en movil.
+ *
+ * Se guarda para retomarlo al volver a abrir la app a mitad de la sesion. Va atado al id
+ * del entreno: una sesion nueva no hereda el ejercicio de la anterior. Corregir una serie
+ * (`reasignar`) no se guarda, es un paso de un toque.
+ */
+function guardarPantalla(valor: PantallaGuardada) {
+  try {
+    localStorage.setItem(PANTALLA_LS_KEY, JSON.stringify(valor))
+  } catch {}
+}
+
+function leerPantalla(idEntreno: number): PantallaGuardada | null {
+  try {
+    const raw = localStorage.getItem(PANTALLA_LS_KEY)
+    const valor = raw ? (JSON.parse(raw) as PantallaGuardada) : null
+    return valor?.idEntreno === idEntreno ? valor : null
+  } catch {
+    return null
+  }
+}
+
 /** Las series de un ejercicio, en el orden en que se registraron. */
 const seriesDelEjercicio = (
   series: SerieFuerzaResponse[],
@@ -124,7 +152,39 @@ export function EntrenamientoActivoCard() {
 
   const [modo, setModo] = useState<Modo>({ tipo: "picker" })
   const [dialogoCierre, setDialogoCierre] = useState(false)
-  const [vistaMovil, setVistaMovil] = useState<"registro" | "resumen">("registro")
+  const [vistaMovil, setVistaMovil] = useState<VistaMovil>("registro")
+  // Id del entreno cuya pantalla ya se retomo. Hasta entonces no se guarda nada: el
+  // estado inicial (buscador) pisaria lo que habia quedado guardado.
+  const [pantallaRetomada, setPantallaRetomada] = useState<number | null>(null)
+  const idEntreno = entrenamientoActivo?.id_entrenamiento_fuerza ?? null
+
+  // Se ajusta durante el render, no en un effect: asi el primer pintado con el entreno
+  // ya muestra el ejercicio retomado en vez de parpadear el buscador.
+  if (idEntreno !== null && pantallaRetomada !== idEntreno) {
+    setPantallaRetomada(idEntreno)
+    const guardada = leerPantalla(idEntreno)
+
+    if (guardada) {
+      setModo(
+        guardada.idEjercicio !== null
+          ? { tipo: "registro", idEjercicio: guardada.idEjercicio }
+          : { tipo: "picker" },
+      )
+      setVistaMovil(guardada.vista)
+    }
+  }
+
+  useEffect(() => {
+    if (idEntreno === null || pantallaRetomada !== idEntreno || modo.tipo === "reasignar") {
+      return
+    }
+
+    guardarPantalla({
+      idEntreno,
+      idEjercicio: modo.tipo === "registro" ? modo.idEjercicio : null,
+      vista: vistaMovil,
+    })
+  }, [idEntreno, pantallaRetomada, modo, vistaMovil])
 
   useEffect(() => {
     if (ejercicios.length === 0) {
@@ -473,6 +533,7 @@ export function EntrenamientoActivoCard() {
             <RegistroSerie
               // Cada ejercicio parte con su propio estado en vez de heredar el anterior.
               key={ejercicioEnRegistro.id_ejercicio}
+              idEntreno={entrenamientoActivo.id_entrenamiento_fuerza}
               ejercicio={ejercicioEnRegistro}
               series={seriesDelEjercicio(series, ejercicioEnRegistro)}
               sugerencia={sugerencia}

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { ReactNode, useEffect, useRef } from "react"
 import { CloudOff } from "lucide-react"
 import { FullScreenLoader } from "@/components/feedback/loaders/full-screen-loader"
+import { RetomarRuta } from "@/components/shell/retomar-ruta"
 import { useProfile } from "@/modules/auth/hooks/useProfile"
 
 interface AuthGuardProps {
@@ -60,5 +61,10 @@ export function AuthGuard({ children, redirectTo = "/login" }: AuthGuardProps) {
     return <FullScreenLoader accent="olive" label="Validando acceso..." mode="session" />
   }
 
-  return <>{children}</>
+  return (
+    <>
+      <RetomarRuta usuario={profileQuery.data.id_usuario} />
+      {children}
+    </>
+  )
 }

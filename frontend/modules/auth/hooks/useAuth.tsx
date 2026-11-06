@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { isAxiosError } from "axios"
 import { clearStoredSession } from "@/lib/auth-session"
+import { olvidarRuta } from "@/lib/ultima-ruta"
 import { clearPersistedQueryCache } from "@/lib/query-persistence"
 import { getFriendlyErrorMessage } from "@/lib/error-messages"
 import { OFFLINE_ACTION_MESSAGE, isAppOffline } from "@/lib/online-only"
@@ -59,6 +60,7 @@ export const useAuth = () => {
     },
     onSettled: async () => {
       clearStoredSession()
+      olvidarRuta()
       queryClient.clear()
       await clearPersistedQueryCache()
     },
@@ -110,6 +112,7 @@ export const useAuth = () => {
     // solo se salta la revocacion server-side, que de todas formas es inalcanzable.
     if (isAppOffline()) {
       clearStoredSession()
+      olvidarRuta()
       queryClient.clear()
       await clearPersistedQueryCache()
       return

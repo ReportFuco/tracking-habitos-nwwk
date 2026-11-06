@@ -29,6 +29,40 @@ import type {
   SerieFuerzaResponse,
 } from "@/modules/entrenamientos/types/entrenamientos"
 
+const BORRADOR_LS_KEY = "ritmo:borrador-serie"
+
+type BorradorSerie = {
+  idEntreno: number
+  idEjercicio: number
+  peso: string
+  repeticiones: string
+  esCalentamiento: boolean
+  negativas: number
+}
+
+/**
+ * Lo que esta escrito en el formulario, aunque no se haya guardado. Al volver a abrir la
+ * app a mitad de una serie se retoma tal cual. Solo vale para el mismo entreno y
+ * ejercicio: en otro caso manda la sugerencia (la ultima serie registrada).
+ */
+function leerBorrador(idEntreno: number, idEjercicio: number): BorradorSerie | null {
+  try {
+    const raw = localStorage.getItem(BORRADOR_LS_KEY)
+    const borrador = raw ? (JSON.parse(raw) as BorradorSerie) : null
+    return borrador?.idEntreno === idEntreno && borrador.idEjercicio === idEjercicio
+      ? borrador
+      : null
+  } catch {
+    return null
+  }
+}
+
+function guardarBorrador(borrador: BorradorSerie) {
+  try {
+    localStorage.setItem(BORRADOR_LS_KEY, JSON.stringify(borrador))
+  } catch {}
+}
+
 export type SugerenciaSerie = {
   cantidad_peso: string
   repeticiones: string
@@ -49,6 +83,7 @@ export type SugerenciaSerie = {
  * conocido de ese ejercicio y no arrastra el del anterior.
  */
 export function RegistroSerie({
+  idEntreno,
   ejercicio,
   series,
   sugerencia,
@@ -56,6 +91,7 @@ export function RegistroSerie({
   onAgregar,
   onCambiarEjercicio,
 }: {
+  idEntreno: number
   ejercicio: EjercicioResponse
   /** Series de este ejercicio ya registradas en la sesion, en orden. */
   series: SerieFuerzaResponse[]
@@ -64,11 +100,28 @@ export function RegistroSerie({
   onAgregar: (payload: SerieFuerzaCreate) => Promise<boolean>
   onCambiarEjercicio: () => void
 }) {
-  const [peso, setPeso] = useState(sugerencia.cantidad_peso)
-  const [repeticiones, setRepeticiones] = useState(sugerencia.repeticiones)
-  const [esCalentamiento, setEsCalentamiento] = useState(sugerencia.es_calentamiento)
+  // Se lee una vez al montar: el componente se monta por ejercicio (`key`).
+  const [borrador] = useState(() => leerBorrador(idEntreno, ejercicio.id_ejercicio))
+  const [peso, setPeso] = useState(borrador?.peso ?? sugerencia.cantidad_peso)
+  const [repeticiones, setRepeticiones] = useState(
+    borrador?.repeticiones ?? sugerencia.repeticiones,
+  )
+  const [esCalentamiento, setEsCalentamiento] = useState(
+    borrador?.esCalentamiento ?? sugerencia.es_calentamiento,
+  )
   // No se arrastra a la serie siguiente como el peso: las negativas son de la ultima.
-  const [negativas, setNegativas] = useState(0)
+  const [negativas, setNegativas] = useState(borrador?.negativas ?? 0)
+
+  useEffect(() => {
+    guardarBorrador({
+      idEntreno,
+      idEjercicio: ejercicio.id_ejercicio,
+      peso,
+      repeticiones,
+      esCalentamiento,
+      negativas,
+    })
+  }, [idEntreno, ejercicio.id_ejercicio, peso, repeticiones, esCalentamiento, negativas])
   // Se abre al guardar como calentamiento con mas peso que la serie anterior.
   const [preguntandoTipo, setPreguntandoTipo] = useState(false)
   const tituloRef = useRef<HTMLHeadingElement | null>(null)
