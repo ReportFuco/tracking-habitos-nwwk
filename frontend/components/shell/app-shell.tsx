@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { usePathname } from "next/navigation"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -17,8 +18,51 @@ interface AppShellProps {
   sections?: NavSection[]
 }
 
+/**
+ * Entrada suave del contenido en cada cambio de ruta, en toda la app.
+ *
+ * Se anima el contenedor con la Web Animations API en vez de remontarlo con una `key` o
+ * un template: asi no se reinician los layouts de modulo ni sus providers, y cubre
+ * cualquier navegacion (un template solo se remonta cuando cambia su propio segmento, y
+ * no veria pasar de Historial a Activo dentro de Entrenamientos). La primera carga no se
+ * anima: de eso se encargan el loader y RetomarRuta.
+ */
+function useEntradaDeRuta() {
+  const pathname = usePathname()
+  const contenidoRef = useRef<HTMLDivElement | null>(null)
+  const rutaPrevia = useRef(pathname)
+
+  useEffect(() => {
+    if (rutaPrevia.current === pathname) return
+    rutaPrevia.current = pathname
+
+    const contenido = contenidoRef.current
+    if (
+      !contenido ||
+      typeof contenido.animate !== "function" ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return
+    }
+
+    // Mismo movimiento que .ritmo-entrada (globals.css). Sin fill: al terminar no queda
+    // ningun transform aplicado que afecte a los elementos fixed de la pagina.
+    const animacion = contenido.animate(
+      [
+        { opacity: 0, transform: "translateY(6px)" },
+        { opacity: 1, transform: "none" },
+      ],
+      { duration: 320, easing: "cubic-bezier(0.32, 0.72, 0, 1)" },
+    )
+    return () => animacion.cancel()
+  }, [pathname])
+
+  return contenidoRef
+}
+
 export function AppShell({ children, variant = "user", sections }: AppShellProps) {
   const [open, setOpen] = useState(false)
+  const contenidoRef = useEntradaDeRuta()
   const { data: profile = null } = useProfile()
 
   const navSections = sections ?? (variant === "admin" ? adminNavSections : userNavSections)
@@ -80,7 +124,9 @@ export function AppShell({ children, variant = "user", sections }: AppShellProps
                   : "pb-10"
             )}
           >
-            <div className="mx-auto w-full max-w-6xl">{children}</div>
+            <div ref={contenidoRef} className="mx-auto w-full max-w-6xl">
+              {children}
+            </div>
           </main>
         </div>
       </div>

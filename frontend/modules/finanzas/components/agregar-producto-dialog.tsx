@@ -261,7 +261,7 @@ export function AgregarProductoDialog({ open, onOpenChange, restante, onAgregar 
         </DialogHeader>
 
         {paso === "buscar" ? (
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="ritmo-entrada flex min-h-0 flex-1 flex-col">
             <div className="shrink-0 px-4 pt-4 sm:px-6">
               <div className="relative">
                 <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
@@ -357,7 +357,7 @@ export function AgregarProductoDialog({ open, onOpenChange, restante, onAgregar 
         ) : null}
 
         {paso === "crear" ? (
-          <form onSubmit={crearProducto} noValidate className="flex min-h-0 flex-1 flex-col">
+          <form onSubmit={crearProducto} noValidate className="ritmo-entrada flex min-h-0 flex-1 flex-col">
             <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-4 sm:px-6">
               <Campo id="nuevo-nombre" label="Nombre">
                 <input
@@ -455,7 +455,7 @@ export function AgregarProductoDialog({ open, onOpenChange, restante, onAgregar 
         ) : null}
 
         {paso === "detalle" && elegido ? (
-          <form onSubmit={agregar} noValidate className="flex min-h-0 flex-1 flex-col">
+          <form onSubmit={agregar} noValidate className="ritmo-entrada flex min-h-0 flex-1 flex-col">
             <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 py-4 sm:px-6">
               <div className="flex items-center gap-3 rounded-md bg-[color:var(--surface-low)] px-3 py-3">
                 <span className="min-w-0 flex-1">

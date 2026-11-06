@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useDeferredValue, useMemo, useRef, useState } from "react"
+import { type CSSProperties, useDeferredValue, useMemo, useRef, useState } from "react"
 import { ArrowDownLeft, ArrowUpRight, ChevronRight, CloudOff, Plus, Search, X } from "lucide-react"
 import { OptionPicker } from "@/components/forms/option-picker"
 import { addDays, datePart, formatMonth, toLocalIsoDate } from "@/lib/dates"
@@ -238,12 +238,20 @@ export function MovimientosManager() {
           )}
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        // key por tipo: al cambiar entre todos, gastos e ingresos la lista entra de nuevo.
+        // No por la busqueda, que animaria con cada letra.
+        <div key={tipo} className="flex flex-col gap-4">
           {grupos.map((grupo, index) => {
             // El ultimo dia puede seguir en la pagina siguiente: su total seria parcial.
             const totalIncompleto = index === grupos.length - 1 && Boolean(query.hasNextPage)
             return (
-              <section key={grupo.fecha} aria-label={etiquetaDia(grupo.fecha, hoy)}>
+              <section
+                key={grupo.fecha}
+                aria-label={etiquetaDia(grupo.fecha, hoy)}
+                // Tope al escalonado: los dias que llegan al paginar no esperan de mas.
+                style={{ "--i": Math.min(index, 6) } as CSSProperties}
+                className="ritmo-entrada"
+              >
                 <header className="mb-1.5 flex items-baseline justify-between gap-3 px-1">
                   <h3 className="text-sm font-bold">{etiquetaDia(grupo.fecha, hoy)}</h3>
                   {!totalIncompleto ? (
