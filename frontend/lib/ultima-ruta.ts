@@ -39,17 +39,13 @@ export const recordarRuta = (ruta: string, usuario: number | string) => {
 }
 
 /**
- * La ruta a la que volver, o null. Solo responde una vez por lanzamiento: marca la sesion
- * como abierta, asi una visita posterior al inicio no vuelve a redirigir.
+ * La ruta a la que volver al abrir la app, o null. Sin efectos: se puede llamar al
+ * renderizar. Deja de responder una vez que `marcarAppAbierta` marca el lanzamiento, asi
+ * una visita posterior al inicio no vuelve a redirigir.
  */
 export const rutaParaRetomar = (rutaInicial: string, usuario: number | string) => {
   try {
-    if (sessionStorage.getItem(CLAVE_ABIERTA)) {
-      return null
-    }
-    sessionStorage.setItem(CLAVE_ABIERTA, "1")
-
-    if (!RUTAS_ENTRADA.has(rutaInicial)) {
+    if (sessionStorage.getItem(CLAVE_ABIERTA) || !RUTAS_ENTRADA.has(rutaInicial)) {
       return null
     }
 
@@ -73,6 +69,13 @@ export const rutaParaRetomar = (rutaInicial: string, usuario: number | string) =
   } catch {
     return null
   }
+}
+
+/** El lanzamiento ya se resolvio: de aqui en adelante se navega normal. */
+export const marcarAppAbierta = () => {
+  try {
+    sessionStorage.setItem(CLAVE_ABIERTA, "1")
+  } catch {}
 }
 
 /** Al cerrar sesion: el siguiente usuario del dispositivo no hereda la pantalla. */

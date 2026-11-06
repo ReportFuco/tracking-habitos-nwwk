@@ -61,10 +61,5 @@ export function AuthGuard({ children, redirectTo = "/login" }: AuthGuardProps) {
     return <FullScreenLoader accent="olive" label="Validando acceso..." mode="session" />
   }
 
-  return (
-    <>
-      <RetomarRuta usuario={profileQuery.data.id_usuario} />
-      {children}
-    </>
-  )
+  return <RetomarRuta usuario={profileQuery.data.id_usuario}>{children}</RetomarRuta>
 }
