@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { type CSSProperties, useMemo, useState } from "react"
 import {
   ChevronDown,
   CloudOff,
@@ -195,8 +195,12 @@ export function SeriesSesion({
 
   return (
     <div className="space-y-4">
-      {grupos.map((grupo) => (
-        <section key={grupo.musculo} className="space-y-2.5">
+      {grupos.map((grupo, indiceGrupo) => (
+        <section
+          key={grupo.musculo}
+          style={{ "--i": indiceGrupo } as CSSProperties}
+          className="ritmo-entrada space-y-2.5"
+        >
           <div className="flex items-baseline justify-between gap-3 px-1">
             <h3 className="text-sm font-semibold text-foreground">
               {grupo.musculo}
@@ -220,7 +224,7 @@ export function SeriesSesion({
             return (
               <article
                 key={item.clave}
-                className="overflow-hidden rounded-xl border border-(--border)/15 bg-surface-lowest shadow-(--shadow-airy) sm:rounded-2xl"
+                className="ritmo-entrada overflow-hidden rounded-xl border border-(--border)/15 bg-surface-lowest shadow-(--shadow-airy) sm:rounded-2xl"
               >
                 <div className="flex items-center gap-2 pr-3">
                   <button
@@ -282,8 +286,8 @@ export function SeriesSesion({
                       {item.series.map((serie, indice) =>
                         editandoId === serie.id_fuerza_detalle ? (
                           <div
-                            key={serie.id_fuerza_detalle}
-                            className="space-y-4 rounded-lg bg-surface-low p-3 sm:p-4"
+                            key={`${indice}-edicion`}
+                            className="ritmo-entrada space-y-4 rounded-lg bg-surface-low p-3 sm:p-4"
                           >
                             {/* grid-cols-1 explicito: la columna implicita es `auto` y crece
                                 hasta el ancho del input, sacando el boton + de la tarjeta. */}
@@ -357,9 +361,12 @@ export function SeriesSesion({
                             </div>
                           </div>
                         ) : (
+                          // Key por posicion y no por id: una serie encolada sin conexion
+                          // cambia de id al confirmarse, y con key por id se volveria a
+                          // montar y a animar. Asi solo entra la serie nueva.
                           <div
-                            key={serie.id_fuerza_detalle}
-                            className="flex min-h-12 min-w-0 flex-wrap items-center gap-2 rounded-lg bg-surface-low px-3 py-2"
+                            key={`${indice}-fila`}
+                            className="ritmo-entrada flex min-h-12 min-w-0 flex-wrap items-center gap-2 rounded-lg bg-surface-low px-3 py-2"
                           >
                             <span className="w-4 shrink-0 font-label text-[10px] text-muted-foreground">
                               {indice + 1}

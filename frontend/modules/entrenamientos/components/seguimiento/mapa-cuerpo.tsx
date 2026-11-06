@@ -66,7 +66,7 @@ function Figura({
         <path d={CABEZA} style={{ fill: SILUETA }} />
         <path d={SILUETA_MEDIA} style={{ fill: SILUETA }} />
         <path d={SILUETA_MEDIA} transform={ESPEJO} style={{ fill: SILUETA }} />
-        {Object.entries(formas).map(([codigo, trazos]) => {
+        {Object.entries(formas).map(([codigo, trazos], indice) => {
           const zona = zonas.get(codigo)
           const nivel = zona?.nivel ?? "sin_trabajo"
           const activa = seleccionada === codigo
@@ -80,9 +80,12 @@ function Figura({
               nivel === "alto"
                 ? `url(#${espejado ? `${patron}-espejo` : patron})`
                 : RELLENO_NIVEL[nivel],
-            stroke: activa ? "var(--foreground)" : "none",
-            strokeWidth: activa ? 1 : 0,
+            // Stroke siempre presente (transparente si no esta activa) para que el contorno
+            // de la seleccion pueda aparecer con transicion en vez de saltar.
+            stroke: activa ? "var(--foreground)" : "transparent",
+            strokeWidth: 1,
             strokeLinejoin: "round",
+            transition: "fill 400ms ease-out, stroke 200ms ease-out",
           })
           const seleccionar = () => onSeleccionar(codigo)
           const onKeyDown = (evento: KeyboardEvent<SVGGElement>) => {
@@ -104,13 +107,17 @@ function Figura({
               className="cursor-pointer outline-none transition-opacity hover:opacity-80 focus-visible:opacity-80 motion-reduce:transition-none"
             >
               <title>{etiqueta}</title>
-              {trazos.map((d, indice) => (
-                <path key={indice} d={d} style={estilo(false)} />
-              ))}
-              <g transform={ESPEJO}>
-                {trazos.map((d, indice) => (
-                  <path key={indice} d={d} style={estilo(true)} />
+              {/* La entrada va en un grupo interno: en el boton chocaria con la opacidad del
+                  hover, que la animacion terminada dejaria fija. */}
+              <g className="ritmo-crece" style={{ "--i": indice } as CSSProperties}>
+                {trazos.map((d, parte) => (
+                  <path key={parte} d={d} style={estilo(false)} />
                 ))}
+                <g transform={ESPEJO}>
+                  {trazos.map((d, parte) => (
+                    <path key={parte} d={d} style={estilo(true)} />
+                  ))}
+                </g>
               </g>
             </g>
           )

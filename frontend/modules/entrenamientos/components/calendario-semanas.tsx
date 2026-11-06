@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { type CSSProperties, useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -20,8 +20,7 @@ export const inicioDeSemana = (fecha: Date) => {
   return sumarDias(dia, -((dia.getDay() + 6) % 7))
 }
 
-const claveDia = (fecha: Date) =>
-  `${fecha.getFullYear()}-${fecha.getMonth()}-${fecha.getDate()}`
+const claveDia = (fecha: Date) => `${fecha.getFullYear()}-${fecha.getMonth()}-${fecha.getDate()}`
 
 const mismoDia = (a: Date, b: Date) => claveDia(a) === claveDia(b)
 
@@ -76,11 +75,7 @@ export function CalendarioSemanas({
     const filas: Date[][] = []
     const ultimoDia = new Date(mes.getFullYear(), mes.getMonth() + 1, 0)
 
-    for (
-      let inicio = inicioDeSemana(mes);
-      inicio <= ultimoDia;
-      inicio = sumarDias(inicio, 7)
-    ) {
+    for (let inicio = inicioDeSemana(mes); inicio <= ultimoDia; inicio = sumarDias(inicio, 7)) {
       filas.push(Array.from({ length: 7 }, (_, indice) => sumarDias(inicio, indice)))
     }
 
@@ -100,7 +95,10 @@ export function CalendarioSemanas({
           <p className="font-label text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground">
             Calendario
           </p>
-          <h3 className="mt-0.5 truncate text-base font-semibold capitalize tracking-tight text-foreground sm:text-lg">
+          <h3
+            key={mes.getTime()}
+            className="ritmo-entrada mt-0.5 truncate text-base font-semibold capitalize tracking-tight text-foreground sm:text-lg"
+          >
             {formatoMes.format(mes)}
           </h3>
         </div>
@@ -156,64 +154,77 @@ export function CalendarioSemanas({
           <span className="text-center">Total</span>
         </div>
 
-        {semanas.map((dias) => {
-          const inicio = dias[0]
-          const seleccionada = mismoDia(inicio, semana)
-          const futura = inicio > hoy
-          const total = dias.reduce((suma, dia) => suma + (porDia.get(claveDia(dia)) ?? 0), 0)
+        {/* key por mes: al cambiarlo, las semanas entran de nuevo en cascada. */}
+        <div key={mes.getTime()} className="space-y-1">
+          {semanas.map((dias, fila) => {
+            const inicio = dias[0]
+            const seleccionada = mismoDia(inicio, semana)
+            const futura = inicio > hoy
+            const total = dias.reduce((suma, dia) => suma + (porDia.get(claveDia(dia)) ?? 0), 0)
 
-          return (
-            <button
-              key={claveDia(inicio)}
-              type="button"
-              disabled={futura}
-              aria-pressed={seleccionada}
-              aria-label={`Semana del ${rangoSemana(inicio)}: ${total} ${
-                total === 1 ? "entrenamiento" : "entrenamientos"
-              }`}
-              onClick={() => onSeleccionarSemana(inicio)}
-              className={cn(
-                "grid w-full touch-manipulation grid-cols-[repeat(7,minmax(0,1fr))_2.75rem] items-center gap-1 rounded-lg p-1 transition motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-default",
-                seleccionada
-                  ? "bg-[color-mix(in_oklch,var(--module-entrenamientos)_12%,transparent)] ring-1 ring-[color:var(--module-entrenamientos)]/40"
-                  : "enabled:hover:bg-surface-low",
-              )}
-            >
-              {dias.map((dia) => {
-                const entrenos = porDia.get(claveDia(dia)) ?? 0
-                const fueraDeMes = dia.getMonth() !== mes.getMonth()
-                const esHoy = mismoDia(dia, hoy)
-
-                return (
-                  <span
-                    key={claveDia(dia)}
-                    className={cn(
-                      "flex h-9 items-center justify-center rounded-sm text-sm tabular-nums sm:h-10",
-                      entrenos > 0
-                        ? "bg-(--module-entrenamientos-fill) font-semibold text-(--module-entrenamientos-on)"
-                        : dia > hoy
-                          ? "text-muted-foreground/40"
-                          : "text-foreground",
-                      fueraDeMes && "opacity-45",
-                      esHoy && entrenos === 0 && "ring-1 ring-inset ring-foreground/50",
-                      esHoy && entrenos > 0 && "ring-2 ring-inset ring-(--module-entrenamientos-on)/60",
-                    )}
-                  >
-                    {dia.getDate()}
-                  </span>
-                )
-              })}
-              <span
+            return (
+              <button
+                key={claveDia(inicio)}
+                type="button"
+                disabled={futura}
+                aria-pressed={seleccionada}
+                aria-label={`Semana del ${rangoSemana(inicio)}: ${total} ${
+                  total === 1 ? "entrenamiento" : "entrenamientos"
+                }`}
+                onClick={() => onSeleccionarSemana(inicio)}
+                style={{ "--i": fila } as CSSProperties}
                 className={cn(
-                  "text-center text-sm font-semibold tabular-nums",
-                  total > 0 ? "text-[color:var(--module-entrenamientos)]" : "text-muted-foreground/50",
+                  "ritmo-entrada grid w-full touch-manipulation grid-cols-[repeat(7,minmax(0,1fr))_2.75rem] items-center gap-1 rounded-lg p-1 transition-[background-color,box-shadow,transform] duration-300 ease-out active:scale-[0.985] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-default",
+                  seleccionada
+                    ? "bg-[color-mix(in_oklch,var(--module-entrenamientos)_12%,transparent)] ring-1 ring-[color:var(--module-entrenamientos)]/40"
+                    : "enabled:hover:bg-surface-low",
                 )}
               >
-                {futura ? "" : total}
-              </span>
-            </button>
-          )
-        })}
+                {dias.map((dia, columna) => {
+                  const entrenos = porDia.get(claveDia(dia)) ?? 0
+                  const fueraDeMes = dia.getMonth() !== mes.getMonth()
+                  const esHoy = mismoDia(dia, hoy)
+
+                  return (
+                    <span
+                      key={claveDia(dia)}
+                      // Los dias entrenados "crecen" al aparecer, en orden de lectura.
+                      style={
+                        entrenos > 0 ? ({ "--i": fila * 7 + columna } as CSSProperties) : undefined
+                      }
+                      className={cn(
+                        "flex h-9 items-center justify-center rounded-sm text-sm tabular-nums transition-colors duration-300 sm:h-10",
+                        entrenos > 0 && "ritmo-crece",
+                        entrenos > 0
+                          ? "bg-(--module-entrenamientos-fill) font-semibold text-(--module-entrenamientos-on)"
+                          : dia > hoy
+                            ? "text-muted-foreground/40"
+                            : "text-foreground",
+                        fueraDeMes && "opacity-45",
+                        esHoy && entrenos === 0 && "ring-1 ring-inset ring-foreground/50",
+                        esHoy &&
+                          entrenos > 0 &&
+                          "ring-2 ring-inset ring-(--module-entrenamientos-on)/60",
+                      )}
+                    >
+                      {dia.getDate()}
+                    </span>
+                  )
+                })}
+                <span
+                  className={cn(
+                    "text-center text-sm font-semibold tabular-nums",
+                    total > 0
+                      ? "text-[color:var(--module-entrenamientos)]"
+                      : "text-muted-foreground/50",
+                  )}
+                >
+                  {futura ? "" : total}
+                </span>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-[11px] text-muted-foreground">

@@ -526,50 +526,66 @@ export function EntrenamientoActivoCard() {
       </div>
 
       <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)] xl:items-start">
+        {/* ritmo-entrada se repite al cambiar de pestana: una animacion CSS vuelve a correr
+            cuando el elemento pasa de display:none a visible. */}
         <div
-          className={cn("min-w-0", vistaMovil === "registro" ? "block" : "hidden", "xl:block")}
-        >
-          {modo.tipo === "registro" && ejercicioEnRegistro ? (
-            <RegistroSerie
-              // Cada ejercicio parte con su propio estado en vez de heredar el anterior.
-              key={ejercicioEnRegistro.id_ejercicio}
-              idEntreno={entrenamientoActivo.id_entrenamiento_fuerza}
-              ejercicio={ejercicioEnRegistro}
-              series={seriesDelEjercicio(series, ejercicioEnRegistro)}
-              sugerencia={sugerencia}
-              submitting={submitting}
-              onAgregar={agregar}
-              onCambiarEjercicio={() => setModo({ tipo: "picker" })}
-            />
-          ) : (
-            <EjercicioPicker
-              ejercicios={ejercicios}
-              musculos={musculos}
-              cargando={loading}
-              recientes={recientes}
-              usados={usados}
-              onSeleccionar={seleccionarEjercicio}
-              titulo={modo.tipo === "reasignar" ? "Cambiar ejercicio" : "Nueva serie"}
-              descripcion={
-                modo.tipo === "reasignar"
-                  ? "Elige a que ejercicio corresponde la serie que estas corrigiendo."
-                  : "Elige el grupo muscular y toca el ejercicio que vas a registrar."
-              }
-              onCancelar={
-                modo.tipo === "reasignar"
-                  ? () => {
-                      setModo(modo.anterior)
-                      setVistaMovil("resumen")
-                    }
-                  : undefined
-              }
-            />
+          className={cn(
+            "ritmo-entrada min-w-0",
+            vistaMovil === "registro" ? "block" : "hidden",
+            "xl:block",
           )}
+        >
+          {/* Entra de nuevo al pasar del buscador al registro, o a otro ejercicio. */}
+          <div
+            key={
+              modo.tipo === "registro" && ejercicioEnRegistro
+                ? `registro-${ejercicioEnRegistro.id_ejercicio}`
+                : modo.tipo
+            }
+            className="ritmo-entrada"
+          >
+            {modo.tipo === "registro" && ejercicioEnRegistro ? (
+              <RegistroSerie
+                // Cada ejercicio parte con su propio estado en vez de heredar el anterior.
+                key={ejercicioEnRegistro.id_ejercicio}
+                idEntreno={entrenamientoActivo.id_entrenamiento_fuerza}
+                ejercicio={ejercicioEnRegistro}
+                series={seriesDelEjercicio(series, ejercicioEnRegistro)}
+                sugerencia={sugerencia}
+                submitting={submitting}
+                onAgregar={agregar}
+                onCambiarEjercicio={() => setModo({ tipo: "picker" })}
+              />
+            ) : (
+              <EjercicioPicker
+                ejercicios={ejercicios}
+                musculos={musculos}
+                cargando={loading}
+                recientes={recientes}
+                usados={usados}
+                onSeleccionar={seleccionarEjercicio}
+                titulo={modo.tipo === "reasignar" ? "Cambiar ejercicio" : "Nueva serie"}
+                descripcion={
+                  modo.tipo === "reasignar"
+                    ? "Elige a que ejercicio corresponde la serie que estas corrigiendo."
+                    : "Elige el grupo muscular y toca el ejercicio que vas a registrar."
+                }
+                onCancelar={
+                  modo.tipo === "reasignar"
+                    ? () => {
+                        setModo(modo.anterior)
+                        setVistaMovil("resumen")
+                      }
+                    : undefined
+                }
+              />
+            )}
+          </div>
         </div>
 
         <div
           className={cn(
-            "min-w-0 space-y-3",
+            "ritmo-entrada min-w-0 space-y-3",
             vistaMovil === "resumen" ? "block" : "hidden",
             "xl:block",
           )}

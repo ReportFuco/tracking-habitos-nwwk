@@ -282,8 +282,9 @@ export function RegistroSerie({
             <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
               {series.map((serie, indice) => (
                 <span
-                  key={serie.id_fuerza_detalle}
-                  className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs ${
+                  // Por posicion: confirmar una serie encolada no la vuelve a animar.
+                  key={indice}
+                  className={`ritmo-entrada inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs ${
                     serie.es_calentamiento
                       ? "bg-surface-low text-muted-foreground"
                       : "bg-foreground/5 text-foreground"

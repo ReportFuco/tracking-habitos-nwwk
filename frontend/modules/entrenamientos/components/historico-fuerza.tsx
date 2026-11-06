@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { type CSSProperties, useEffect, useMemo, useState } from "react"
 import { CalendarCheck, ChevronRight, Flame } from "lucide-react"
 import {
   Table,
@@ -157,7 +157,10 @@ export function HistoricoFuerza() {
               <p className="font-label text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground sm:text-[0.7rem] sm:tracking-[0.22em]">
                 Registro
               </p>
-              <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl">
+              <h3
+                key={semana.getTime()}
+                className="ritmo-entrada mt-1 text-lg font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl"
+              >
                 Semana del {rangoSemana(semana)}
               </h3>
             </div>
@@ -176,7 +179,10 @@ export function HistoricoFuerza() {
               Todavia no tienes entrenamientos anteriores. Cuando cierres una sesion activa, aparecera aqui.
             </div>
           ) : sesionesSemana.length === 0 ? (
-            <div className="mt-4 rounded-xl bg-[color:var(--surface-lowest)] p-5 text-sm leading-6 text-muted-foreground shadow-[var(--shadow-airy)] sm:mt-6 sm:rounded-2xl sm:p-6">
+            <div
+              key={semana.getTime()}
+              className="ritmo-entrada mt-4 rounded-xl bg-[color:var(--surface-lowest)] p-5 text-sm leading-6 text-muted-foreground shadow-[var(--shadow-airy)] sm:mt-6 sm:rounded-2xl sm:p-6"
+            >
               No hay sesiones cerradas esta semana. Elige otra en el calendario.
             </div>
           ) : (
@@ -199,16 +205,17 @@ export function HistoricoFuerza() {
                       </TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
-                    {sesionesSemana.map((entreno) => {
+                  <TableBody key={semana.getTime()}>
+                    {sesionesSemana.map((entreno, indice) => {
                       const isSelected = entreno.id_entrenamiento_fuerza === selectedId
                       return (
                         <TableRow
                           key={entreno.id_entrenamiento_fuerza}
                           role="button"
                           tabIndex={0}
+                          style={{ "--i": indice } as CSSProperties}
                           className={cn(
-                            "cursor-pointer border-0 transition-colors",
+                            "ritmo-entrada cursor-pointer border-0 transition-colors duration-300",
                             isSelected
                               ? "bg-[color:color-mix(in_oklch,var(--module-entrenamientos)_8%,transparent)]"
                               : "hover:bg-[color:color-mix(in_oklch,var(--module-entrenamientos)_4%,transparent)]"
@@ -259,14 +266,15 @@ export function HistoricoFuerza() {
                 </Table>
               </div>
 
-              <div className="mt-4 grid gap-3 sm:mt-6 sm:gap-4 lg:hidden">
-                {sesionesSemana.map((entreno) => {
+              <div key={semana.getTime()} className="mt-4 grid gap-3 sm:mt-6 sm:gap-4 lg:hidden">
+                {sesionesSemana.map((entreno, indice) => {
                   const isSelected = entreno.id_entrenamiento_fuerza === selectedId
                   return (
                     <article
                       key={entreno.id_entrenamiento_fuerza}
+                      style={{ "--i": indice } as CSSProperties}
                       className={cn(
-                        "cursor-pointer rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] transition sm:rounded-2xl sm:p-5",
+                        "ritmo-entrada cursor-pointer rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] transition duration-300 ease-out active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100 sm:rounded-2xl sm:p-5",
                         isSelected
                           ? "ring-2 ring-[color:var(--module-entrenamientos)]/40"
                           : "hover:-translate-y-0.5 hover:shadow-[var(--shadow-airy-lg)]"
@@ -335,7 +343,7 @@ export function HistoricoFuerza() {
               Cargando detalle...
             </div>
           ) : detail ? (
-            <div className="space-y-3 sm:space-y-4">
+            <div key={selectedId ?? "detalle"} className="ritmo-entrada space-y-3 sm:space-y-4">
               <article className="rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:rounded-2xl sm:p-5">
                 <div className="space-y-2">
                   <span
@@ -379,10 +387,12 @@ export function HistoricoFuerza() {
                     Esta sesion no tiene series registradas.
                   </div>
                 ) : (
-                  seriesDetalle.map((serie) => (
+                  seriesDetalle.map((serie, indice) => (
                     <article
                       key={serie.id_fuerza_detalle}
-                      className="rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:rounded-2xl sm:p-5"
+                      // Tope al escalonado: una sesion larga no deberia tardar en terminar de entrar.
+                      style={{ "--i": Math.min(indice + 1, 12) } as CSSProperties}
+                      className="ritmo-entrada rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:rounded-2xl sm:p-5"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 space-y-1.5">
