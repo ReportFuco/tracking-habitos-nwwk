@@ -29,6 +29,7 @@ import { SeriesSesion } from "@/modules/entrenamientos/components/activo/series-
 import {
   ejercicioDeSerie,
   normalizarTexto,
+  ordenarSeries,
 } from "@/modules/entrenamientos/components/activo/shared"
 import {
   serieFuerzaCreateSchema,
@@ -136,7 +137,7 @@ export function EntrenamientoActivoCard() {
   }, [ejercicios.length, fetchEjercicios, fetchMusculos, musculos.length])
 
   const series = useMemo(
-    () => entrenamientoActivo?.series ?? [],
+    () => ordenarSeries(entrenamientoActivo?.series ?? []),
     [entrenamientoActivo?.series],
   )
 

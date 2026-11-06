@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { CalendarCheck, ChevronRight, Flame } from "lucide-react"
 import {
   Table,
@@ -11,7 +11,16 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-import { esConMancuernas } from "@/modules/entrenamientos/components/activo/shared"
+import {
+  esConMancuernas,
+  ordenarSeries,
+} from "@/modules/entrenamientos/components/activo/shared"
+import {
+  CalendarioSemanas,
+  inicioDeSemana,
+  rangoSemana,
+  sumarDias,
+} from "@/modules/entrenamientos/components/calendario-semanas"
 import { useEntrenamientos } from "@/modules/entrenamientos/hooks/useEntrenamientos"
 
 const formatDate = (value: string) => {
@@ -39,6 +48,7 @@ export function HistoricoFuerza() {
   const { entrenamientosFuerza, fetchEntrenosFuerza, fetchDetalleEntrenoFuerza, loading } = useEntrenamientos()
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [detail, setDetail] = useState<Awaited<ReturnType<typeof fetchDetalleEntrenoFuerza>> | null>(null)
+  const [semana, setSemana] = useState(() => inicioDeSemana(new Date()))
 
   useEffect(() => {
     if (entrenamientosFuerza.length === 0) {
@@ -47,6 +57,25 @@ export function HistoricoFuerza() {
   }, [entrenamientosFuerza.length, fetchEntrenosFuerza])
 
   const sesionesCerradas = entrenamientosFuerza.filter((entreno) => entreno.estado !== "activo")
+  // El calendario marca tambien la sesion en curso: hoy ya se entreno aunque no se cierre.
+  const fechasEntreno = useMemo(
+    () => entrenamientosFuerza.map((entreno) => entreno.inicio_at),
+    [entrenamientosFuerza],
+  )
+  // El listado sigue a la semana elegida en el calendario, de la mas reciente a la mas
+  // antigua: el backend no garantiza orden.
+  const sesionesSemana = useMemo(() => {
+    const desde = semana.getTime()
+    const hasta = sumarDias(semana, 7).getTime()
+
+    return sesionesCerradas
+      .filter((entreno) => {
+        const inicio = new Date(entreno.inicio_at).getTime()
+        return inicio >= desde && inicio < hasta
+      })
+      .sort((a, b) => new Date(b.inicio_at).getTime() - new Date(a.inicio_at).getTime())
+  }, [sesionesCerradas, semana])
+  const seriesDetalle = useMemo(() => ordenarSeries(detail?.series ?? []), [detail?.series])
   const totalSeriesDetalle = detail?.series?.length ?? 0
 
   const handleSelect = async (idEntrenamientoFuerza: number) => {
@@ -116,6 +145,12 @@ export function HistoricoFuerza() {
           </div>
         </section>
 
+        <CalendarioSemanas
+          fechas={fechasEntreno}
+          semana={semana}
+          onSeleccionarSemana={setSemana}
+        />
+
         <section className="rounded-2xl bg-[color:var(--surface-low)] p-4 sm:rounded-3xl sm:p-6">
           <div className="flex flex-col gap-1.5 sm:flex-row sm:items-end sm:justify-between sm:gap-2">
             <div>
@@ -123,11 +158,12 @@ export function HistoricoFuerza() {
                 Registro
               </p>
               <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl">
-                Sesiones cerradas
+                Semana del {rangoSemana(semana)}
               </h3>
             </div>
-            <p className="hidden text-sm text-muted-foreground sm:block">
-              Tabla en desktop, cards editoriales en mobile.
+            <p className="text-sm text-muted-foreground">
+              {sesionesSemana.length}{" "}
+              {sesionesSemana.length === 1 ? "sesion cerrada" : "sesiones cerradas"}
             </p>
           </div>
 
@@ -138,6 +174,10 @@ export function HistoricoFuerza() {
           ) : sesionesCerradas.length === 0 ? (
             <div className="mt-4 rounded-xl bg-[color:var(--surface-lowest)] p-5 text-sm leading-6 text-muted-foreground shadow-[var(--shadow-airy)] sm:mt-6 sm:rounded-2xl sm:p-6">
               Todavia no tienes entrenamientos anteriores. Cuando cierres una sesion activa, aparecera aqui.
+            </div>
+          ) : sesionesSemana.length === 0 ? (
+            <div className="mt-4 rounded-xl bg-[color:var(--surface-lowest)] p-5 text-sm leading-6 text-muted-foreground shadow-[var(--shadow-airy)] sm:mt-6 sm:rounded-2xl sm:p-6">
+              No hay sesiones cerradas esta semana. Elige otra en el calendario.
             </div>
           ) : (
             <>
@@ -160,7 +200,7 @@ export function HistoricoFuerza() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sesionesCerradas.map((entreno) => {
+                    {sesionesSemana.map((entreno) => {
                       const isSelected = entreno.id_entrenamiento_fuerza === selectedId
                       return (
                         <TableRow
@@ -220,7 +260,7 @@ export function HistoricoFuerza() {
               </div>
 
               <div className="mt-4 grid gap-3 sm:mt-6 sm:gap-4 lg:hidden">
-                {sesionesCerradas.map((entreno) => {
+                {sesionesSemana.map((entreno) => {
                   const isSelected = entreno.id_entrenamiento_fuerza === selectedId
                   return (
                     <article
@@ -334,12 +374,12 @@ export function HistoricoFuerza() {
               </article>
 
               <div className="space-y-2 sm:space-y-3">
-                {(detail.series ?? []).length === 0 ? (
+                {seriesDetalle.length === 0 ? (
                   <div className="rounded-xl bg-[color:var(--surface-lowest)] p-5 text-sm leading-6 text-muted-foreground shadow-[var(--shadow-airy)] sm:rounded-2xl sm:p-6">
                     Esta sesion no tiene series registradas.
                   </div>
                 ) : (
-                  (detail.series ?? []).map((serie) => (
+                  seriesDetalle.map((serie) => (
                     <article
                       key={serie.id_fuerza_detalle}
                       className="rounded-xl bg-[color:var(--surface-lowest)] p-4 shadow-[var(--shadow-airy)] sm:rounded-2xl sm:p-5"

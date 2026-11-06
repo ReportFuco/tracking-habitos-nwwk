@@ -10,6 +10,41 @@ import type {
 
 export const SIN_GRUPO = "Sin grupo"
 
+/**
+ * Series en el orden en que se registraron, que es lo que numera la sesion.
+ *
+ * Las confirmadas van por id (el backend lo asigna creciente) y las que siguen en la cola
+ * offline (id negativo) al final, en el orden en que se encolaron: el sort es estable y
+ * entre ellas devuelve 0. No se confia en el orden que llega: un cache viejo, o un backend
+ * sin `order_by`, renumeraba las series al editar una.
+ */
+export const ordenarSeries = <T extends Pick<SerieFuerzaResponse, "id_fuerza_detalle">>(
+  series: T[],
+): T[] =>
+  [...series].sort((a, b) => {
+    const pendienteA = a.id_fuerza_detalle < 0
+    const pendienteB = b.id_fuerza_detalle < 0
+
+    if (pendienteA !== pendienteB) {
+      return pendienteA ? 1 : -1
+    }
+
+    return pendienteA ? 0 : a.id_fuerza_detalle - b.id_fuerza_detalle
+  })
+
+/**
+ * Si conviene preguntar antes de guardar una serie como calentamiento.
+ *
+ * El selector arrastra el tipo de la serie anterior, asi que tras dos de calentamiento es
+ * facil subir el peso para la primera de trabajo y guardarla como calentamiento sin darse
+ * cuenta. Subir la carga respecto de la serie anterior del mismo ejercicio es la senal.
+ */
+export const convieneConfirmarCalentamiento = (
+  esCalentamiento: boolean,
+  peso: number,
+  anterior: Pick<SerieFuerzaResponse, "cantidad_peso"> | undefined,
+) => esCalentamiento && anterior != null && peso > anterior.cantidad_peso
+
 /** Misma normalizacion que la busqueda del backend: sin tildes y en minusculas. */
 export const normalizarTexto = (valor: string | null | undefined) =>
   (valor ?? "")

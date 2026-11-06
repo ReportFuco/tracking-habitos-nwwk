@@ -138,10 +138,14 @@ class EntrenamientoFuerza(Base):
 
     gimnasio = relationship("Gimnasio", back_populates="entrenamientos_fuerza")
     entrenamiento = relationship("Entrenamiento", back_populates="fuerza")
+    # Ordenadas por id, que es el orden en que se registraron. Sin order_by Postgres las
+    # devuelve en el orden fisico de la tabla, y un UPDATE reescribe la fila al final:
+    # editar una serie la mandaba al ultimo lugar y renumeraba las demas.
     series = relationship(
         "SerieFuerza",
         back_populates="entrenamiento_fuerza",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        order_by="SerieFuerza.id_fuerza_detalle",
     )
 
 

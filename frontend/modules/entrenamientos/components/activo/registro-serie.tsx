@@ -3,11 +3,19 @@
 import { FormEvent, useEffect, useRef, useState } from "react"
 import { CloudOff, LoaderCircle, Plus, Repeat } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { EjercicioAnimacion } from "@/modules/entrenamientos/components/ejercicio-media"
 import {
   CampoNegativas,
   CampoNumerico,
   SelectorTipoSerie,
+  convieneConfirmarCalentamiento,
   describirGrupoEjercicio,
   esConMancuernas,
   formatearPeso,
@@ -61,23 +69,41 @@ export function RegistroSerie({
   const [esCalentamiento, setEsCalentamiento] = useState(sugerencia.es_calentamiento)
   // No se arrastra a la serie siguiente como el peso: las negativas son de la ultima.
   const [negativas, setNegativas] = useState(0)
+  // Se abre al guardar como calentamiento con mas peso que la serie anterior.
+  const [preguntandoTipo, setPreguntandoTipo] = useState(false)
   const tituloRef = useRef<HTMLHeadingElement | null>(null)
 
   useEffect(() => {
     tituloRef.current?.focus()
   }, [])
 
-  const enviar = async (evento: FormEvent<HTMLFormElement>) => {
-    evento.preventDefault()
+  const anterior = series.at(-1)
+
+  const guardar = async (comoCalentamiento: boolean) => {
+    setPreguntandoTipo(false)
+    // El tipo elegido en la pregunta queda en el selector: la serie siguiente suele ser
+    // igual, y si fue de trabajo no hay que volver a cambiarlo a mano.
+    setEsCalentamiento(comoCalentamiento)
 
     const guardada = await onAgregar({
       id_ejercicio: ejercicio.id_ejercicio,
-      es_calentamiento: esCalentamiento,
+      es_calentamiento: comoCalentamiento,
       cantidad_peso: Number(peso),
       repeticiones: Number(repeticiones),
       repeticiones_negativas: negativas,
     })
     if (guardada) setNegativas(0)
+  }
+
+  const enviar = (evento: FormEvent<HTMLFormElement>) => {
+    evento.preventDefault()
+
+    if (convieneConfirmarCalentamiento(esCalentamiento, Number(peso), anterior)) {
+      setPreguntandoTipo(true)
+      return
+    }
+
+    void guardar(esCalentamiento)
   }
 
   const grupo = describirGrupoEjercicio(ejercicio)
@@ -228,6 +254,42 @@ export function RegistroSerie({
           </div>
         ) : null}
       </form>
+
+      <Dialog open={preguntandoTipo} onOpenChange={setPreguntandoTipo}>
+        <DialogContent className="rounded-2xl border-0 bg-surface-lowest p-5 shadow-(--shadow-airy-lg) sm:max-w-md sm:rounded-3xl sm:p-6">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+              Subiste a {formatearPeso(Number(peso))} kg{mancuernas ? " c/u" : ""}
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-6 text-muted-foreground">
+              La serie anterior fue de{" "}
+              {anterior ? formatearPeso(anterior.cantidad_peso) : ""} kg y esta quedaria
+              como calentamiento. Que tipo de serie es?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Button
+              type="button"
+              autoFocus
+              disabled={submitting}
+              onClick={() => void guardar(false)}
+              className="min-h-12 rounded-lg bg-[color:var(--module-entrenamientos)] text-[color:var(--module-entrenamientos-foreground)] hover:bg-[color:var(--module-entrenamientos)]/90"
+            >
+              De trabajo
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={submitting}
+              onClick={() => void guardar(true)}
+              className="min-h-12 rounded-lg bg-surface-low text-foreground"
+            >
+              Sigue siendo calentamiento
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   )
 }
