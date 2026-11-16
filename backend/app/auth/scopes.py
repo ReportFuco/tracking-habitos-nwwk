@@ -15,6 +15,8 @@ FINANZAS_READ = "finanzas:read"
 FINANZAS_WRITE = "finanzas:write"
 ENTRENAMIENTOS_READ = "entrenamientos:read"
 ENTRENAMIENTOS_WRITE = "entrenamientos:write"
+NUTRICION_READ = "nutricion:read"
+NUTRICION_WRITE = "nutricion:write"
 
 Scope = Literal[
     "*",
@@ -22,12 +24,15 @@ Scope = Literal[
     "finanzas:write",
     "entrenamientos:read",
     "entrenamientos:write",
+    "nutricion:read",
+    "nutricion:write",
 ]
 
 # Modulo -> prefijo de sus rutas REST.
 MODULOS = {
     "finanzas": "/api/finanzas",
     "entrenamientos": "/api/entrenamientos",
+    "nutricion": "/api/nutricion",
 }
 
 _METODOS_LECTURA = {"GET", "HEAD", "OPTIONS"}

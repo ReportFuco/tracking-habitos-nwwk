@@ -35,6 +35,8 @@ const SCOPE_LABELS: Record<string, string> = {
   "finanzas:write": "Finanzas · lectura y escritura",
   "entrenamientos:read": "Entrenamientos · lectura",
   "entrenamientos:write": "Entrenamientos · lectura y escritura",
+  "nutricion:read": "Nutricion · lectura",
+  "nutricion:write": "Nutricion · lectura y escritura",
 }
 
 // Escribir incluye leer: si estan ambos, basta con mostrar el de escritura.
@@ -157,7 +159,7 @@ export function ConexionesIA() {
 
   return (
     <FormPanel
-      description="Conecta Claude, ChatGPT u otro asistente a Ritmo para preguntarle por tus gastos o tus entrenamientos, registrar movimientos conversando o recibir sugerencias de entreno."
+      description="Conecta Claude, ChatGPT u otro asistente a Ritmo para preguntarle por tus gastos, entrenamientos o comidas, registrar movimientos conversando, anotar un plato desde una foto o recibir sugerencias de entreno."
       aside={
         <div className="space-y-4">
           <div>

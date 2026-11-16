@@ -80,6 +80,8 @@ ENTRENAMIENTOS_LECTURA = {
     "listar_seguimientos",
 }
 ENTRENAMIENTOS_ESCRITURA = {"publicar_seguimiento", "eliminar_seguimiento"}
+NUTRICION_LECTURA = {"resumen_nutricion_dia", "tendencia_calorias", "buscar_alimentos"}
+NUTRICION_ESCRITURA = {"registrar_comida", "eliminar_comida"}
 
 
 # Como claude.ai: valida el formato de los strings. RFC 3339 exige offset en date-time.
@@ -265,12 +267,13 @@ async def test_herramientas_marcan_lectura_y_escritura(escenario):
         herramientas = {h.name: h for h in (await cliente.list_tools()).tools}
         instrucciones = cliente.instructions
 
-    lectura = LECTURA | ENTRENAMIENTOS_LECTURA
-    escritura = ESCRITURA | ENTRENAMIENTOS_ESCRITURA
+    lectura = LECTURA | ENTRENAMIENTOS_LECTURA | NUTRICION_LECTURA
+    escritura = ESCRITURA | ENTRENAMIENTOS_ESCRITURA | NUTRICION_ESCRITURA
     assert set(herramientas) == lectura | escritura
     assert all(herramientas[nombre].annotations.read_only_hint for nombre in lectura)
     assert not any(herramientas[nombre].annotations.read_only_hint for nombre in escritura)
     assert herramientas["eliminar_movimiento"].annotations.destructive_hint
+    assert herramientas["eliminar_comida"].annotations.destructive_hint
     assert "CLP" in instrucciones
 
 

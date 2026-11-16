@@ -18,13 +18,15 @@ from app.mcp.oauth import SCOPES_OAUTH, LimiteRegistroMiddleware, RitmoOAuthProv
 from app.mcp.urls import ISSUER_URL, MCP_PATH, MCP_URL
 from app.mcp.tools.entrenamientos import registrar_herramientas_entrenamientos
 from app.mcp.tools.finanzas import registrar_herramientas_finanzas
+from app.mcp.tools.nutricion import registrar_herramientas_nutricion
 
 
 INSTRUCCIONES = """\
-Servidor de Ritmo, la app de hábitos del usuario que autorizó esta conexión. Tiene dos
+Servidor de Ritmo, la app de hábitos del usuario que autorizó esta conexión. Tiene tres
 módulos: finanzas personales (cuentas, categorías, movimientos, productos comprados,
-deudas, carga de cartolas y analítica) y entrenamientos de fuerza (sesiones, progreso por
-ejercicio, carga por músculo y notas de seguimiento).
+deudas, carga de cartolas y analítica), entrenamientos de fuerza (sesiones, progreso por
+ejercicio, carga por músculo y notas de seguimiento) y nutrición (comidas, calorías y
+macros del día contra la meta).
 
 Finanzas
 
@@ -144,6 +146,31 @@ Entrenamientos
   Úsala cuando el usuario pida un análisis, sugerencias o un plan "para verlo en la app",
   o cuando acepte que lo dejes escrito. Apóyala en cifras de sus datos, marca las zonas
   que menciona y revisa listar_seguimientos para no repetir notas recientes.
+
+Nutrición
+- Leer requiere nutricion:read; anotar o eliminar comidas requiere nutricion:write.
+- Para "cuánto llevo hoy" o "cuánto me queda", usa resumen_nutricion_dia; para la semana
+  o si viene cumpliendo la meta, tendencia_calorias. Un día en 0 puede ser un día sin
+  anotar, no un ayuno: no lo trates como tal.
+- Para anotar algo envasado, búscalo con buscar_alimentos (nombre, marca o código de
+  barras) y pásalo con su id_producto, cantidad y unidad: las calorías salen de su tabla.
+  Si no está o no tiene tabla, anótalo como alimento libre (nombre_alimento + calorias de
+  toda la cantidad).
+
+Foto de un plato
+- Cuando el usuario mande la foto de lo que va a comer o comió, identifica cada
+  componente del plato (arroz, pollo, ensalada, pan, salsa, bebida) y estima su porción
+  en gramos o unidades guiándote por el tamaño del plato, los cubiertos y la mano.
+  Considera el aceite o la mantequilla de la preparación, que suelen ser lo que más se
+  subestima. Si algo no se distingue (relleno, tipo de salsa, si la bebida es light),
+  pregunta en vez de adivinar.
+- Muéstrale primero la lista con porción y kcal aproximadas por componente y el total, y
+  dile que es una estimación (±20-30 %). Con su visto bueno, o con sus correcciones,
+  regístrala con registrar_comida: un alimento por componente, con estimado=true y las
+  calorías y macros de toda la porción. Si el plato es algo envasado con código o marca
+  visible, busca antes el producto con buscar_alimentos.
+- Después de anotar, dile cuánto lleva en el día y cuánto le queda según su meta (viene en
+  resumen_nutricion_dia).
 """
 
 
@@ -159,6 +186,7 @@ def crear_servidor_mcp() -> MCPServer:
     )
     registrar_herramientas_finanzas(servidor)
     registrar_herramientas_entrenamientos(servidor)
+    registrar_herramientas_nutricion(servidor)
     return servidor
 
 

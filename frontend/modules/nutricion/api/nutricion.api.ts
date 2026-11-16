@@ -1,6 +1,7 @@
 import { api } from "@/lib/api"
 import { parseApiResponse } from "@/lib/api-schema"
 import {
+  codigoBarraResponseSchema,
   consumoDetalleResponseSchema,
   consumoDetallesListResponseSchema,
   consumoResponseSchema,
@@ -13,6 +14,7 @@ import {
   tablasListResponseSchema,
 } from "@/modules/nutricion/schemas/nutricion.schema"
 import {
+  CodigoBarraResponse,
   ConsumoCreate,
   ConsumoDetalleCreate,
   ConsumoDetallePatch,
@@ -91,6 +93,17 @@ export const NutricionAPI = {
 
   deleteConsumoDetalle: async (idDetalle: number): Promise<void> => {
     await api.delete(`/api/nutricion/consumo-detalle/${idDetalle}`)
+  },
+
+  buscarCodigoBarra: async (codigo: string): Promise<CodigoBarraResponse> => {
+    const { data } = await api.get(`/api/nutricion/codigo-barra/${encodeURIComponent(codigo)}`)
+    return parseApiResponse(codigoBarraResponseSchema, data, "GET /api/nutricion/codigo-barra/{codigo}")
+  },
+
+  /** Solo administradores: guarda la tabla de Open Food Facts en el producto del catalogo. */
+  guardarTablaCodigoBarra: async (codigo: string): Promise<CodigoBarraResponse> => {
+    const { data } = await api.post(`/api/nutricion/codigo-barra/${encodeURIComponent(codigo)}/tabla`)
+    return parseApiResponse(codigoBarraResponseSchema, data, "POST /api/nutricion/codigo-barra/{codigo}/tabla")
   },
 
   getMetas: async (): Promise<MetaNutricionalResponse[]> => {

@@ -1,4 +1,4 @@
-# Servidor MCP (finanzas y entrenamientos)
+# Servidor MCP (finanzas, entrenamientos y nutrición)
 
 El backend expone un servidor [MCP](https://modelcontextprotocol.io) en `POST /mcp`
 (producción: `https://api.fucolabs.dev/mcp`) para que un LLM consulte las finanzas del
@@ -34,6 +34,8 @@ Cada key tiene scopes (`app/auth/scopes.py`):
 | `finanzas:write` | además registrar, editar y eliminar | todo `/api/finanzas/**` |
 | `entrenamientos:read` | sesiones, progreso, carga muscular, notas | `GET` en `/api/entrenamientos/**` |
 | `entrenamientos:write` | además publicar y eliminar notas de seguimiento | todo `/api/entrenamientos/**` |
+| `nutricion:read` | comidas, calorías del día, metas, búsqueda de alimentos | `GET` en `/api/nutricion/**` |
+| `nutricion:write` | además anotar y eliminar comidas | todo `/api/nutricion/**` |
 | `*` | todo | toda la API (lo que tenían las keys antes de los scopes) |
 
 Escribir en un módulo incluye leerlo, pero no da acceso a otro módulo. La pantalla de
@@ -115,6 +117,21 @@ alto > 20. Es lo mismo que pinta el mapa del cuerpo de la app
 (`GET /api/entrenamientos/carga-muscular`).
 
 Cada nota guarda como `origen` el nombre de la API key o de la app OAuth que la escribió.
+
+### Nutrición
+
+| Herramienta | Qué devuelve |
+|---|---|
+| `resumen_nutricion_dia` | Calorías y macros de un día contra la meta vigente, con cada comida y sus alimentos |
+| `tendencia_calorias` | Calorías y macros por día (hasta 90) con la meta de cada día |
+| `buscar_alimentos` | Productos del catálogo con su tabla nutricional (por nombre, marca o código de barras) |
+| `registrar_comida` / `eliminar_comida` | Anota una comida con sus alimentos; el usuario la ve en Nutrición > Comidas |
+
+Cada alimento es un producto del catálogo (`id_producto`: las calorías se calculan con su
+tabla vigente en `app/services/nutricion/calculo.py`) o un alimento libre
+(`nombre_alimento` + calorías de toda la cantidad). La foto de un plato se anota como
+alimentos libres con `estimado=true`, que la app marca con "≈". Las calorías quedan
+guardadas por línea: editar la tabla después no cambia lo ya anotado.
 
 Crear, editar, eliminar e importar requieren `finanzas:write` (ver el listado completo en
 `app/mcp/tools/`). Montos en CLP enteros; fechas en calendario de Chile (una fecha con

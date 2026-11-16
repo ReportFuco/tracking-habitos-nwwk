@@ -9,6 +9,8 @@ export const API_KEY_SCOPES = [
   "finanzas:write",
   "entrenamientos:read",
   "entrenamientos:write",
+  "nutricion:read",
+  "nutricion:write",
 ] as const
 export type ApiKeyScope = (typeof API_KEY_SCOPES)[number]
 

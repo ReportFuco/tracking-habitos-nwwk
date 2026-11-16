@@ -20,13 +20,19 @@ export const MODULOS = [
     lectura: "consultar tus sesiones, progreso y carga por musculo",
     escritura: "dejarte notas de seguimiento y sugerencias",
   },
+  {
+    id: "nutricion",
+    nombre: "Nutricion",
+    lectura: "consultar tus comidas, calorias y metas",
+    escritura: "anotar comidas, por ejemplo desde la foto de un plato",
+  },
 ] as const
 
 export type Modulo = (typeof MODULOS)[number]["id"]
 export type NivelPermiso = "ninguno" | "lectura" | "escritura"
 export type Permisos = Record<Modulo, NivelPermiso>
 
-export const PERMISOS_INICIALES: Permisos = { finanzas: "lectura", entrenamientos: "lectura" }
+export const PERMISOS_INICIALES: Permisos = { finanzas: "lectura", entrenamientos: "lectura", nutricion: "lectura" }
 
 /** Escribir incluye leer: se mandan ambos para que quede explicito. */
 export const scopesDesdePermisos = (permisos: Permisos): string[] =>

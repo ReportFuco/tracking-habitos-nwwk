@@ -4,6 +4,7 @@ export type TipoComida = "desayuno" | "colacion" | "almuerzo" | "once" | "cena" 
 // (FE-ZOD-001): el schema es la fuente de verdad, esto es solo el punto de import para
 // el resto del modulo.
 export type {
+  CodigoBarraResponse,
   ConsumoDetalleResponse,
   ConsumoResponse,
   MetaNutricionalResponse,
@@ -11,10 +12,24 @@ export type {
   TablaNutricionalResponse,
 } from "@/modules/nutricion/schemas/nutricion.schema"
 
+/** Una linea de lo que se comio: `id_producto` (kcal con su tabla) o `nombre_alimento` + kcal. */
+export interface ConsumoItem {
+  id_producto?: number | null
+  nombre_alimento?: string | null
+  cantidad_consumida: number
+  unidad_consumida: string
+  calorias?: number | null
+  proteinas?: number | null
+  carbohidratos?: number | null
+  grasas?: number | null
+  estimado?: boolean
+}
+
 export interface ConsumoCreate {
   fecha_consumo: string
   tipo_comida: TipoComida
   observacion?: string | null
+  detalles?: ConsumoItem[]
 }
 
 export interface ConsumoPatch {
@@ -23,17 +38,19 @@ export interface ConsumoPatch {
   observacion?: string | null
 }
 
-export interface ConsumoDetalleCreate {
+export interface ConsumoDetalleCreate extends ConsumoItem {
   id_consumo: number
-  id_producto: number
-  cantidad_consumida: number
-  unidad_consumida: string
 }
 
 export interface ConsumoDetallePatch {
   id_producto?: number | null
+  nombre_alimento?: string | null
   cantidad_consumida?: number | null
   unidad_consumida?: string | null
+  calorias?: number | null
+  proteinas?: number | null
+  carbohidratos?: number | null
+  grasas?: number | null
 }
 
 export interface MetaNutricionalCreate {

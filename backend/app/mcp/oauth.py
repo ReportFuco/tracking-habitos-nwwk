@@ -43,6 +43,8 @@ from app.auth.scopes import (
     ENTRENAMIENTOS_WRITE,
     FINANZAS_READ,
     FINANZAS_WRITE,
+    NUTRICION_READ,
+    NUTRICION_WRITE,
     con_lectura_implicita,
 )
 from app.db.session import AsyncSessionLocal
@@ -51,7 +53,14 @@ from app.models import OAuthAutorizacion, OAuthCliente, OAuthCodigo, OAuthToken 
 from app.services.errores import ErrorDominio, NoEncontrado
 
 
-SCOPES_OAUTH = [FINANZAS_READ, FINANZAS_WRITE, ENTRENAMIENTOS_READ, ENTRENAMIENTOS_WRITE]
+SCOPES_OAUTH = [
+    FINANZAS_READ,
+    FINANZAS_WRITE,
+    ENTRENAMIENTOS_READ,
+    ENTRENAMIENTOS_WRITE,
+    NUTRICION_READ,
+    NUTRICION_WRITE,
+]
 # Registro dinamico abierto, pero acotado. Se cuenta en la BD (no en memoria) para que el
 # limite valga entre los workers de gunicorn.
 LIMITE_REGISTROS_POR_IP = 10

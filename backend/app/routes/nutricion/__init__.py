@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from .codigo_barra import router as codigo_barra_router
 from .consumo import router as consumo_router
 from .consumo_detalle import router as consumo_detalle_router
 from .meta_nutricional import router as meta_router
@@ -8,6 +9,7 @@ from .tabla_nutricional import router as tabla_router
 
 router = APIRouter(prefix="/nutricion")
 router.include_router(consumo_router)
+router.include_router(codigo_barra_router)
 router.include_router(consumo_detalle_router)
 router.include_router(meta_router)
 router.include_router(peso_router)

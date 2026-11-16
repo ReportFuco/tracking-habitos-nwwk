@@ -16,12 +16,24 @@ export const consumoCreateSchema = z.object({
   observacion: z.string().trim().max(250).optional().or(z.literal("")),
 })
 
-export const consumoDetalleCreateSchema = z.object({
-  id_consumo: z.number().int().positive(),
-  id_producto: z.number().int().positive("Selecciona un producto"),
-  cantidad_consumida: z.number().positive("La cantidad debe ser mayor a 0"),
-  unidad_consumida: z.string().trim().min(1, "Indica una unidad"),
-})
+/** Una linea de lo que se comio: un producto con tabla nutricional o un alimento libre. */
+export const consumoItemSchema = z
+  .object({
+    id_producto: z.number().int().positive().nullable(),
+    nombre_alimento: z.string().trim().max(160).nullable(),
+    cantidad_consumida: z.number().positive("La cantidad debe ser mayor a 0"),
+    unidad_consumida: z.string().trim().min(1, "Indica una unidad"),
+    calorias: z.number().min(0, "Las calorias no pueden ser negativas").nullable(),
+    proteinas: z.number().min(0).nullable(),
+    carbohidratos: z.number().min(0).nullable(),
+    grasas: z.number().min(0).nullable(),
+  })
+  .refine((item) => item.id_producto !== null || !!item.nombre_alimento, {
+    message: "Elige un producto o escribe el alimento",
+  })
+  .refine((item) => item.id_producto !== null || item.calorias !== null, {
+    message: "Indica las calorias del alimento",
+  })
 
 export const metaCreateSchema = z.object({
   fecha_inicio: z
@@ -47,30 +59,44 @@ export const pesoCreateSchema = z.object({
 })
 
 export type ConsumoCreateForm = z.infer<typeof consumoCreateSchema>
-export type ConsumoDetalleCreateForm = z.infer<typeof consumoDetalleCreateSchema>
+export type ConsumoItemForm = z.infer<typeof consumoItemSchema>
 export type MetaCreateForm = z.infer<typeof metaCreateSchema>
 export type PesoCreateForm = z.infer<typeof pesoCreateSchema>
 
 // Adapter FE-ZOD-001 (ver docs/auditoria/PLAN_FRONTEND.md y lib/api-schema.ts): la
 // respuesta del backend se valida contra estos schemas antes de entrar al cache, y los
 // tipos de `types/nutricion.ts` se derivan de ellos en vez de declararse por separado.
+export const consumoDetalleResponseSchema = z.object({
+  id_consumo_detalle: z.number().int(),
+  id_consumo: z.number().int(),
+  id_producto: z.number().int().nullable(),
+  nombre_alimento: z.string().nullable().default(null),
+  nombre: z.string().default("Alimento"),
+  cantidad_consumida: z.number(),
+  unidad_consumida: z.string(),
+  calorias: z.number().nullable().default(null),
+  proteinas: z.number().nullable().default(null),
+  carbohidratos: z.number().nullable().default(null),
+  grasas: z.number().nullable().default(null),
+  estimado: z.boolean().default(false),
+})
+
+// Los campos nuevos llevan default: el cache persistido antes de que existieran sigue
+// siendo valido (ver la nota de QUERY_CACHE_SCHEMA_VERSION en lib/api-schema.ts).
 export const consumoResponseSchema = z.object({
   id_consumo: z.number().int(),
   fecha_consumo: z.string(),
   tipo_comida: z.enum(TIPOS_COMIDA),
   observacion: z.string().nullable(),
   created_at: z.string(),
+  detalles: z.array(consumoDetalleResponseSchema).default([]),
+  total_calorias: z.number().nullable().default(null),
+  total_proteinas: z.number().nullable().default(null),
+  total_carbohidratos: z.number().nullable().default(null),
+  total_grasas: z.number().nullable().default(null),
 })
 
 export const consumosListResponseSchema = z.array(consumoResponseSchema)
-
-export const consumoDetalleResponseSchema = z.object({
-  id_consumo_detalle: z.number().int(),
-  id_consumo: z.number().int(),
-  id_producto: z.number().int(),
-  cantidad_consumida: z.number(),
-  unidad_consumida: z.string(),
-})
 
 export const consumoDetallesListResponseSchema = z.array(consumoDetalleResponseSchema)
 
@@ -100,6 +126,8 @@ export const tablaNutricionalResponseSchema = z.object({
   id_tabla: z.number().int(),
   id_producto: z.number().int(),
   nombre_producto: z.string().nullable(),
+  contenido_neto: z.number().nullable().default(null),
+  unidad_contenido: z.string().nullable().default(null),
   porcion_cantidad: z.number().nullable(),
   porcion_unidad: z.string().nullable(),
   calorias: z.number().nullable(),
@@ -114,8 +142,27 @@ export const tablaNutricionalResponseSchema = z.object({
 
 export const tablasListResponseSchema = z.array(tablaNutricionalResponseSchema)
 
+/** GET /api/nutricion/codigo-barra/{codigo}: producto del catalogo o de Open Food Facts. */
+export const codigoBarraResponseSchema = z.object({
+  origen: z.enum(["catalogo", "openfoodfacts"]),
+  codigo: z.string(),
+  id_producto: z.number().int().nullable(),
+  nombre: z.string(),
+  marca: z.string().nullable(),
+  porcion_cantidad: z.number().nullable(),
+  porcion_unidad: z.string().nullable(),
+  contenido_neto: z.number().nullable(),
+  unidad_contenido: z.string().nullable(),
+  calorias: z.number().nullable(),
+  proteinas: z.number().nullable(),
+  carbohidratos: z.number().nullable(),
+  grasas: z.number().nullable(),
+  fuente_nutricional: z.enum(["tabla", "openfoodfacts"]).nullable().default(null),
+})
+
 export type ConsumoResponse = z.infer<typeof consumoResponseSchema>
 export type ConsumoDetalleResponse = z.infer<typeof consumoDetalleResponseSchema>
 export type MetaNutricionalResponse = z.infer<typeof metaNutricionalResponseSchema>
 export type PesoResponse = z.infer<typeof pesoResponseSchema>
 export type TablaNutricionalResponse = z.infer<typeof tablaNutricionalResponseSchema>
+export type CodigoBarraResponse = z.infer<typeof codigoBarraResponseSchema>
